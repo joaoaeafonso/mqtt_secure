@@ -27,6 +27,7 @@ option(MSEC_ENABLE_CLANG_TIDY  "Run clang-tidy during compilation"      OFF)
 option(MSEC_ENABLE_HARDENING   "Enable compiler/linker hardening flags" ON)
 option(MSEC_BUILD_TESTS        "Build unit tests"                       ON)
 option(MSEC_BUILD_APPS         "Build example applications"             ON)
+option(MSEC_BUILD_BENCHMARKS   "Build performance benchmarks"           OFF)
 option(MSEC_WITH_OPENSSL       "Build the OpenSSL crypto backend"       ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -49,6 +50,13 @@ add_subdirectory(modules/data)
 
 if(MSEC_BUILD_APPS)
     add_subdirectory(apps/gateway)
+endif()
+
+if(MSEC_BUILD_BENCHMARKS)
+    if(NOT MSEC_WITH_OPENSSL)
+        message(FATAL_ERROR "MSEC_BUILD_BENCHMARKS requires MSEC_WITH_OPENSSL")
+    endif()
+    add_subdirectory(benchmarks)
 endif()
 
 if(MSEC_BUILD_TESTS)

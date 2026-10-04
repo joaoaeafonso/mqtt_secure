@@ -35,6 +35,16 @@
       }
     },
     {
+      "name": "bench",
+      "displayName": "Benchmarks (same flags as release, no sanitizers)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "MSEC_BUILD_BENCHMARKS": "ON",
+        "MSEC_BUILD_TESTS": "OFF"
+      }
+    },
+    {
       "name": "ci",
       "displayName": "CI: release + clang-tidy",
       "inherits": "release",
@@ -47,6 +57,7 @@
     { "name": "dev",     "configurePreset": "dev" },
     { "name": "tsan",    "configurePreset": "tsan" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "bench",   "configurePreset": "bench" },
     { "name": "ci",      "configurePreset": "ci" }
   ],
   "testPresets": [

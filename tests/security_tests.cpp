@@ -124,9 +124,11 @@ protected:
         receiver_ = make_layer(1, clock_);
     }
 
-    std::unique_ptr<SecurityLayer> make_layer(KeyId key, std::shared_ptr<const IClock> clock) {
+    std::unique_ptr<SecurityLayer> make_layer(KeyId key, std::shared_ptr<const IClock> clock,
+                                              SecurityConfig config = {}) {
+        config.sending_key_id = key;
         auto layer = SecurityLayer::create(
-            {.sending_key_id = key},
+            config,
             {.cipher = cipher_, .key_store = keys_, .random = rng_, .clock = std::move(clock)});
         EXPECT_TRUE(layer.has_value());
         return layer ? std::move(*layer) : nullptr;
@@ -210,6 +212,61 @@ TEST_F(SecurityLayerTest, SequenceNumbersIncrease) {
     ASSERT_TRUE(first.has_value() && second.has_value());
     EXPECT_LT(first->header.sequence, second->header.sequence);
     EXPECT_NE(first->nonce, second->nonce);
+}
+
+TEST_F(SecurityLayerTest, AuthenticateOnlyKeepsPayloadReadableButTamperProof) {
+    const SecurityConfig config{.protection = PayloadProtection::AuthenticateOnly};
+    auto sender = make_layer(1, clock_, config);
+    auto receiver = make_layer(1, clock_, config);
+
+    auto wire = sender->on_outbound(message("sensors/t", "21.5C"));
+    ASSERT_TRUE(wire.has_value());
+    EXPECT_NE(bytes_to_string(wire->payload).find("21.5C"), std::string::npos);
+
+    const auto plain = receiver->on_inbound(*wire);
+    ASSERT_TRUE(plain.has_value());
+    EXPECT_EQ(bytes_to_string(plain->payload), "21.5C");
+
+    auto tampered = *sender->on_outbound(message("sensors/t", "21.5C"));
+    const auto at = bytes_to_string(tampered.payload).find("21.5C");
+    tampered.payload[at] ^= std::byte{0x01};
+    EXPECT_EQ(receiver->on_inbound(tampered).error().code, ErrorCode::AuthenticationFailed);
+
+    auto moved = *sender->on_outbound(message("sensors/t", "21.5C"));
+    moved.topic = test::topic("actuators/door");
+    EXPECT_EQ(receiver->on_inbound(moved).error().code, ErrorCode::AuthenticationFailed);
+}
+
+TEST_F(SecurityLayerTest, ProtectionModeMismatchFailsAuthentication) {
+    auto auth_only = make_layer(1, clock_, {.protection = PayloadProtection::AuthenticateOnly});
+    const auto from_auth_only = auth_only->on_outbound(message("sensors/t", "21.5C"));
+    ASSERT_TRUE(from_auth_only.has_value());
+    EXPECT_EQ(receiver_->on_inbound(*from_auth_only).error().code,
+              ErrorCode::AuthenticationFailed);
+    EXPECT_EQ(auth_only->on_inbound(protect("sensors/t", "21.5C")).error().code,
+              ErrorCode::AuthenticationFailed);
+}
+
+TEST_F(SecurityLayerTest, ReplayProtectionCanBeDisabled) {
+    auto receiver = make_layer(1, clock_, {.enforce_replay_protection = false});
+    const auto wire = protect("sensors/t", "21.5C");
+    ASSERT_TRUE(receiver->on_inbound(wire).has_value());
+    EXPECT_TRUE(receiver->on_inbound(wire).has_value());
+}
+
+TEST_F(SecurityLayerTest, FreshnessCheckCanBeDisabled) {
+    auto receiver = make_layer(1, clock_, {.enforce_freshness = false});
+    const auto wire = protect("sensors/t", "21.5C");
+    clock_->advance(61s);
+    EXPECT_TRUE(receiver->on_inbound(wire).has_value());
+}
+
+TEST_F(SecurityLayerTest, DisabledChecksStillAuthenticate) {
+    auto receiver =
+        make_layer(1, clock_, {.enforce_freshness = false, .enforce_replay_protection = false});
+    auto wire = protect("sensors/t", "21.5C");
+    wire.payload.back() ^= std::byte{0x01};
+    EXPECT_EQ(receiver->on_inbound(wire).error().code, ErrorCode::AuthenticationFailed);
 }
 
 TEST(SecurityLayerFactory, RejectsMissingDependencies) {

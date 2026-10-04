@@ -14,6 +14,38 @@ ctest --preset dev
 Requires CMake ≥ 3.25, GCC ≥ 13 or Clang ≥ 17, OpenSSL ≥ 3.0, Ninja.
 GoogleTest is used from the system if present, otherwise fetched (hash-pinned).
 
+## Benchmarks
+
+Cost of each security level, end to end (publish → pipelines → loopback broker → app):
+
+```bash
+cmake --preset bench && cmake --build --preset bench
+./build/bench/benchmarks/msec_pipeline_benchmarks --benchmark_counters_tabular=true
+# stable numbers: --benchmark_repetitions=10 --benchmark_report_aggregates_only=true
+# machine-readable: --benchmark_out=results.json --benchmark_out_format=json
+```
+
+| Profile                  | Pipeline (gateway side)          | Adds                                               |
+|--------------------------|----------------------------------|----------------------------------------------------|
+| `0_baseline`             | none                             | —                                                  |
+| `1_persistence_only`     | persistence                      | storage cost                                       |
+| `2_auth_only`            | security, `AuthenticateOnly`     | integrity + topic binding (GMAC), payload readable |
+| `3_aead`                 | security, freshness & replay off | + confidentiality                                  |
+| `4_aead_freshness`       | + freshness                      | stale-message rejection                            |
+| `5_aead_replay`          | + replay guard                   | replay rejection                                   |
+| `6_full`                 | security, defaults               | everything                                         |
+| `7_full_persist_plain`   | `[persistence, security]`        | stores plaintext                                   |
+| `8_full_persist_at_rest` | `[security, persistence]`        | stores envelopes                                   |
+
+Each profile runs at 16 B, 256 B, 4 KiB and 64 KiB payloads. Besides time and
+throughput, every row reports `wire_B` / `overhead_B` and 0/1 columns from an
+attack probe run before timing: `confid` (attacker cannot read the payload),
+`replay`, `tamper`, `rebind`, `inject` (gateway rejected the attack).
+
+Scope: the loopback broker is in-process and synchronous, so this measures the
+CPU cost of the layers only. TLS / broker authentication (defence layer 1) and
+network latency are not covered yet.
+
 ## Architecture
 
 ```mermaid

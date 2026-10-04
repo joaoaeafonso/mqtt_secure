@@ -54,7 +54,7 @@ Result<Message> SecurityLayer::on_outbound(Message message) {
     if (!aad) {
         return std::unexpected{std::move(aad.error())};
     }
-    auto ciphertext = deps_.cipher->seal(key_material, nonce, message.payload, *aad);
+    auto ciphertext = protect(key_material, nonce, message.payload, std::move(*aad));
     if (!ciphertext) {
         return std::unexpected{std::move(ciphertext.error())};
     }
@@ -79,8 +79,10 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
     }
 
     // Cheap checks first: reject stale/future messages before doing crypto.
-    if (auto fresh = check_freshness(env->header.timestamp_ms); !fresh) {
-        return std::unexpected{std::move(fresh.error())};
+    if (config_.enforce_freshness) {
+        if (auto fresh = check_freshness(env->header.timestamp_ms); !fresh) {
+            return std::unexpected{std::move(fresh.error())};
+        }
     }
 
     auto key = deps_.key_store->find(env->header.key_id);
@@ -91,21 +93,60 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
     if (!aad) {
         return std::unexpected{std::move(aad.error())};
     }
-    auto plaintext = deps_.cipher->open(**key, env->nonce, env->ciphertext, *aad);
+    auto plaintext = unprotect(**key, env->nonce, env->ciphertext, std::move(*aad));
     if (!plaintext) {
         // Do not distinguish *why* decryption failed: avoids an oracle.
         return make_error(ErrorCode::AuthenticationFailed, "message authentication failed");
     }
 
     // Only authenticated messages may advance the replay window.
-    if (auto unique = replay_guard_.check_and_record(env->header.key_id, env->header.sequence);
-        !unique) {
-        secure_zero(*plaintext);
-        return std::unexpected{std::move(unique.error())};
+    if (config_.enforce_replay_protection) {
+        if (auto unique =
+                replay_guard_.check_and_record(env->header.key_id, env->header.sequence);
+            !unique) {
+            secure_zero(*plaintext);
+            return std::unexpected{std::move(unique.error())};
+        }
     }
 
     message.payload = std::move(*plaintext);
     return message;
+}
+
+// Encrypt:          ciphertext || tag  = AEAD(payload, aad)
+// AuthenticateOnly: payload    || tag, where tag = AEAD(empty, aad || payload)
+Result<Bytes> SecurityLayer::protect(const SecureBuffer& key, ByteView nonce, ByteView payload,
+                                     Bytes aad) const {
+    if (config_.protection == PayloadProtection::Encrypt) {
+        return deps_.cipher->seal(key, nonce, payload, aad);
+    }
+    aad.insert(aad.end(), payload.begin(), payload.end());
+    auto tag = deps_.cipher->seal(key, nonce, {}, aad);
+    if (!tag) {
+        return tag;
+    }
+    Bytes out;
+    out.reserve(payload.size() + tag->size());
+    out.insert(out.end(), payload.begin(), payload.end());
+    out.insert(out.end(), tag->begin(), tag->end());
+    return out;
+}
+
+Result<Bytes> SecurityLayer::unprotect(const SecureBuffer& key, ByteView nonce,
+                                       ByteView protected_payload, Bytes aad) const {
+    if (config_.protection == PayloadProtection::Encrypt) {
+        return deps_.cipher->open(key, nonce, protected_payload, aad);
+    }
+    const auto tag_size = deps_.cipher->tag_size();
+    if (protected_payload.size() < tag_size) {
+        return make_error(ErrorCode::AuthenticationFailed, "payload shorter than tag");
+    }
+    const ByteView payload = protected_payload.first(protected_payload.size() - tag_size);
+    aad.insert(aad.end(), payload.begin(), payload.end());
+    if (auto ok = deps_.cipher->open(key, nonce, protected_payload.last(tag_size), aad); !ok) {
+        return std::unexpected{std::move(ok.error())};
+    }
+    return Bytes(payload.begin(), payload.end());
 }
 
 Status SecurityLayer::check_freshness(std::int64_t timestamp_ms) const {
