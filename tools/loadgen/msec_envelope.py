@@ -59,7 +59,11 @@ class Protector:
             raise ValueError(f"protection {protection!r} needs a {KEY_SIZE}-byte key")
         self.protection = protection
         self.key_id = key_id
-        self.sequence = 0
+        # Start from the current time in µs rather than 0: a sensor that restarts
+        # (new process, agent reconnect) keeps moving forward through the
+        # receiver's replay window instead of falling behind it. Stays monotonic
+        # as long as a sensor sends < 1M msg/s and the clock doesn't step back.
+        self.sequence = time.time_ns() // 1000
         self._aead = AESGCM(key) if key else None
         self._key_id_bytes = key_id.to_bytes(4, "big")
 

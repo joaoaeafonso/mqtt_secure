@@ -125,11 +125,64 @@ the attacker received via `#`), `forged_ok` / `replays_ok` (attacks the gateway
 accepted), latency p50/p99 (sensor send → after the gateway pipeline), gateway
 CPU % and µs per message, broker CPU %. Results go to `build/loadtest/`.
 
+### Sensors and attackers on other machines
+
+For clean numbers, keep the controller machine (broker + gateway) free of the
+sensor load, and make the attacker a real network peer:
+
+```bash
+# controller (broker + gateway + dashboard)
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py live \
+    --set broker.host=0.0.0.0 --set load.sensors=500 \
+    --set cluster.sensor_agents=2 --set cluster.attacker_agents=1
+#   → prints:  loadgen.py agent --controller 192.168.1.10:8089 --token … --fingerprint …
+
+# every other machine (repo checkout + the venv from "Setup")
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py agent \
+    --controller 192.168.1.10:8089 --token … --fingerprint … --role sensors
+```
+
+The lab starts once the configured agents have joined; sensors are split evenly
+between sensor agents, each attacker agent runs one attacker. Agents serve one
+run after another and reconnect on their own, so start them once and run as many
+`live`/`matrix` sessions as you like (`matrix` also re-provisions them for
+startup-only variations such as `--vary load.sensors=100,500`). The dashboard
+lists every agent with its sensors, attacker status and clock offset.
+
+**Credentials** are provisioned automatically, without copying files around:
+
+1. The agent checks the controller certificate's SHA-256 **fingerprint before
+   sending anything**; a machine impersonating the controller learns nothing.
+2. It then authenticates with the **join token** (constant-time comparison).
+3. For each assigned sensor the agent **generates the private key locally** and
+   sends a CSR; the controller signs it for exactly that identity. Sensor
+   private keys never leave the agent machine.
+4. Secrets that are inherently shared (MQTT passwords, AES payload keys) travel
+   only over that verified TLS channel, only for the agent's own sensors, and
+   live in a `0700` temp directory deleted when the run ends. Attacker agents
+   receive only the public CA certificate.
+
+The controller's CA, control certificate and token persist in
+`build/loadtest/controller/` (`--state-dir`); `--new-token` rotates the token.
+
+**Latency across machines.** The gateway compares each message's send time with
+its own clock, so agents estimate their offset to the controller's clock over
+the control channel (NTP-style, lowest-RTT samples) and sensors correct their
+timestamps. The dashboard shows each agent's offset ± uncertainty (half the best
+round trip); treat latency differences smaller than that uncertainty as noise.
+If the machines are synchronised with PTP, start agents with
+`--no-clock-correction`.
+
+Network: agents must reach the controller on the MQTT port (18830) and the
+control port (8089). The dashboard has no authentication: it binds to
+`127.0.0.1` by default; reach it through an SSH tunnel rather than `--http-host 0.0.0.0`.
+
 How it works:
 
-- A fresh test PKI is generated per run (`pki.py`): a CA, a broker certificate
-  for `localhost`/`127.0.0.1`, and a certificate, password and payload key per
-  client. The attacker gets only the public CA certificate.
+- Fresh credentials are issued per run (`pki.py`): a broker certificate for
+  `localhost`, `127.0.0.1` and the advertised address, and a certificate,
+  password and payload key per client. The attacker gets only the public CA
+  certificate.
 - Legitimate clients always present their credentials, so switching
   authentication never interrupts them; only the attacker gets dropped.
 - With `mtls` the certificate CN is the MQTT username (`use_identity_as_username`),
@@ -138,9 +191,11 @@ How it works:
 - The gateway (`msec_load_gateway`) is controlled over stdin (`set <key> <value>`,
   `reconnect`, `reset`, `summary`) and reports JSON lines; its pipeline holds
   every layer from the start inside `SwitchableLayer`s, so no switch rebuilds it.
-- Everything shares one machine, so absolute numbers include the Python sensors
-  competing for CPU. `loss_pct` and `leak_pct` are accurate to about ±0.5 s of
-  the window (sensors report twice a second).
+- When everything runs on one machine, absolute numbers include the Python
+  sensors competing for CPU; use agents for clean numbers. `loss_pct` and
+  `leak_pct` are accurate to about ±0.5 s of the window (sensors report twice a second).
+- Sensor sequence numbers start from the current time in µs, so a sensor that
+  restarts keeps moving forward through the gateway's replay window.
 
 ## Architecture
 

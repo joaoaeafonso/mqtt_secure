@@ -7,6 +7,8 @@ in which every security feature can be switched, at startup or while running.
     [storage]    persistence none|plain|at-rest           gateway
     [load]       rate, payload, zone (live); sensors, processes, qos (startup)
     [attacker]   enabled, impersonate, inject_rate, replay_rate
+    [cluster]    sensor_agents, attacker_agents: run those on other machines
+                 (see cluster.py / agent.py); 0 = run them on this machine
 
 Lab.apply() takes a partial config, validates it and performs exactly the
 actions each change needs (reload, restart + reconnect, or a pipeline switch).
@@ -26,11 +28,13 @@ from pathlib import Path
 import pki as pki_module
 from attacker import Attacker
 from broker import Broker
+from cluster import (AttackerGroup, ControlServer, FleetGroup, RemoteAttacker, RemoteSensors,
+                     primary_address)
 from gateway import GatewayProcess
 from sensors import SensorFleet
 
 DEFAULTS: dict = {
-    "broker": {"host": "127.0.0.1", "port": 18830},
+    "broker": {"host": "127.0.0.1", "port": 18830, "advertise": ""},
     "transport": {"mode": "plain", "auth": False, "acl": True},
     "payload": {"protection": "encrypt", "freshness": True, "replay": True},
     "storage": {"persistence": "none"},
@@ -38,11 +42,13 @@ DEFAULTS: dict = {
              "processes": 2},
     "attacker": {"enabled": True, "impersonate": False, "inject_rate": 0.0,
                  "replay_rate": 0.0},
+    "cluster": {"listen": "0.0.0.0", "port": 8089, "sensor_agents": 0, "attacker_agents": 0,
+                "join_timeout": 600.0},
 }
 
 # Allowed values: a tuple of choices, or a type.
 SPEC: dict = {
-    "broker": {"host": str, "port": int},
+    "broker": {"host": str, "port": int, "advertise": str},
     "transport": {"mode": ("plain", "tls", "mtls"), "auth": bool, "acl": bool},
     "payload": {"protection": ("none", "auth_only", "encrypt"), "freshness": bool,
                 "replay": bool},
@@ -51,10 +57,28 @@ SPEC: dict = {
              "qos": (0, 1), "processes": int},
     "attacker": {"enabled": bool, "impersonate": bool, "inject_rate": float,
                  "replay_rate": float},
+    "cluster": {"listen": str, "port": int, "sensor_agents": int, "attacker_agents": int,
+                "join_timeout": float},
 }
 
-STARTUP_ONLY = {("broker", "host"), ("broker", "port"), ("load", "sensors"),
-                ("load", "processes"), ("load", "qos")}
+STARTUP_ONLY = {("broker", "host"), ("broker", "port"), ("broker", "advertise"),
+                ("load", "sensors"), ("load", "processes"), ("load", "qos")} | {
+                ("cluster", k) for k in SPEC["cluster"]}
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def uses_agents(config: dict) -> bool:
+    return config["cluster"]["sensor_agents"] > 0 or config["cluster"]["attacker_agents"] > 0
+
+
+def advertised_host(config: dict) -> str:
+    """The broker address every client (local or remote) connects to."""
+    b = config["broker"]
+    if b["advertise"]:
+        return b["advertise"]
+    if b["host"] in ("0.0.0.0", "::"):
+        return primary_address()
+    return b["host"]
 
 
 def validate(patch: dict) -> list[tuple[str, str, object]]:
@@ -91,6 +115,11 @@ def merged(base: dict, patch: dict) -> dict:
         raise ValueError("load.payload must be at least 8 bytes (the timestamp)")
     if out["load"]["sensors"] < 1:
         raise ValueError("load.sensors must be at least 1")
+    if out["cluster"]["sensor_agents"] > out["load"]["sensors"]:
+        raise ValueError("cluster.sensor_agents cannot exceed load.sensors")
+    if uses_agents(out) and out["broker"]["host"] in LOOPBACK:
+        raise ValueError("remote agents need the broker on the network: set broker.host = "
+                         "\"0.0.0.0\" (and broker.advertise to the address agents use)")
     return out
 
 
@@ -101,8 +130,11 @@ def describe(section: str, key: str, old, new) -> str:
 
 class Lab:
     def __init__(self, config: dict, gateway_binary: Path, workdir: Path | None = None,
-                 verbose: bool = False, log=print) -> None:
+                 verbose: bool = False, log=print, cluster: ControlServer | None = None) -> None:
         self.config = merged(DEFAULTS, config)
+        self.cluster = cluster
+        if uses_agents(self.config) and cluster is None:
+            raise ValueError("cluster.*_agents > 0 needs a control server")
         self.gateway_binary = gateway_binary
         self.verbose = verbose
         self.log = log
@@ -118,27 +150,70 @@ class Lab:
 
     def transport(self) -> dict:
         b, t = self.config["broker"], self.config["transport"]
-        return {"mode": t["mode"], "host": b["host"], "port": b["port"], "ca": str(self.pki.ca)}
+        return {"mode": t["mode"], "host": self.advertise, "port": b["port"],
+                "ca": str(self.pki.ca)}
 
     def start(self) -> None:
         c = self.config
-        self.log(f"generating test PKI, passwords and keys for {c['load']['sensors']} sensors "
-                 f"in {self.workdir}")
-        self.pki = pki_module.generate(self.workdir, c["load"]["sensors"])
+        n_sensors, cl = c["load"]["sensors"], c["cluster"]
+        self.advertise = advertised_host(c)
+        sensor_ids = list(range(1, n_sensors + 1))
+
+        # Reserve agents first: nothing else is worth starting until they are here.
+        sensor_agents = attacker_agents = []
+        if uses_agents(c):
+            self.log(f"agents join with:\n  {self.cluster.join_command(self.cluster_address())}")
+            sensor_agents = self._claim("sensors", cl["sensor_agents"])
+            attacker_agents = self._claim("attacker", cl["attacker_agents"])
+        local_ids = [] if sensor_agents else sensor_ids
+        ca = self.cluster.identity.ca if self.cluster else pki_module.CertificateAuthority.create()
+
+        self.log(f"credentials for {n_sensors} sensors in {self.workdir}")
+        self.pki = pki_module.generate(self.workdir, ca, sensor_ids, local_ids,
+                                       server_names=[self.advertise])
         self.broker = Broker(self.workdir, self.pki, c["broker"]["host"], c["broker"]["port"])
         self.broker.start(c["transport"]["mode"], c["transport"]["auth"], c["transport"]["acl"])
-        self.gateway = GatewayProcess(self.gateway_binary, self.pki, c["broker"]["host"],
+        self.gateway = GatewayProcess(self.gateway_binary, self.pki, self.advertise,
                                       c["broker"]["port"], c, self.verbose)
-        self.fleet = SensorFleet(
-            c["load"]["sensors"], c["load"]["processes"], keys_file=str(self.pki.keys),
-            credentials=pki_module.read_credentials(self.pki.credentials),
-            clients_dir=str(self.pki.client_cert("x").parent), transport=self.transport(),
-            protection=c["payload"]["protection"], rate=c["load"]["rate"],
-            payload=c["load"]["payload"], zone=c["load"]["zone"], qos=c["load"]["qos"])
-        self.attacker = Attacker(transport=self.transport(), zone=c["load"]["zone"],
-                                 **c["attacker"])
+
+        settings = {"transport": self.transport(), "protection": c["payload"]["protection"],
+                    "rate": c["load"]["rate"], "payload": c["load"]["payload"],
+                    "zone": c["load"]["zone"], "qos": c["load"]["qos"]}
+        if sensor_agents:
+            passwords = pki_module.read_credentials(self.pki.credentials)
+            keys = {int(line.split()[0]): line.split()[1]
+                    for line in self.pki.keys.read_text().splitlines()
+                    if line and not line.startswith("#")}
+            slices = [sensor_ids[i::len(sensor_agents)] for i in range(len(sensor_agents))]
+            members = []
+            for agent, ids in zip(sensor_agents, slices):
+                self.log(f"provisioning {len(ids)} sensors on {agent.host}")
+                members.append(RemoteSensors(agent, ids, ca, passwords, keys, settings))
+            self.fleet = FleetGroup(members, [a.host for a in sensor_agents])
+        else:
+            self.fleet = FleetGroup([SensorFleet(
+                local_ids, c["load"]["processes"], keys_file=str(self.pki.keys),
+                credentials=pki_module.read_credentials(self.pki.credentials),
+                clients_dir=str(self.pki.clients_dir), **settings)], ["local"])
+
+        attack = {"transport": self.transport(), "zone": c["load"]["zone"], **c["attacker"]}
+        if attacker_agents:
+            self.attacker = AttackerGroup([RemoteAttacker(a, ca, attack) for a in attacker_agents],
+                                          [a.host for a in attacker_agents])
+        else:
+            self.attacker = AttackerGroup([Attacker(**attack)], ["local"])
         self._event("lab started")
         threading.Thread(target=self._sampler, daemon=True).start()
+
+    def cluster_address(self) -> str:
+        listen = self.config["cluster"]["listen"]
+        return self.advertise if listen in ("0.0.0.0", "::") else listen
+
+    def _claim(self, role: str, count: int) -> list:
+        if count == 0:
+            return []
+        return self.cluster.claim(role, count, self.config["cluster"]["join_timeout"],
+                                  self._stop, announce=lambda m: self.log(f"· {m}"))
 
     def stop(self) -> None:
         self._stop.set()
@@ -156,6 +231,8 @@ class Lab:
     def apply(self, patch: dict) -> list[str]:
         """Applies a partial config while everything runs. Returns what changed."""
         with self.lock:
+            if self.attacker is None:
+                raise ValueError("the lab is still starting (waiting for agents?)")
             new = merged(self.config, patch)
             changed = [(s, k, self.config[s][k], new[s][k]) for s, k, _ in validate(patch)
                        if self.config[s][k] != new[s][k]]
@@ -263,7 +340,8 @@ class Lab:
             return {"config": copy.deepcopy(self.config),
                     "startup_only": [f"{s}.{k}" for s, k in sorted(STARTUP_ONLY)],
                     "history": [p for p in self.history if p["t"] > since],
-                    "events": list(self.events)}
+                    "events": list(self.events),
+                    "agents": self.cluster.snapshot() if self.cluster else []}
 
     def measure(self, settle: float, duration: float) -> dict:
         """One matrix cell: wait for the change to settle, then measure a window."""

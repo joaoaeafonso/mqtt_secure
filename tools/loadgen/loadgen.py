@@ -4,6 +4,7 @@ and an attacker, with every security feature switchable at runtime.
 
   live     run the lab with a web dashboard; flip features and watch the effect
   matrix   apply each combination of settings in turn, measure, write a table
+  agent    run sensors or an attacker on another machine for a live/matrix controller
 
 Configuration: lab.example.toml documents every setting. Pass a file with
 --config and/or override single settings with --set section.key=value.
@@ -11,6 +12,10 @@ Configuration: lab.example.toml documents every setting. Pass a file with
 Examples
   loadgen.py live --set load.sensors=100 --set transport.mode=tls
   loadgen.py matrix --vary transport.mode=plain,tls,mtls --vary payload.protection=none,encrypt
+
+Multiple machines: on the controller (broker + gateway) set
+  --set broker.host=0.0.0.0 --set cluster.sensor_agents=2 --set cluster.attacker_agents=1
+and run the printed `loadgen.py agent ...` command on each other machine.
 """
 
 from __future__ import annotations
@@ -26,10 +31,12 @@ import time
 import tomllib
 from pathlib import Path
 
-from lab import DEFAULTS, SPEC, STARTUP_ONLY, Lab, merged
+from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
+from lab import DEFAULTS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
+DEFAULT_STATE = REPO / "build" / "loadtest" / "controller"
 
 
 def log(message: str) -> None:
@@ -70,19 +77,32 @@ def load_config(args) -> dict:
     return merged(DEFAULTS, config)
 
 
+def control_server(args, config: dict) -> ControlServer | None:
+    """The agent control plane, when the config places anything on other machines."""
+    if not uses_agents(config):
+        return None
+    identity = ControllerIdentity(args.state_dir, new_token=args.new_token)
+    server = ControlServer(identity, config["cluster"]["listen"], config["cluster"]["port"], log)
+    server.start()
+    return server
+
+
 # --------------------------------------------------------------------- live ---
 
 def cmd_live(args) -> None:
     from dashboard import serve
 
-    lab = Lab(load_config(args), args.gateway, args.workdir, args.verbose, log)
-    server = serve(lab, "127.0.0.1", args.http_port)  # bind first: fail before starting anything
+    config = load_config(args)
+    cluster = control_server(args, config)
+    lab = Lab(config, args.gateway, args.workdir, args.verbose, log, cluster)
+    server = serve(lab, args.http_host, args.http_port)  # bind early: fail before starting
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
+    url = f"http://{args.http_host if args.http_host != '0.0.0.0' else '127.0.0.1'}:{args.http_port}/"
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    log(f"dashboard: {url}")
     try:
         lab.start()
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        url = f"http://127.0.0.1:{args.http_port}/"
         log(f"\n  dashboard: {url}\n  API:       curl -s {url}api/config "
             "-d '{\"transport\": {\"mode\": \"tls\"}}'\n  Ctrl-C to stop\n")
         if args.open:
@@ -96,6 +116,8 @@ def cmd_live(args) -> None:
         log("stopping...")
         server.shutdown()
         lab.stop()
+        if cluster:
+            cluster.stop()
 
 
 # ------------------------------------------------------------------- matrix ---
@@ -131,10 +153,13 @@ def cmd_matrix(args) -> None:
                f"matrix-{time.strftime('%Y%m%d-%H%M%S')}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    # One control plane for the whole matrix: agents stay connected between labs.
+    cluster = control_server(args, base)
     rows, n = [], 0
     for startup_patch in outer:
         config = merged(base, startup_patch)
-        lab = Lab(config, args.gateway, None, args.verbose, lambda m: None)
+        lab = Lab(config, args.gateway, None, args.verbose,
+                  log if cluster else (lambda m: None), cluster)
         try:
             lab.start()
             for patch in inner:
@@ -147,6 +172,8 @@ def cmd_matrix(args) -> None:
                 rows.append({**settings, **result})
         finally:
             lab.stop()
+    if cluster:
+        cluster.stop()
 
     columns = list(rows[0]) if rows else []
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -158,6 +185,17 @@ def cmd_matrix(args) -> None:
     for r in rows:
         print("| " + " | ".join(str(r[c]) for c in columns) + " |")
     log(f"\nresults written to {out}")
+
+
+# -------------------------------------------------------------------- agent ---
+
+def cmd_agent(args) -> None:
+    from agent import FatalAgentError, run_agent
+
+    try:
+        run_agent(args, log)
+    except FatalAgentError as e:
+        sys.exit(f"agent: {e}")
 
 
 # ---------------------------------------------------------------------- CLI ---
@@ -173,10 +211,16 @@ def main() -> None:
                        help="override one setting; repeatable")
         p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
         p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
+        p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE,
+                       help="controller CA, certificate and agent token (kept between runs)")
+        p.add_argument("--new-token", action="store_true", help="rotate the agent join token")
 
     p = sub.add_parser("live", help="run the lab with a live dashboard")
     common(p)
     p.add_argument("--http-port", type=int, default=8088)
+    p.add_argument("--http-host", default="127.0.0.1",
+                   help="dashboard bind address; it has no authentication, so keep it local "
+                        "or behind an SSH tunnel")
     p.add_argument("--workdir", type=Path, help="keep certificates, keys and logs here")
     p.add_argument("--open", action="store_true", help="open the dashboard in a browser")
     p.set_defaults(func=cmd_live)
@@ -191,6 +235,17 @@ def main() -> None:
     p.add_argument("--duration", type=float, default=10, help="measurement window, seconds")
     p.add_argument("--out", help="CSV path (default build/loadtest/matrix-<time>.csv)")
     p.set_defaults(func=cmd_matrix)
+
+    p = sub.add_parser("agent", help="run sensors or an attacker for a remote controller")
+    p.add_argument("--controller", required=True, help=f"HOST[:PORT] (default port {DEFAULT_CONTROL_PORT})")
+    p.add_argument("--token", required=True)
+    p.add_argument("--fingerprint", required=True, help="SHA-256 of the controller certificate")
+    p.add_argument("--role", choices=("sensors", "attacker"), required=True)
+    p.add_argument("--processes", type=int, default=os.cpu_count() or 1,
+                   help="sensor worker processes on this machine")
+    p.add_argument("--no-clock-correction", dest="clock_correction", action="store_false",
+                   help="clocks are already synchronised (e.g. PTP): send raw timestamps")
+    p.set_defaults(func=cmd_agent)
 
     args = parser.parse_args()
     try:

@@ -3,8 +3,11 @@
 # except the ones marked "startup only".
 
 [broker]
-host = "127.0.0.1"         # startup only
+host = "127.0.0.1"         # startup only; bind address. "0.0.0.0" when agents run elsewhere
 port = 18830               # startup only; a private Mosquitto, the system one is left alone
+advertise = ""             # startup only; address clients use (default: host, or this
+                           # machine's LAN address when host is 0.0.0.0). Goes in the
+                           # broker certificate, so TLS hostname checks pass.
 
 [transport]                # defence layer 1: the broker and the connections to it
 mode = "plain"             # plain | tls | mtls   (mtls: client certificates, CN = username)
@@ -32,3 +35,10 @@ enabled = true             # subscribes to '#'; has only the public CA certifica
 impersonate = false        # claim username "gateway" (no password, no certificate)
 inject_rate = 0            # forged plaintext msg/s into sensor-1's topic
 replay_rate = 0            # captured messages re-published per second
+
+[cluster]                  # startup only: sensors/attackers on other machines
+sensor_agents = 0          # 0 = sensors run here; N = wait for N agents, split sensors evenly
+attacker_agents = 0        # 0 = one attacker here; N = one attacker per agent machine
+listen = "0.0.0.0"         # control port agents connect to (TLS, token + pinned certificate)
+port = 8089
+join_timeout = 600         # seconds to wait for the agents before giving up

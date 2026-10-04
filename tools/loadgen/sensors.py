@@ -8,6 +8,9 @@ its password (and, with mtls, its certificate), and seals payloads with key id
 switching broker authentication on or off never interrupts legitimate traffic.
 
 Plaintext payload: send time (u64 big-endian ns since epoch) + zero padding.
+On agent machines the send time is corrected by the agent's estimated clock
+offset to the controller (`clock_offset_ns`), so the gateway can compute
+one-way latency against its own clock.
 
 Workers drive their sockets by hand from one loop instead of one paho thread
 per connection, which is far cheaper in Python.
@@ -132,7 +135,7 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
                       Protector(SENDER_PROTECTION_MODES[cfg.protection], sid, keys[sid]))
                for sid in cfg.ids]
     state = {"transport": cfg.transport, "rate": cfg.rate, "payload": cfg.payload,
-             "zone": cfg.zone, "protection": cfg.protection}
+             "zone": cfg.zone, "protection": cfg.protection, "clock_offset_ns": 0}
 
     def set_topics() -> None:
         for s in sensors:
@@ -211,7 +214,7 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
         if sensor.state != "up":
             report.skipped += 1
             continue
-        plaintext = time.time_ns().to_bytes(8, "big") + filler
+        plaintext = (time.time_ns() + state["clock_offset_ns"]).to_bytes(8, "big") + filler
         try:
             sensor.client.publish(sensor.topic,
                                   sensor.protector.protect(sensor.topic_bytes, plaintext),
@@ -233,7 +236,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
 class SensorFleet:
     """Runs the sensors and aggregates their reports for the controller."""
 
-    def __init__(self, count: int, processes: int, **settings) -> None:
+    def __init__(self, ids: list[int], processes: int, **settings) -> None:
+        count = len(ids)
         processes = max(1, min(processes, count))
         ctx = mp.get_context("spawn")
         self.stop_event = ctx.Event()
@@ -241,7 +245,6 @@ class SensorFleet:
         self.controls: list[mp.Queue] = []
         self.workers = []
         self.latest: dict[int, WorkerReport] = {}
-        ids = list(range(1, count + 1))
         for index in range(processes):
             control = ctx.Queue()
             cfg = WorkerSettings(ids=ids[index::processes], **settings)

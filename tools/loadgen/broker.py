@@ -95,15 +95,19 @@ class Broker:
             lines += ["require_certificate true", "use_identity_as_username true"]
         self.conf.write_text("\n".join(lines) + "\n")
 
+    @property
+    def probe_host(self) -> str:
+        return "127.0.0.1" if self.host in ("0.0.0.0", "::") else self.host
+
     def start(self, transport: str, auth: bool, acl: bool) -> None:
-        if port_open(self.host, self.port):
+        if port_open(self.probe_host, self.port):
             raise RuntimeError(f"{self.host}:{self.port} is already in use; pick another port")
         self.transport, self.auth, self.acl = transport, auth, acl
         self._write()
         self.proc = subprocess.Popen(["mosquitto", "-c", str(self.conf)],
                                      stdout=self._log, stderr=self._log)
         deadline = time.monotonic() + 5
-        while not port_open(self.host, self.port):
+        while not port_open(self.probe_host, self.port):
             if self.proc.poll() is not None or time.monotonic() > deadline:
                 raise RuntimeError(f"mosquitto failed to start, see {self.workdir}/mosquitto.log")
             time.sleep(0.02)
