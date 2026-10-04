@@ -1,0 +1,15 @@
+set(_sources
+    src/key_store.cpp
+    src/envelope.cpp
+    src/replay_guard.cpp
+    src/security_layer.cpp)
+
+if(MSEC_WITH_OPENSSL)
+    list(APPEND _sources src/openssl/aes_gcm_cipher.cpp src/openssl/random_source.cpp)
+endif()
+
+msec_add_module(
+    NAME         security
+    SOURCES      ${_sources}
+    PUBLIC_DEPS  msec::core
+    PRIVATE_DEPS $<$<BOOL:${MSEC_WITH_OPENSSL}>:OpenSSL::Crypto>)

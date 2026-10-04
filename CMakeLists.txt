@@ -1,0 +1,57 @@
+cmake_minimum_required(VERSION 3.25)
+
+project(mqtt_secure
+    VERSION 0.1.0
+    DESCRIPTION "Layered security architecture for MQTT-based IoT communication"
+    LANGUAGES CXX)
+
+# ---------------------------------------------------------------------------
+# Global language settings. C++23 is the floor; never fall back silently.
+# ---------------------------------------------------------------------------
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR "In-source builds are not allowed. Use: cmake --preset dev")
+endif()
+
+# ---------------------------------------------------------------------------
+# Options
+# ---------------------------------------------------------------------------
+option(MSEC_WARNINGS_AS_ERRORS "Treat compiler warnings as errors"      ON)
+option(MSEC_ENABLE_SANITIZERS  "Build with ASan + UBSan"                OFF)
+option(MSEC_ENABLE_TSAN        "Build with ThreadSanitizer"             OFF)
+option(MSEC_ENABLE_CLANG_TIDY  "Run clang-tidy during compilation"      OFF)
+option(MSEC_ENABLE_HARDENING   "Enable compiler/linker hardening flags" ON)
+option(MSEC_BUILD_TESTS        "Build unit tests"                       ON)
+option(MSEC_BUILD_APPS         "Build example applications"             ON)
+option(MSEC_WITH_OPENSSL       "Build the OpenSSL crypto backend"       ON)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(ProjectOptions)   # msec::project_options (warnings, sanitizers, hardening)
+include(StaticAnalysis)
+include(MsecModule)       # msec_add_module(), msec_add_test()
+
+if(MSEC_WITH_OPENSSL)
+    find_package(OpenSSL 3.0 REQUIRED)
+endif()
+
+# ---------------------------------------------------------------------------
+# Modules. Order matters only for readability; dependencies are explicit.
+# To add a layer: create modules/<name>/ and add_subdirectory() it here.
+# ---------------------------------------------------------------------------
+add_subdirectory(modules/core)
+add_subdirectory(modules/mqtt)
+add_subdirectory(modules/security)
+add_subdirectory(modules/data)
+
+if(MSEC_BUILD_APPS)
+    add_subdirectory(apps/gateway)
+endif()
+
+if(MSEC_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
