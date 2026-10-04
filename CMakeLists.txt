@@ -29,6 +29,7 @@ option(MSEC_BUILD_TESTS        "Build unit tests"                       ON)
 option(MSEC_BUILD_APPS         "Build example applications"             ON)
 option(MSEC_BUILD_BENCHMARKS   "Build performance benchmarks"           OFF)
 option(MSEC_WITH_OPENSSL       "Build the OpenSSL crypto backend"       ON)
+option(MSEC_WITH_PAHO          "Build the Eclipse Paho MQTT client"     ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectOptions)   # msec::project_options (warnings, sanitizers, hardening)
@@ -37,6 +38,9 @@ include(MsecModule)       # msec_add_module(), msec_add_test()
 
 if(MSEC_WITH_OPENSSL)
     find_package(OpenSSL 3.0 REQUIRED)
+endif()
+if(MSEC_WITH_PAHO)
+    find_package(PahoMqttCpp REQUIRED)  # set MSEC_WITH_PAHO=OFF to build without it
 endif()
 
 # ---------------------------------------------------------------------------
@@ -50,6 +54,7 @@ add_subdirectory(modules/data)
 
 if(MSEC_BUILD_APPS)
     add_subdirectory(apps/gateway)
+    add_subdirectory(apps/load_gateway)
 endif()
 
 if(MSEC_BUILD_BENCHMARKS)

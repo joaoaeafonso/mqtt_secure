@@ -11,7 +11,8 @@ ctest --preset dev
 ./build/dev/apps/gateway/msec_gateway_demo
 ```
 
-Requires CMake ≥ 3.25, GCC ≥ 13 or Clang ≥ 17, OpenSSL ≥ 3.0, Ninja.
+Requires CMake ≥ 3.25, GCC ≥ 13 or Clang ≥ 17, OpenSSL ≥ 3.0, Ninja, and
+Eclipse Paho MQTT C++ (`libpaho-mqttpp-dev`; `-DMSEC_WITH_PAHO=OFF` to build without it).
 GoogleTest is used from the system if present, otherwise fetched (hash-pinned).
 
 ## Benchmarks
@@ -62,6 +63,56 @@ Scope: the loopback broker is in-process and synchronous, so this measures the
 CPU cost of the layers only. TLS / broker authentication (defence layer 1) and
 network latency are not covered yet.
 
+## Load testing with mock sensors
+
+Python mock sensors publish through a real Mosquitto to `msec_load_gateway`,
+which runs the same pipelines as the benchmarks over `PahoClient`:
+
+```
+tools/loadgen/loadgen.py sensors ─▶ mosquitto (:18830, ACL?) ─▶ msec_load_gateway ─▶ stats
+                                                   └─▶ loadgen.py eavesdrop ('#')
+```
+
+Setup (once):
+
+```bash
+cmake --preset bench && cmake --build --preset bench
+python3 -m venv tools/loadgen/.venv
+tools/loadgen/.venv/bin/pip install -r tools/loadgen/requirements.txt
+```
+
+Whole matrix (zones × profiles × load points), results as a table and CSV in `build/loadtest/`:
+
+```bash
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
+    --zones noacl,open,restricted --profiles none,auth_only,aead,full \
+    --sensors 100,500 --rates 10,100 --payloads 64,1024 --duration 20
+```
+
+Or piece by piece, each in its own terminal:
+
+```bash
+PY=tools/loadgen/.venv/bin/python; L=tools/loadgen/loadgen.py
+$PY $L keys --count 100 --out build/loadtest/keys.txt
+$PY $L broker --acl                                 # private mosquitto on :18830
+./build/bench/apps/load_gateway/msec_load_gateway --profile full --keys build/loadtest/keys.txt
+$PY $L sensors --sensors 100 --rate 50 --profile full --keys build/loadtest/keys.txt --zone restricted
+$PY $L eavesdrop                                    # how much leaks to '#'
+```
+
+- Each sensor is its own MQTT connection (`sensor-<n>`, key id `<n>`), publishing to
+  `<zone>/sensors/sensor-<n>/temp`. Sensors and gateway must use the same `--profile`.
+- Columns: offered vs. delivered msg/s, `loss_pct`, `rejected`, `leak_pct` (share
+  received by the `#` eavesdropper), end-to-end latency p50/p99/max (sensor send →
+  after the gateway pipeline), gateway CPU % and CPU µs per message, broker CPU %.
+- Everything runs on one machine, so sensors, broker and gateway compete for CPU;
+  if `sent_msg_s` falls short of `target_msg_s`, the Python sensors are the
+  bottleneck (raise `--processes`). The first ~100 ms of each run includes
+  connection start-up, which shows up in `lat_max_us`.
+- Mosquitto runs on port 18830 so a system broker on 1883 is left alone. Without
+  passwords/TLS, usernames and client ids are claims; the ACL is only as strong
+  as broker authentication.
+
 ## Architecture
 
 ```mermaid
@@ -73,6 +124,7 @@ flowchart TB
         EP[Endpoint]
         IC[[IMqttClient]]
         LB[LoopbackClient / Broker]
+        PC[paho::PahoClient]
     end
     subgraph core[msec::core]
         PL[Pipeline]
@@ -92,6 +144,7 @@ flowchart TB
     main --> EP
     EP --> PL --> IL
     EP --> IC --- LB
+    IC --- PC
     SL -. implements .-> IL
     PEL -. implements .-> IL
     SL --> AE & KS & RG & EN
