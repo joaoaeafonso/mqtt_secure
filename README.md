@@ -13,6 +13,10 @@ ctest --preset dev
 
 Requires CMake ≥ 3.25, GCC ≥ 13 or Clang ≥ 17, OpenSSL ≥ 3.0, Ninja, and
 Eclipse Paho MQTT C++ (`libpaho-mqttpp-dev`; `-DMSEC_WITH_PAHO=OFF` to build without it).
+The load lab also needs Mosquitto (`mosquitto`, `mosquitto_passwd`) and Python ≥ 3.11.
+
+ThreadSanitizer with GCC 13 fails on kernels with high mmap randomisation
+("unexpected memory mapping"); run the `tsan` preset under `setarch $(uname -m) -R`.
 GoogleTest is used from the system if present, otherwise fetched (hash-pinned).
 
 ## Benchmarks
@@ -63,15 +67,30 @@ Scope: the loopback broker is in-process and synchronous, so this measures the
 CPU cost of the layers only. TLS / broker authentication (defence layer 1) and
 network latency are not covered yet.
 
-## Load testing with mock sensors
+## Load lab: every feature switchable, live
 
-Python mock sensors publish through a real Mosquitto to `msec_load_gateway`,
-which runs the same pipelines as the benchmarks over `PahoClient`:
+`tools/loadgen` runs a complete system on one machine and lets you switch every
+security feature on or off, from a config file at startup or **while traffic flows**:
 
 ```
-tools/loadgen/loadgen.py sensors ─▶ mosquitto (:18830, ACL?) ─▶ msec_load_gateway ─▶ stats
-                                                   └─▶ loadgen.py eavesdrop ('#')
+mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway ─▶ metrics
+                               ▲
+              attacker ────────┘  subscribes to '#', injects, replays, impersonates
 ```
+
+| Setting | Values | Applied live by |
+|---|---|---|
+| `transport.mode` | `plain` · `tls` · `mtls` | broker restart with only that listener; all clients reconnect |
+| `transport.auth` | on/off (username + password) | broker reload (`SIGHUP`); clients without valid credentials are dropped |
+| `transport.acl` | on/off (`open/#` for all, `restricted/` per client) | broker reload, effective on the next message |
+| `payload.protection` | `none` · `auth_only` · `encrypt` | gateway pipeline switch + sensors |
+| `payload.freshness`, `payload.replay` | on/off | gateway pipeline switch |
+| `storage.persistence` | `none` · `plain` · `at-rest` | gateway pipeline switch |
+| `load.rate`, `load.payload`, `load.zone` | numbers / `open` · `restricted` | sensors |
+| `attacker.*` | `enabled`, `impersonate`, `inject_rate`, `replay_rate` | attacker |
+| `load.sensors`, `load.processes`, `load.qos`, `broker.*` | | startup only |
+
+Every setting and its default is documented in `tools/loadgen/lab.example.toml`.
 
 Setup (once):
 
@@ -81,37 +100,47 @@ python3 -m venv tools/loadgen/.venv
 tools/loadgen/.venv/bin/pip install -r tools/loadgen/requirements.txt
 ```
 
-Whole matrix (zones × profiles × load points), results as a table and CSV in `build/loadtest/`:
+**Live dashboard**: flip switches and watch throughput, latency, CPU, rejections
+(by reason) and what the attacker achieves, with every change marked on the charts:
+
+```bash
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py live \
+    --config tools/loadgen/lab.example.toml --set load.sensors=100
+# open http://127.0.0.1:8088/   — or drive it from a script:
+curl -s localhost:8088/api/config -d '{"transport": {"mode": "mtls", "auth": true}}'
+```
+
+**Matrix**: apply each combination in turn and measure a window per cell
+(cartesian product of `--vary`; startup-only settings start a fresh lab):
 
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
-    --zones noacl,open,restricted --profiles none,auth_only,aead,full \
-    --sensors 100,500 --rates 10,100 --payloads 64,1024 --duration 20
+    --set load.sensors=100 --set load.rate=100 \
+    --vary transport.mode=plain,tls,mtls --vary transport.auth=off,on \
+    --vary payload.protection=none,auth_only,encrypt --settle 3 --duration 10
 ```
 
-Or piece by piece, each in its own terminal:
+Columns: offered vs. delivered msg/s, `loss_pct`, `rejected`, `leak_pct` (share
+the attacker received via `#`), `forged_ok` / `replays_ok` (attacks the gateway
+accepted), latency p50/p99 (sensor send → after the gateway pipeline), gateway
+CPU % and µs per message, broker CPU %. Results go to `build/loadtest/`.
 
-```bash
-PY=tools/loadgen/.venv/bin/python; L=tools/loadgen/loadgen.py
-$PY $L keys --count 100 --out build/loadtest/keys.txt
-$PY $L broker --acl                                 # private mosquitto on :18830
-./build/bench/apps/load_gateway/msec_load_gateway --profile full --keys build/loadtest/keys.txt
-$PY $L sensors --sensors 100 --rate 50 --profile full --keys build/loadtest/keys.txt --zone restricted
-$PY $L eavesdrop                                    # how much leaks to '#'
-```
+How it works:
 
-- Each sensor is its own MQTT connection (`sensor-<n>`, key id `<n>`), publishing to
-  `<zone>/sensors/sensor-<n>/temp`. Sensors and gateway must use the same `--profile`.
-- Columns: offered vs. delivered msg/s, `loss_pct`, `rejected`, `leak_pct` (share
-  received by the `#` eavesdropper), end-to-end latency p50/p99/max (sensor send →
-  after the gateway pipeline), gateway CPU % and CPU µs per message, broker CPU %.
-- Everything runs on one machine, so sensors, broker and gateway compete for CPU;
-  if `sent_msg_s` falls short of `target_msg_s`, the Python sensors are the
-  bottleneck (raise `--processes`). The first ~100 ms of each run includes
-  connection start-up, which shows up in `lat_max_us`.
-- Mosquitto runs on port 18830 so a system broker on 1883 is left alone. Without
-  passwords/TLS, usernames and client ids are claims; the ACL is only as strong
-  as broker authentication.
+- A fresh test PKI is generated per run (`pki.py`): a CA, a broker certificate
+  for `localhost`/`127.0.0.1`, and a certificate, password and payload key per
+  client. The attacker gets only the public CA certificate.
+- Legitimate clients always present their credentials, so switching
+  authentication never interrupts them; only the attacker gets dropped.
+- With `mtls` the certificate CN is the MQTT username (`use_identity_as_username`),
+  so ACL rules (`%u`) bind to the certificate. Without auth or mtls a username is
+  only a claim: try `attacker.impersonate` with the ACL on.
+- The gateway (`msec_load_gateway`) is controlled over stdin (`set <key> <value>`,
+  `reconnect`, `reset`, `summary`) and reports JSON lines; its pipeline holds
+  every layer from the start inside `SwitchableLayer`s, so no switch rebuilds it.
+- Everything shares one machine, so absolute numbers include the Python sensors
+  competing for CPU. `loss_pct` and `leak_pct` are accurate to about ±0.5 s of
+  the window (sensors report twice a second).
 
 ## Architecture
 
@@ -192,6 +221,13 @@ processing; on inbound the message is dropped, logged and counted in
 Order is a design decision, not an accident: `[persistence, security]`
 stores decrypted data; `[security, persistence]` stores the encrypted
 envelopes (encryption at rest).
+
+Pipelines are immutable once built. A feature that must be switchable at
+runtime is added up front and wrapped in `msec::SwitchableLayer`, which passes
+messages through untouched while disabled (one atomic flag, safe to flip from
+any thread). `SecurityLayer` additionally exposes `set_protection`,
+`set_enforce_freshness` and `set_enforce_replay_protection`; its replay window
+keeps its state across changes.
 
 ### Adding a layer
 
