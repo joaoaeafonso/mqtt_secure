@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mqtt-secure live lab</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --control: #f0efec;
+    --accent: #2a78d6;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+      --control: #262624; --accent: #3987e5;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
+    --control: #262624; --accent: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; font-weight: 600; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .pill b { color: var(--ink); font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot.good { background: var(--good); }
+  .dot.warning { background: var(--warning); }
+  .dot.critical { background: var(--critical); }
+  main {
+    display: grid; grid-template-columns: minmax(280px, 330px) 1fr; gap: 16px;
+    padding: 16px 20px 32px;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  aside { display: flex; flex-direction: column; gap: 12px; }
+  section.card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  section.card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin: 0 0 8px; font-weight: 600;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
+  .row label { color: var(--ink); }
+  .row small { display: block; color: var(--muted); font-size: 12px; }
+  .seg { display: inline-flex; background: var(--control); border-radius: 7px; padding: 2px; }
+  .seg button {
+    border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px;
+    padding: 4px 9px; border-radius: 5px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border); font-weight: 600; }
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .switch span {
+    position: absolute; inset: 0; border-radius: 11px; background: var(--axis); transition: background .15s;
+    pointer-events: none;
+  }
+  .switch span::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; transition: transform .15s;
+  }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(16px); }
+  .switch input:focus-visible + span, .seg button:focus-visible, input[type=number]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  input[type=number] {
+    width: 84px; font: inherit; padding: 3px 6px; border-radius: 6px; color: var(--ink);
+    border: 1px solid var(--border); background: var(--control); text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .fixed { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  #events { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font-size: 12.5px; }
+  #events li { display: flex; gap: 8px; padding: 3px 0; border-top: 1px solid var(--border); }
+  #events li:first-child { border-top: 0; }
+  #events time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+  #error { color: var(--critical); font-size: 13px; min-height: 1em; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; align-content: start; }
+  @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
+  .chart { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 8px; position: relative; }
+  .chart h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .chart .sub { color: var(--muted); font-size: 12px; margin: 1px 0 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+  .legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  canvas { display: block; width: 100%; height: 190px; }
+  .tip {
+    position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 9px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    white-space: nowrap; z-index: 2;
+  }
+  .tip div { display: flex; align-items: center; gap: 6px; }
+  .tip i { width: 10px; height: 3px; border-radius: 2px; }
+  .tip b { font-variant-numeric: tabular-nums; }
+  .tip .when { color: var(--muted); margin-bottom: 2px; }
+  .tip .ev { color: var(--ink-2); margin-top: 3px; border-top: 1px solid var(--border); padding-top: 3px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>mqtt-secure live lab</h1>
+  <span class="pill" id="pill-broker"></span>
+  <span class="pill" id="pill-gateway"></span>
+  <span class="pill" id="pill-sensors"></span>
+  <span class="pill" id="pill-attacker"></span>
+</header>
+<main>
+  <aside>
+    <section class="card" aria-labelledby="h-transport">
+      <h2 id="h-transport">Transport · broker</h2>
+      <div class="row"><label>Encryption<small>restarts broker, clients reconnect</small></label>
+        <div class="seg" data-key="transport.mode" data-options="plain,tls,mtls" data-labels="Plain,TLS,mTLS"></div></div>
+      <div class="row"><label for="t-auth">Authentication<small>username + password</small></label>
+        <span class="switch"><input type="checkbox" id="t-auth" data-key="transport.auth"><span></span></span></div>
+      <div class="row"><label for="t-acl">Topic ACL<small>open/ for all, restricted/ per client</small></label>
+        <span class="switch"><input type="checkbox" id="t-acl" data-key="transport.acl"><span></span></span></div>
+    </section>
+    <section class="card" aria-labelledby="h-payload">
+      <h2 id="h-payload">Payload · end to end</h2>
+      <div class="row"><label>Protection</label>
+        <div class="seg" data-key="payload.protection" data-options="none,auth_only,encrypt" data-labels="None,Auth only,Encrypt"></div></div>
+      <div class="row"><label for="p-fresh">Freshness check<small>reject messages older than 60 s</small></label>
+        <span class="switch"><input type="checkbox" id="p-fresh" data-key="payload.freshness"><span></span></span></div>
+      <div class="row"><label for="p-replay">Replay protection<small>sequence-number window</small></label>
+        <span class="switch"><input type="checkbox" id="p-replay" data-key="payload.replay"><span></span></span></div>
+    </section>
+    <section class="card" aria-labelledby="h-storage">
+      <h2 id="h-storage">Storage · gateway</h2>
+      <div class="row"><label>Persistence</label>
+        <div class="seg" data-key="storage.persistence" data-options="none,plain,at-rest" data-labels="Off,Plaintext,At rest"></div></div>
+    </section>
+    <section class="card" aria-labelledby="h-load">
+      <h2 id="h-load">Load</h2>
+      <div class="row"><label for="l-rate">Rate per sensor<small>msg/s</small></label>
+        <input type="number" id="l-rate" min="0" step="any" data-key="load.rate"></div>
+      <div class="row"><label for="l-payload">Payload size<small>bytes, min 8</small></label>
+        <input type="number" id="l-payload" min="8" step="1" data-key="load.payload"></div>
+      <div class="row"><label>Topic zone</label>
+        <div class="seg" data-key="load.zone" data-options="open,restricted" data-labels="open/,restricted/"></div></div>
+      <div class="row"><label>Sensors · processes · QoS<small>fixed at startup</small></label>
+        <span class="fixed" id="l-fixed"></span></div>
+    </section>
+    <section class="card" aria-labelledby="h-attacker">
+      <h2 id="h-attacker">Attacker</h2>
+      <div class="row"><label for="a-on">Enabled<small>subscribes to #, has only the CA cert</small></label>
+        <span class="switch"><input type="checkbox" id="a-on" data-key="attacker.enabled"><span></span></span></div>
+      <div class="row"><label for="a-imp">Impersonate gateway<small>username "gateway", no password</small></label>
+        <span class="switch"><input type="checkbox" id="a-imp" data-key="attacker.impersonate"><span></span></span></div>
+      <div class="row"><label for="a-inj">Inject forged<small>msg/s into sensor-1's topic</small></label>
+        <input type="number" id="a-inj" min="0" step="any" data-key="attacker.inject_rate"></div>
+      <div class="row"><label for="a-rep">Replay captured<small>msg/s</small></label>
+        <input type="number" id="a-rep" min="0" step="any" data-key="attacker.replay_rate"></div>
+    </section>
+    <div id="error" role="status" aria-live="polite"></div>
+    <section class="card" aria-labelledby="h-events">
+      <h2 id="h-events">Changes</h2>
+      <ol id="events" reversed></ol>
+    </section>
+  </aside>
+  <div class="charts" id="charts"></div>
+</main>
+
+<script>
+"use strict";
+const WINDOW_S = 180;
+const REJECTION_SERIES = [
+  ["AuthenticationFailed", "Authentication failed"],
+  ["ReplayDetected", "Replay detected"],
+  ["MalformedMessage", "Malformed / not an envelope"],
+  ["MessageExpired", "Expired"],
+];
+const CHARTS = [
+  { title: "Throughput", unit: "msg/s", sub: "sent by sensors vs. accepted by the gateway",
+    series: [["Sent", p => p.sent], ["Delivered", p => p.delivered]] },
+  { title: "End-to-end latency", unit: "µs", sub: "sensor send → after the gateway pipeline",
+    series: [["p50", p => p.lat_p50], ["p99", p => p.lat_p99]] },
+  { title: "CPU", unit: "%", sub: "100% = one core",
+    series: [["Gateway", p => p.gw_cpu], ["Broker", p => p.broker_cpu]] },
+  { title: "Gateway rejections", unit: "msg/s", sub: "messages a pipeline layer refused, by reason",
+    series: REJECTION_SERIES.map(([code, label]) => [label, p => (p.rejected_by || {})[code] || 0]) },
+  { title: "What the attacker achieves", unit: "msg/s", sub: "received via # · forgeries and replays the gateway accepted",
+    series: [["Eavesdropped", p => p.eavesdropped], ["Forged accepted", p => p.forged_ok],
+             ["Replays accepted", p => p.replays_ok]] },
+];
+const COLORS = ["--s1", "--s2", "--s3", "--s4"];
+
+let config = null;
+let history = [];
+let events = [];
+let lastT = 0;
+
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmt = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + "k"
+                 : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(v ? 2 : 0);
+// Axis ticks: as many decimals as the step itself has (2.5 → 1, 0.25 → 2).
+const tick = (v, step) => v >= 1000 && step >= 1000 ? `${+(v / 1000).toFixed(1)}k`
+  : v.toFixed(Math.min(3, (String(+step.toPrecision(6)).split(".")[1] || "").length));
+const clock = t => new Date(t * 1000).toLocaleTimeString([], { hour12: false });
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  for (const c of children) node.append(c);
+  return node;
+}
+
+// ------------------------------------------------------------------ controls --
+function get(key) { const [s, k] = key.split("."); return config[s][k]; }
+
+async function apply(key, value) {
+  const [section, name] = key.split(".");
+  const res = await fetch("/api/config", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [section]: { [name]: value } }),
+  });
+  const body = await res.json();
+  document.getElementById("error").textContent = res.ok ? "" : body.error;
+  if (body.config) { config = body.config; renderControls(); }
+  poll();
+}
+
+function initControls() {
+  document.querySelectorAll(".seg").forEach(seg => {
+    const labels = seg.dataset.labels.split(",");
+    seg.dataset.options.split(",").forEach((opt, i) => {
+      const b = el("button", { type: "button", "data-value": opt }, labels[i]);
+      b.addEventListener("click", () => apply(seg.dataset.key, opt));
+      seg.append(b);
+    });
+  });
+  document.querySelectorAll("input[type=checkbox][data-key]").forEach(input =>
+    input.addEventListener("change", () => apply(input.dataset.key, input.checked)));
+  document.querySelectorAll("input[type=number][data-key]").forEach(input =>
+    input.addEventListener("change", () => {
+      const v = Number(input.value);
+      if (input.value !== "" && v >= 0) apply(input.dataset.key, input.step === "1" ? Math.round(v) : v);
+    }));
+}
+
+function renderControls() {
+  document.querySelectorAll(".seg").forEach(seg =>
+    seg.querySelectorAll("button").forEach(b =>
+      b.setAttribute("aria-pressed", String(b.dataset.value === String(get(seg.dataset.key))))));
+  document.querySelectorAll("input[type=checkbox][data-key]").forEach(i => { i.checked = get(i.dataset.key); });
+  document.querySelectorAll("input[type=number][data-key]").forEach(i => {
+    if (document.activeElement !== i) i.value = get(i.dataset.key);
+  });
+  document.getElementById("l-fixed").textContent =
+    `${config.load.sensors} · ${config.load.processes} · ${config.load.qos}`;
+}
+
+function pill(id, state, label, value) {
+  const p = document.getElementById(id);
+  p.replaceChildren(el("span", { class: `dot ${state}`, "aria-hidden": "true" }),
+                    `${label} `, el("b", {}, value));
+}
+
+function renderStatus() {
+  const p = history[history.length - 1];
+  const t = config.transport;
+  const mode = { plain: "plain TCP", tls: "TLS", mtls: "mutual TLS" }[t.mode];
+  pill("pill-broker", t.mode === "plain" ? "warning" : "good", "Broker",
+       `${mode}, auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`);
+  if (!p) return;
+  pill("pill-gateway", p.gw_connected ? "good" : "critical", "Gateway",
+       p.gw_connected ? "connected" : "disconnected");
+  const up = p.sensors_up, total = p.sensors_total;
+  pill("pill-sensors", up === total ? "good" : up ? "warning" : "critical", "Sensors",
+       `${up}/${total} up` + (p.sensor_error ? ` (${p.sensor_error})` : ""));
+  const a = p.attacker;
+  pill("pill-attacker", !a.enabled ? "good" : a.connected ? "critical" : "good", "Attacker",
+       a.enabled ? a.detail : "off");
+}
+
+function renderEvents() {
+  const list = document.getElementById("events");
+  list.replaceChildren(...events.slice().reverse().map(e =>
+    el("li", {}, el("time", {}, clock(e.t)), el("span", {}, e.text))));
+}
+
+// -------------------------------------------------------------------- charts --
+class LineChart {
+  constructor(spec) {
+    this.spec = spec;
+    this.legendValues = [];
+    const legend = el("div", { class: "legend" });
+    spec.series.forEach(([label], i) => {
+      const value = el("b", {}, "–");
+      this.legendValues.push(value);
+      legend.append(el("span", {}, el("i", { style: `background:var(${COLORS[i]})` }), label, value));
+    });
+    this.canvas = el("canvas", { role: "img", "aria-label": `${spec.title} (${spec.unit}) over the last 3 minutes` });
+    this.tip = el("div", { class: "tip", hidden: "" });
+    this.root = el("div", { class: "chart" },
+      el("h3", {}, `${spec.title} `, el("span", { class: "sub" }, `(${spec.unit})`)),
+      el("div", { class: "sub" }, spec.sub), legend, this.canvas, this.tip);
+    document.getElementById("charts").append(this.root);
+    this.hoverX = null;
+    this.canvas.addEventListener("pointermove", e => { this.hoverX = e.offsetX; this.draw(); });
+    this.canvas.addEventListener("pointerleave", () => { this.hoverX = null; this.tip.hidden = true; this.draw(); });
+    new ResizeObserver(() => this.draw()).observe(this.canvas);
+  }
+
+  draw() {
+    const c = this.canvas, dpr = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w) return;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext("2d");
+    g.scale(dpr, dpr);
+    g.clearRect(0, 0, w, h);
+    const pad = { l: 44, r: 8, t: 8, b: 20 };
+    const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+    const now = history.length ? history[history.length - 1].t : Date.now() / 1000;
+    const t0 = now - WINDOW_S;
+    const pts = history.filter(p => p.t >= t0);
+    const values = this.spec.series.map(([, f]) => pts.map(p => Math.max(0, f(p) || 0)));
+    let max = Math.max(1e-9, ...values.flat());
+    const step = niceStep(max / 4);
+    max = Math.max(step * 4, Math.ceil(max / step) * step);
+    const x = t => pad.l + (t - t0) / WINDOW_S * pw;
+    const y = v => pad.t + ph - v / max * ph;
+
+    // grid + y ticks
+    g.font = "11px system-ui, sans-serif";
+    g.fillStyle = css("--muted");
+    g.textAlign = "right"; g.textBaseline = "middle";
+    for (let v = 0; v <= max + 1e-9; v += step) {
+      g.strokeStyle = v === 0 ? css("--axis") : css("--grid");
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(pad.l, Math.round(y(v)) + .5); g.lineTo(w - pad.r, Math.round(y(v)) + .5); g.stroke();
+      g.fillText(tick(v, step), pad.l - 6, y(v));
+    }
+    g.textAlign = "center"; g.textBaseline = "top";
+    for (let s = 0; s <= WINDOW_S; s += 60) {
+      g.fillText(s === WINDOW_S ? "now" : `-${(WINDOW_S - s) / 60}m`, x(t0 + s), h - pad.b + 5);
+    }
+
+    // config changes
+    const evs = events.filter(e => e.t >= t0);
+    g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.lineWidth = 1;
+    for (const e of evs) {
+      const ex = Math.round(x(e.t)) + .5;
+      g.beginPath(); g.moveTo(ex, pad.t); g.lineTo(ex, pad.t + ph); g.stroke();
+    }
+    g.setLineDash([]);
+
+    // series
+    values.forEach((vals, i) => {
+      g.strokeStyle = css(COLORS[i]); g.lineWidth = 2; g.lineJoin = "round";
+      g.beginPath();
+      vals.forEach((v, j) => { const px = x(pts[j].t), py = y(v); j ? g.lineTo(px, py) : g.moveTo(px, py); });
+      g.stroke();
+      const last = vals[vals.length - 1];
+      this.legendValues[i].textContent = last === undefined ? "–" : fmt(last);
+    });
+
+    // crosshair + tooltip
+    if (this.hoverX === null || !pts.length) return;
+    let best = 0;
+    pts.forEach((p, j) => { if (Math.abs(x(p.t) - this.hoverX) < Math.abs(x(pts[best].t) - this.hoverX)) best = j; });
+    const cx = Math.round(x(pts[best].t)) + .5;
+    g.strokeStyle = css("--ink-2"); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(cx, pad.t); g.lineTo(cx, pad.t + ph); g.stroke();
+    values.forEach((vals, i) => {
+      g.fillStyle = css(COLORS[i]); g.strokeStyle = css("--surface"); g.lineWidth = 2;
+      g.beginPath(); g.arc(cx, y(vals[best]), 4, 0, 2 * Math.PI); g.fill(); g.stroke();
+    });
+    const near = evs.filter(e => Math.abs(x(e.t) - cx) < 6);
+    this.tip.replaceChildren(
+      el("div", { class: "when" }, clock(pts[best].t)),
+      ...this.spec.series.map(([label], i) =>
+        el("div", {}, el("i", { style: `background:var(${COLORS[i]})` }), el("b", {}, fmt(values[i][best])), ` ${label}`)),
+      ...near.map(e => el("div", { class: "ev" }, e.text)));
+    this.tip.hidden = false;
+    const left = this.canvas.offsetLeft + cx + 12;
+    this.tip.style.left = Math.min(left, this.root.clientWidth - this.tip.offsetWidth - 8) + "px";
+    this.tip.style.top = (this.canvas.offsetTop + 8) + "px";
+  }
+}
+
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+// ---------------------------------------------------------------------- loop --
+const charts = [];
+
+async function poll() {
+  try {
+    const res = await fetch(`/api/state?since=${lastT}`);
+    const s = await res.json();
+    config = s.config;
+    history = history.concat(s.history).slice(-(WINDOW_S + 30));
+    if (history.length) lastT = history[history.length - 1].t;
+    events = s.events;
+    renderControls(); renderStatus(); renderEvents();
+    charts.forEach(c => c.draw());
+  } catch (e) {
+    document.getElementById("error").textContent = "lost connection to the lab controller";
+  }
+}
+
+initControls();
+CHARTS.forEach(spec => charts.push(new LineChart(spec)));
+poll();
+setInterval(poll, 1000);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => charts.forEach(c => c.draw()));
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Load-lab configuration. Every key is optional; missing keys use these defaults.
+# All settings can be changed while the lab runs (dashboard or POST /api/config)
+# except the ones marked "startup only".
+
+[broker]
+host = "127.0.0.1"         # startup only
+port = 18830               # startup only; a private Mosquitto, the system one is left alone
+
+[transport]                # defence layer 1: the broker and the connections to it
+mode = "plain"             # plain | tls | mtls   (mtls: client certificates, CN = username)
+auth = false               # username/password required
+acl = true                 # open/# for everyone, restricted/ per client
+
+[payload]                  # defence layer 2: end to end, sensor -> gateway
+protection = "encrypt"     # none | auth_only | encrypt
+freshness = true           # reject messages older than 60 s
+replay = true              # sequence-number replay window
+
+[storage]
+persistence = "none"       # none | plain (decrypted) | at-rest (envelopes)
+
+[load]
+sensors = 50               # startup only
+processes = 2              # startup only; Python worker processes
+qos = 0                    # startup only; 0 | 1
+rate = 20                  # msg/s per sensor
+payload = 64               # plaintext bytes, min 8
+zone = "restricted"        # open | restricted
+
+[attacker]
+enabled = true             # subscribes to '#'; has only the public CA certificate
+impersonate = false        # claim username "gateway" (no password, no certificate)
+inject_rate = 0            # forged plaintext msg/s into sensor-1's topic
+replay_rate = 0            # captured messages re-published per second

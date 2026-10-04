@@ -34,6 +34,9 @@ NONE = "none"
 AUTH_ONLY = "auth_only"
 ENCRYPT = "encrypt"
 
+# Lab / gateway --protection values -> sender mode.
+SENDER_PROTECTION_MODES = {"none": NONE, "auth_only": AUTH_ONLY, "encrypt": ENCRYPT}
+
 # Gateway profile -> what the sender has to do. Freshness and replay checks are
 # receiver-side only, so every AEAD profile looks the same on the wire.
 SENDER_PROTECTION = {
@@ -59,6 +62,13 @@ class Protector:
         self.sequence = 0
         self._aead = AESGCM(key) if key else None
         self._key_id_bytes = key_id.to_bytes(4, "big")
+
+    def set_protection(self, protection: str) -> None:
+        """Switches mode at runtime; the sequence number keeps counting up, so the
+        receiver's replay window stays valid across switches."""
+        if protection != NONE and self._aead is None:
+            raise ValueError("this protector has no key")
+        self.protection = protection
 
     def protect(self, topic: bytes, payload: bytes) -> bytes:
         if self.protection == NONE:

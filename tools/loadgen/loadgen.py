@@ -1,540 +1,204 @@
 #!/usr/bin/env python3
-"""Mock MQTT sensors and load-test orchestration for mqtt-secure.
+"""Load lab for mqtt-secure: mock sensors, a private Mosquitto, msec_load_gateway
+and an attacker, with every security feature switchable at runtime.
 
-Subcommands
-  keys        generate the pre-shared key file used by sensors and gateway
-  broker      run a private Mosquitto instance (optionally with the zone ACL)
-  sensors     run N mock sensors publishing at a fixed rate
-  eavesdrop   subscribe to '#' and count what leaks
-  matrix      run the whole thing (broker, gateway, sensors, eavesdropper) for
-              every zone x profile x load point and write a results table
+  live     run the lab with a web dashboard; flip features and watch the effect
+  matrix   apply each combination of settings in turn, measure, write a table
 
-Each sensor is its own MQTT connection with client id "sensor-<n>" and key id
-<n>, publishing to "<zone>/sensors/sensor-<n>/temp". The first 8 bytes of every
-plaintext payload are the send time (ns since epoch, big-endian), which
-msec_load_gateway uses to measure end-to-end latency.
+Configuration: lab.example.toml documents every setting. Pass a file with
+--config and/or override single settings with --set section.key=value.
+
+Examples
+  loadgen.py live --set load.sensors=100 --set transport.mode=tls
+  loadgen.py matrix --vary transport.mode=plain,tls,mtls --vary payload.protection=none,encrypt
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import json
-import multiprocessing as mp
+import itertools
 import os
-import secrets
 import signal
-import socket
-import subprocess
 import sys
-import tempfile
 import threading
 import time
-from dataclasses import asdict, dataclass
+import tomllib
 from pathlib import Path
 
-import paho.mqtt.client as mqtt
-
-from msec_envelope import KEY_SIZE, NONE, SENDER_PROTECTION, Protector, read_keys
+from lab import DEFAULTS, SPEC, STARTUP_ONLY, Lab, merged
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 18830
-PROFILES = list(SENDER_PROTECTION)
-
-# zone name -> (broker uses the ACL, topic prefix, gateway subscription)
-ZONES = {
-    "noacl": (False, "open", "open/#"),
-    "open": (True, "open", "open/#"),
-    "restricted": (True, "restricted", "restricted/sensors/#"),
-}
-
-# Mosquitto acl_file. Same policy as the loopback demo/benchmarks:
-#   open/#        every client may read and write
-#   restricted/   each sensor may only write its own subtree (%c = client id),
-#                 only the user "gateway" may read
-# `topic` lines before the first `user` line apply to clients without a username
-# (the sensors and the eavesdropper); the gateway connects as user "gateway".
-ACL = """\
-topic readwrite open/#
-pattern write restricted/sensors/%c/#
-
-user gateway
-topic readwrite open/#
-topic read restricted/sensors/#
-"""
 
 
 def log(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
-# --------------------------------------------------------------------- keys ---
-
-def write_keys(path: Path, count: int) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="ascii") as f:
-        f.write("# key id, 32-byte AES key (hex). Test keys only.\n")
-        for key_id in range(1, count + 1):
-            f.write(f"{key_id} {secrets.token_hex(KEY_SIZE)}\n")
-    path.chmod(0o600)
-
-
-# ------------------------------------------------------------------- broker ---
-
-def broker_config(workdir: Path, host: str, port: int, acl: bool) -> Path:
-    workdir.mkdir(parents=True, exist_ok=True)
-    lines = [
-        f"listener {port} {host}",
-        "allow_anonymous true",
-        "persistence false",
-        "log_dest stderr",
-        "log_type error",
-        "log_type warning",
-        # Large enough that slow consumers are measured as latency, not loss.
-        "max_queued_messages 100000",
-    ]
-    if acl:
-        acl_path = workdir / "acl"
-        acl_path.write_text(ACL)
-        acl_path.chmod(0o600)
-        lines.append(f"acl_file {acl_path}")
-    conf = workdir / "mosquitto.conf"
-    conf.write_text("\n".join(lines) + "\n")
-    return conf
-
-
-def wait_for_port(host: str, port: int, timeout: float = 5.0) -> None:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
+def parse_value(text: str):
+    lowered = text.lower()
+    if lowered in ("true", "on", "yes"):
+        return True
+    if lowered in ("false", "off", "no"):
+        return False
+    for kind in (int, float):
         try:
-            with socket.create_connection((host, port), timeout=0.2):
-                return
-        except OSError:
-            time.sleep(0.05)
-    raise RuntimeError(f"nothing listening on {host}:{port}")
+            return kind(text)
+        except ValueError:
+            pass
+    return text
 
 
-def start_broker(workdir: Path, host: str, port: int, acl: bool) -> subprocess.Popen:
+def parse_assignment(text: str) -> tuple[str, str, str]:
+    key, sep, value = text.partition("=")
+    section, dot, name = key.partition(".")
+    if not sep or not dot or section not in SPEC or name not in SPEC[section]:
+        raise argparse.ArgumentTypeError(
+            f"expected section.key=value with a known key, got {text!r}")
+    return section, name, value
+
+
+def load_config(args) -> dict:
+    """The full, validated configuration: defaults < --config file < --set."""
+    config: dict = {}
+    if args.config:
+        with open(args.config, "rb") as f:
+            config = tomllib.load(f)
+    for section, name, value in args.set or []:
+        config.setdefault(section, {})[name] = parse_value(value)
+    return merged(DEFAULTS, config)
+
+
+# --------------------------------------------------------------------- live ---
+
+def cmd_live(args) -> None:
+    from dashboard import serve
+
+    lab = Lab(load_config(args), args.gateway, args.workdir, args.verbose, log)
+    server = serve(lab, "127.0.0.1", args.http_port)  # bind first: fail before starting anything
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: stop.set())
     try:
-        with socket.create_connection((host, port), timeout=0.2):
-            raise RuntimeError(f"{host}:{port} is already in use; pick another --port")
-    except OSError:
+        lab.start()
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{args.http_port}/"
+        log(f"\n  dashboard: {url}\n  API:       curl -s {url}api/config "
+            "-d '{\"transport\": {\"mode\": \"tls\"}}'\n  Ctrl-C to stop\n")
+        if args.open:
+            import webbrowser
+            webbrowser.open(url)
+        while not stop.wait(0.5):
+            pass
+    except KeyboardInterrupt:
         pass
-    conf = broker_config(workdir, host, port, acl)
-    proc = subprocess.Popen(["mosquitto", "-c", str(conf)])
-    wait_for_port(host, port)
-    return proc
-
-
-def process_cpu_seconds(pid: int) -> float:
-    """utime + stime of a process, from /proc (Linux)."""
-    with open(f"/proc/{pid}/stat", encoding="ascii") as f:
-        fields = f.read().rsplit(")", 1)[1].split()
-    return (int(fields[11]) + int(fields[12])) / os.sysconf("SC_CLK_TCK")
-
-
-# ------------------------------------------------------------------ sensors ---
-
-@dataclass
-class SensorConfig:
-    host: str
-    port: int
-    first_id: int
-    count: int
-    rate: float          # messages per second, per sensor
-    payload: int         # plaintext bytes (>= 8: the timestamp)
-    duration: float
-    profile: str
-    zone_prefix: str
-    keys_file: str | None
-    qos: int
-
-
-def new_client(client_id: str) -> mqtt.Client:
-    return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id,
-                       protocol=mqtt.MQTTv311)
-
-
-def sensor_worker(cfg: SensorConfig, ids: list[int], start: mp.Barrier,
-                  results: mp.Queue) -> None:
-    """Runs a group of sensors in one process, without paho's network threads:
-    a single loop publishes on schedule and drives the sockets by hand, which
-    is far cheaper than one Python thread per connection."""
-    protection = SENDER_PROTECTION[cfg.profile]
-    keys = read_keys(cfg.keys_file) if protection != NONE else {}
-    filler = bytes(max(cfg.payload - 8, 0))
-
-    sensors = []
-    for sensor_id in ids:
-        client = new_client(f"sensor-{sensor_id}")
-        client.connect(cfg.host, cfg.port, keepalive=60)
-        topic = f"{cfg.zone_prefix}/sensors/sensor-{sensor_id}/temp"
-        key = keys.get(sensor_id) if protection != NONE else None
-        if protection != NONE and key is None:
-            raise SystemExit(f"no key for sensor id {sensor_id} in {cfg.keys_file}")
-        sensors.append((client, topic, topic.encode(), Protector(protection, sensor_id, key)))
-
-    deadline = time.monotonic() + 10
-    while not all(c.is_connected() for c, *_ in sensors):
-        if time.monotonic() > deadline:
-            raise SystemExit("sensors could not connect to the broker")
-        for client, *_ in sensors:
-            client.loop(timeout=0.001)
-
-    start.wait()
-    period = 1.0 / (len(sensors) * cfg.rate)
-    begin = time.perf_counter()
-    end = begin + cfg.duration
-    next_send = begin
-    sent = skipped = 0
-    last_housekeeping = begin
-    index = 0
-    while True:
-        now = time.perf_counter()
-        if now >= end:
-            break
-        if now < next_send:
-            time.sleep(min(next_send - now, 0.002))
-            continue
-        if now - next_send > 0.25:  # can't keep up: drop the backlog instead of bursting
-            missed = int((now - next_send) / period)
-            skipped += missed
-            next_send += missed * period
-        client, topic, topic_bytes, protector = sensors[index]
-        index = (index + 1) % len(sensors)
-        payload = time.time_ns().to_bytes(8, "big") + filler
-        client.publish(topic, protector.protect(topic_bytes, payload), qos=cfg.qos)
-        client.loop_write()
-        if cfg.qos:
-            client.loop_read()
-        sent += 1
-        next_send += period
-        if now - last_housekeeping > 0.5:
-            for c, *_ in sensors:
-                c.loop_read()
-                c.loop_misc()
-            last_housekeeping = now
-    elapsed = time.perf_counter() - begin
-
-    flush_deadline = time.monotonic() + 5
-    while any(c.want_write() for c, *_ in sensors) and time.monotonic() < flush_deadline:
-        for c, *_ in sensors:
-            if c.want_write():
-                c.loop_write()
-    for c, *_ in sensors:
-        c.disconnect()
-        c.loop_write()
-    results.put({"sent": sent, "skipped": skipped, "elapsed": elapsed})
-
-
-def run_sensors(cfg: SensorConfig, processes: int) -> dict:
-    processes = max(1, min(processes, cfg.count))
-    ids = list(range(cfg.first_id, cfg.first_id + cfg.count))
-    groups = [ids[i::processes] for i in range(processes)]
-    ctx = mp.get_context("spawn")
-    start = ctx.Barrier(processes)
-    results = ctx.Queue()
-    workers = [ctx.Process(target=sensor_worker, args=(cfg, group, start, results))
-               for group in groups]
-    for w in workers:
-        w.start()
-    totals = [results.get() for _ in workers]
-    for w in workers:
-        w.join()
-        if w.exitcode != 0:
-            raise RuntimeError(f"sensor worker exited with {w.exitcode}")
-    sent = sum(t["sent"] for t in totals)
-    elapsed = max(t["elapsed"] for t in totals)
-    return {
-        "sensors": cfg.count,
-        "processes": processes,
-        "target_msg_per_s": cfg.count * cfg.rate,
-        "sent": sent,
-        "skipped": sum(t["skipped"] for t in totals),
-        "sent_msg_per_s": sent / elapsed if elapsed else 0.0,
-    }
-
-
-# -------------------------------------------------------------- eavesdropper ---
-
-class Eavesdropper:
-    """Client "mallory" subscribed to '#', counting every message it receives."""
-
-    def __init__(self, host: str, port: int) -> None:
-        self.received = 0
-        self.client = new_client("mallory")
-        self.client.on_message = self._on_message
-        self._subscribed = threading.Event()
-        self.client.on_subscribe = lambda *args: self._subscribed.set()
-        self.client.connect(host, port, keepalive=60)
-        self.client.loop_start()
-        self.client.subscribe("#", qos=0)
-        if not self._subscribed.wait(5):
-            raise RuntimeError("eavesdropper could not subscribe")
-
-    def _on_message(self, _client, _userdata, _message) -> None:
-        self.received += 1
-
-    def stop(self) -> int:
-        self.client.disconnect()
-        self.client.loop_stop()
-        return self.received
-
-
-# ------------------------------------------------------------------- gateway ---
-
-class Gateway:
-    """msec_load_gateway as a subprocess; waits for READY, collects the JSON summary."""
-
-    def __init__(self, binary: Path, host: str, port: int, profile: str, persistence: str,
-                 keys_file: Path | None, subscription: str, workdir: Path,
-                 verbose: bool) -> None:
-        self.summary_path = workdir / "gateway-summary.json"
-        self.summary_path.unlink(missing_ok=True)
-        cmd = [str(binary), "--broker", f"tcp://{host}:{port}", "--profile", profile,
-               "--persistence", persistence, "--subscribe", subscription,
-               "--json", str(self.summary_path)]
-        if keys_file and profile != "none":
-            cmd += ["--keys", str(keys_file)]
-        self.proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True)
-        self.ready = threading.Event()
-        self.output: list[str] = []
-        threading.Thread(target=self._pump, args=(verbose,), daemon=True).start()
-        if not self.ready.wait(10):
-            self.proc.kill()
-            raise RuntimeError("gateway did not become ready:\n" + "".join(self.output))
-
-    def _pump(self, verbose: bool) -> None:
-        for line in self.proc.stderr:
-            self.output.append(line)
-            if line.startswith("READY"):
-                self.ready.set()
-            if verbose:
-                sys.stderr.write(f"  gateway| {line}")
-
-    def stop(self) -> dict:
-        self.proc.send_signal(signal.SIGINT)
-        try:
-            self.proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            self.proc.kill()
-            raise RuntimeError("gateway did not exit")
-        if self.proc.returncode != 0 or not self.summary_path.exists():
-            raise RuntimeError("gateway failed:\n" + "".join(self.output))
-        return json.loads(self.summary_path.read_text())
-
-
-# -------------------------------------------------------------------- matrix ---
-
-COLUMNS = ["zone", "profile", "persistence", "sensors", "rate", "payload", "target_msg_s",
-           "sent_msg_s", "delivered_msg_s", "loss_pct", "rejected", "leak_pct",
-           "lat_p50_us", "lat_p99_us", "lat_max_us", "gw_cpu_pct", "gw_cpu_us_per_msg",
-           "broker_cpu_pct"]
-
-
-def run_scenario(args, zone: str, profile: str, sensors: int, rate: float, payload: int,
-                 keys_file: Path, workdir: Path, broker: subprocess.Popen) -> dict:
-    _, prefix, subscription = ZONES[zone]
-    gateway = Gateway(args.gateway, args.host, args.port, profile, args.persistence, keys_file,
-                      subscription, workdir, args.verbose)
-    eaves = Eavesdropper(args.host, args.port) if not args.no_eavesdropper else None
-    broker_cpu_before = process_cpu_seconds(broker.pid)
-    t0 = time.perf_counter()
-    try:
-        load = run_sensors(SensorConfig(host=args.host, port=args.port, first_id=1,
-                                        count=sensors, rate=rate, payload=payload,
-                                        duration=args.duration, profile=profile,
-                                        zone_prefix=prefix, keys_file=str(keys_file),
-                                        qos=args.qos),
-                           args.processes)
-        time.sleep(args.drain)
     finally:
-        leaked = eaves.stop() if eaves else 0
-        gw = gateway.stop()
-    wall = time.perf_counter() - t0
-    broker_cpu = process_cpu_seconds(broker.pid) - broker_cpu_before
-
-    sent = load["sent"]
-    return {
-        "zone": zone, "profile": profile, "persistence": args.persistence,
-        "sensors": sensors, "rate": rate, "payload": payload,
-        "target_msg_s": round(load["target_msg_per_s"]),
-        "sent_msg_s": round(load["sent_msg_per_s"]),
-        "delivered_msg_s": round(gw["msg_per_s"]),
-        "loss_pct": round(100.0 * (1 - (gw["delivered"] + gw["rejected"]) / sent), 2) if sent else 0.0,
-        "rejected": gw["rejected"],
-        "leak_pct": round(100.0 * leaked / sent, 1) if sent and eaves else "",
-        "lat_p50_us": round(gw["latency_us"]["p50"]),
-        "lat_p99_us": round(gw["latency_us"]["p99"]),
-        "lat_max_us": round(gw["latency_us"]["max"]),
-        "gw_cpu_pct": gw["cpu_pct"],
-        "gw_cpu_us_per_msg": gw["cpu_us_per_msg"],
-        "broker_cpu_pct": round(100.0 * broker_cpu / wall, 1),
-    }
+        log("stopping...")
+        server.shutdown()
+        lab.stop()
 
 
-def markdown_table(rows: list[dict]) -> str:
-    out = ["| " + " | ".join(COLUMNS) + " |", "|" + "---|" * len(COLUMNS)]
-    out += ["| " + " | ".join(str(r[c]) for c in COLUMNS) + " |" for r in rows]
-    return "\n".join(out)
+# ------------------------------------------------------------------- matrix ---
+
+def scenarios(vary: list[tuple[str, str, str]]) -> list[dict]:
+    """Cartesian product of the --vary lists, as partial configs."""
+    axes = [[(s, k, parse_value(v)) for v in values.split(",")] for s, k, values in vary]
+    out = []
+    for combo in itertools.product(*axes):
+        patch: dict = {}
+        for s, k, v in combo:
+            patch.setdefault(s, {})[k] = v
+        out.append(patch)
+    return out
+
+
+def label(patch: dict) -> dict:
+    return {f"{s}.{k}": v for s, values in patch.items() for k, v in values.items()}
 
 
 def cmd_matrix(args) -> None:
-    if not args.gateway.exists():
-        raise SystemExit(f"{args.gateway} not found; build it with: cmake --preset bench && "
-                         "cmake --build --preset bench")
-    load_points = [(s, r, p) for s in args.sensors for r in args.rates for p in args.payloads]
-    total = len(args.zones) * len(args.profiles) * len(load_points)
+    base = load_config(args)
+    vary = args.vary or [("transport", "mode", "plain,tls,mtls"),
+                         ("payload", "protection", "none,encrypt")]
+    # Settings that need a fresh lab (e.g. load.sensors) form the outer loop.
+    startup = [v for v in vary if (v[0], v[1]) in STARTUP_ONLY]
+    live = [v for v in vary if (v[0], v[1]) not in STARTUP_ONLY]
+    outer, inner = scenarios(startup), scenarios(live)
+    for patch in outer + inner:
+        merged(base, patch)  # validate everything before starting
+    total = len(outer) * len(inner)
     out = Path(args.out or REPO / "build" / "loadtest" /
-               f"results-{time.strftime('%Y%m%d-%H%M%S')}.csv")
+               f"matrix-{time.strftime('%Y%m%d-%H%M%S')}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    rows: list[dict] = []
-    with tempfile.TemporaryDirectory(prefix="msec-load-") as tmp:
-        workdir = Path(tmp)
-        keys_file = workdir / "keys.txt"
-        write_keys(keys_file, max(args.sensors))
-        n = 0
-        # Group by ACL setting so the broker restarts only when its config changes.
-        for acl in (False, True):
-            zones = [z for z in args.zones if ZONES[z][0] == acl]
-            if not zones:
-                continue
-            broker = start_broker(workdir / ("acl" if acl else "noacl"), args.host, args.port, acl)
-            try:
-                for zone in zones:
-                    for profile in args.profiles:
-                        for sensors, rate, payload in load_points:
-                            n += 1
-                            log(f"[{n}/{total}] {zone}/{profile}: {sensors} sensors x "
-                                f"{rate:g} msg/s, {payload} B, {args.duration:g} s")
-                            row = run_scenario(args, zone, profile, sensors, rate, payload,
-                                               keys_file, workdir, broker)
-                            log("    " + ", ".join(f"{k}={row[k]}" for k in COLUMNS[6:]))
-                            rows.append(row)
-            finally:
-                broker.terminate()
-                broker.wait(timeout=5)
+
+    rows, n = [], 0
+    for startup_patch in outer:
+        config = merged(base, startup_patch)
+        lab = Lab(config, args.gateway, None, args.verbose, lambda m: None)
+        try:
+            lab.start()
+            for patch in inner:
+                n += 1
+                lab.apply(patch)
+                settings = {**label(startup_patch), **label(patch)}
+                log(f"[{n}/{total}] " + "  ".join(f"{k}={v}" for k, v in settings.items()))
+                result = lab.measure(args.settle, args.duration)
+                log("      " + "  ".join(f"{k}={v}" for k, v in result.items()))
+                rows.append({**settings, **result})
+        finally:
+            lab.stop()
+
+    columns = list(rows[0]) if rows else []
     with open(out, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=COLUMNS)
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
         writer.writerows(rows)
-    print(markdown_table(rows))
+    print("| " + " | ".join(columns) + " |")
+    print("|" + "---|" * len(columns))
+    for r in rows:
+        print("| " + " | ".join(str(r[c]) for c in columns) + " |")
     log(f"\nresults written to {out}")
 
 
-# ----------------------------------------------------------------------- CLI ---
-
-def cmd_keys(args) -> None:
-    write_keys(Path(args.out), args.count)
-    log(f"wrote {args.count} keys to {args.out}")
-
-
-def cmd_broker(args) -> None:
-    workdir = Path(tempfile.mkdtemp(prefix="msec-broker-"))
-    broker = start_broker(workdir, args.host, args.port, args.acl)
-    log(f"mosquitto on {args.host}:{args.port} ({'zone ACL' if args.acl else 'no ACL'}), "
-        f"config in {workdir}; Ctrl-C to stop")
-    try:
-        broker.wait()
-    except KeyboardInterrupt:
-        broker.terminate()
-        broker.wait(timeout=5)
-
-
-def cmd_sensors(args) -> None:
-    if SENDER_PROTECTION[args.profile] != NONE and not args.keys:
-        raise SystemExit("--keys is required unless --profile none")
-    result = run_sensors(SensorConfig(host=args.host, port=args.port, first_id=args.first_id,
-                                      count=args.sensors, rate=args.rate, payload=args.payload,
-                                      duration=args.duration, profile=args.profile,
-                                      zone_prefix=ZONES[args.zone][1], keys_file=args.keys,
-                                      qos=args.qos),
-                         args.processes)
-    print(json.dumps(result))
-
-
-def cmd_eavesdrop(args) -> None:
-    eaves = Eavesdropper(args.host, args.port)
-    log(f"mallory subscribed to '#' for {args.duration:g} s")
-    time.sleep(args.duration)
-    print(json.dumps({"received": eaves.stop()}))
-
-
-def positive_list(kind):
-    return lambda text: [kind(v) for v in text.split(",")]
-
+# ---------------------------------------------------------------------- CLI ---
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    def connection(p):
-        p.add_argument("--host", default=DEFAULT_HOST)
-        p.add_argument("--port", type=int, default=DEFAULT_PORT)
+    def common(p):
+        p.add_argument("--config", type=Path, help="TOML file (see lab.example.toml)")
+        p.add_argument("--set", type=parse_assignment, action="append", metavar="SECTION.KEY=VALUE",
+                       help="override one setting; repeatable")
+        p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
+        p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
 
-    p = sub.add_parser("keys", help="generate a key file")
-    p.add_argument("--count", type=int, required=True, help="number of sensors (key ids 1..N)")
-    p.add_argument("--out", required=True)
-    p.set_defaults(func=cmd_keys)
+    p = sub.add_parser("live", help="run the lab with a live dashboard")
+    common(p)
+    p.add_argument("--http-port", type=int, default=8088)
+    p.add_argument("--workdir", type=Path, help="keep certificates, keys and logs here")
+    p.add_argument("--open", action="store_true", help="open the dashboard in a browser")
+    p.set_defaults(func=cmd_live)
 
-    p = sub.add_parser("broker", help="run a private mosquitto in the foreground")
-    connection(p)
-    p.add_argument("--acl", action="store_true", help="enforce the open/restricted zone ACL")
-    p.set_defaults(func=cmd_broker)
-
-    p = sub.add_parser("sensors", help="run mock sensors")
-    connection(p)
-    p.add_argument("--sensors", type=int, default=10)
-    p.add_argument("--first-id", type=int, default=1)
-    p.add_argument("--rate", type=float, default=10, help="msg/s per sensor")
-    p.add_argument("--payload", type=int, default=64, help="plaintext bytes (min 8)")
-    p.add_argument("--duration", type=float, default=10)
-    p.add_argument("--profile", choices=PROFILES, default="full",
-                   help="must match the gateway's --profile")
-    p.add_argument("--zone", choices=list(ZONES), default="restricted")
-    p.add_argument("--keys")
-    p.add_argument("--qos", type=int, choices=(0, 1), default=0)
-    p.add_argument("--processes", type=int, default=min(4, os.cpu_count() or 1))
-    p.set_defaults(func=cmd_sensors)
-
-    p = sub.add_parser("eavesdrop", help="subscribe to '#' and count messages")
-    connection(p)
-    p.add_argument("--duration", type=float, default=10)
-    p.set_defaults(func=cmd_eavesdrop)
-
-    p = sub.add_parser("matrix", help="run every zone x profile x load point")
-    connection(p)
-    p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
-    p.add_argument("--zones", type=positive_list(str), default=list(ZONES))
-    p.add_argument("--profiles", type=positive_list(str), default=["none", "auth_only", "aead", "full"])
-    p.add_argument("--persistence", choices=("none", "plain", "at-rest"), default="none")
-    p.add_argument("--sensors", type=positive_list(int), default=[100])
-    p.add_argument("--rates", type=positive_list(float), default=[10.0, 100.0],
-                   help="msg/s per sensor, comma separated")
-    p.add_argument("--payloads", type=positive_list(int), default=[64])
-    p.add_argument("--duration", type=float, default=10)
-    p.add_argument("--drain", type=float, default=2, help="seconds to let queues empty")
-    p.add_argument("--qos", type=int, choices=(0, 1), default=0)
-    p.add_argument("--processes", type=int, default=min(4, os.cpu_count() or 1))
-    p.add_argument("--no-eavesdropper", action="store_true")
-    p.add_argument("--out", help="CSV path (default build/loadtest/results-<time>.csv)")
-    p.add_argument("--verbose", action="store_true", help="show gateway progress lines")
+    p = sub.add_parser("matrix", help="measure every combination of settings")
+    common(p)
+    p.add_argument("--vary", type=parse_assignment, action="append",
+                   metavar="SECTION.KEY=V1,V2,...",
+                   help="values to try; repeatable, combined as a cartesian product "
+                        "(default: transport.mode × payload.protection)")
+    p.add_argument("--settle", type=float, default=3, help="seconds after each change")
+    p.add_argument("--duration", type=float, default=10, help="measurement window, seconds")
+    p.add_argument("--out", help="CSV path (default build/loadtest/matrix-<time>.csv)")
     p.set_defaults(func=cmd_matrix)
 
     args = parser.parse_args()
-    if getattr(args, "zones", None):
-        unknown = set(args.zones) - set(ZONES)
-        if unknown:
-            parser.error(f"unknown zones: {', '.join(sorted(unknown))}")
-    if getattr(args, "profiles", None):
-        unknown = set(args.profiles) - set(PROFILES)
-        if unknown:
-            parser.error(f"unknown profiles: {', '.join(sorted(unknown))}")
-    args.func(args)
+    try:
+        args.func(args)
+    except (ValueError, RuntimeError) as e:
+        sys.exit(f"loadgen: {e}")
 
 
 if __name__ == "__main__":
+    os.environ.setdefault("PYTHONUNBUFFERED", "1")
     main()
