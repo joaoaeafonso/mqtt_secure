@@ -4,6 +4,7 @@
 
 #include "msec/core/pipeline.hpp"
 #include "msec/core/secure_buffer.hpp"
+#include "msec/core/switchable_layer.hpp"
 #include "test_support.hpp"
 
 namespace msec {
@@ -97,6 +98,34 @@ TEST(Pipeline, RejectsNullAndDuplicateLayers) {
                      .add(std::make_unique<TracingLayer>("A", trace))
                      .build()
                      .has_value());
+}
+
+TEST(SwitchableLayer, PassesThroughWhileDisabled) {
+    std::vector<std::string> trace;
+    auto layer = SwitchableLayer::create(std::make_unique<TracingLayer>("A", trace, /*fail=*/true),
+                                         /*enabled=*/false);
+    ASSERT_TRUE(layer.has_value());
+    auto& toggle = **layer;
+    EXPECT_EQ(toggle.name(), "A");
+
+    EXPECT_TRUE(toggle.on_outbound(message("t", "x")).has_value());
+    EXPECT_TRUE(toggle.on_inbound(message("t", "x")).has_value());
+    EXPECT_TRUE(trace.empty());
+
+    toggle.set_enabled(true);
+    EXPECT_FALSE(toggle.on_inbound(message("t", "x")).has_value());
+    EXPECT_EQ(trace, std::vector<std::string>{"in:A"});
+}
+
+TEST(SwitchableLayer, RenamesSoTheSameLayerCanAppearTwice) {
+    std::vector<std::string> trace;
+    auto first = SwitchableLayer::create(std::make_unique<TracingLayer>("A", trace), true, "A-top");
+    auto second = SwitchableLayer::create(std::make_unique<TracingLayer>("A", trace), true, "A-bottom");
+    ASSERT_TRUE(first.has_value() && second.has_value());
+    auto pipeline = Pipeline::Builder{}.add(std::move(*first)).add(std::move(*second)).build();
+    ASSERT_TRUE(pipeline.has_value());
+    EXPECT_EQ(pipeline->layer_names(), (std::vector<std::string_view>{"A-top", "A-bottom"}));
+    EXPECT_FALSE(SwitchableLayer::create(nullptr).has_value());
 }
 
 }  // namespace

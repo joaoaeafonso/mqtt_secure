@@ -61,6 +61,11 @@ void Endpoint::on_message(ApplicationHandler handler) {
     app_handler_ = std::move(handler);
 }
 
+void Endpoint::on_rejected(RejectionHandler handler) {
+    const std::scoped_lock lock{handler_mutex_};
+    rejection_handler_ = std::move(handler);
+}
+
 EndpointStats Endpoint::stats() const noexcept {
     return {published_.load(), delivered_.load(), rejected_inbound_.load(),
             rejected_outbound_.load()};
@@ -74,6 +79,14 @@ void Endpoint::handle_incoming(Message message) {
         logger_->log(LogLevel::Warn, kComponent,
                      std::format("inbound on '{}' rejected ({}): {}", topic,
                                  to_string(processed.error().code), processed.error().message));
+        RejectionHandler observer;
+        {
+            const std::scoped_lock lock{handler_mutex_};
+            observer = rejection_handler_;
+        }
+        if (observer) {
+            observer(topic, processed.error());
+        }
         return;
     }
     ApplicationHandler handler;

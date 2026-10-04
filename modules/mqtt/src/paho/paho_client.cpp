@@ -15,7 +15,7 @@ Error to_error(ErrorCode code, std::string_view what, const ::mqtt::exception& e
 
 ::mqtt::ssl_options make_ssl(const TlsOptions& tls) {
     auto builder = ::mqtt::ssl_options_builder{};
-    builder.enable_server_cert_auth(tls.verify_peer);
+    builder.enable_server_cert_auth(tls.verify_peer).verify(tls.verify_peer);
     if (!tls.ca_file.empty()) {
         builder.trust_store(tls.ca_file.string());
     }
@@ -33,15 +33,39 @@ Error to_error(ErrorCode code, std::string_view what, const ::mqtt::exception& e
 PahoClient::PahoClient(std::chrono::milliseconds timeout) : timeout_{timeout} {}
 
 PahoClient::~PahoClient() {
-    if (is_connected()) {
-        (void)disconnect();
+    const std::scoped_lock lock{client_mutex_};
+    close_locked();
+}
+
+bool PahoClient::wait(std::shared_ptr<::mqtt::token> token) {
+    // Park first: wait_for() throws when the operation failed, and the token
+    // must outlive its callback on that path too. Replacing last_token_ is safe
+    // here because the Paho call that produced `token` already took the mutex.
+    last_token_ = std::move(token);
+    return last_token_->wait_for(timeout_);
+}
+
+void PahoClient::close_locked() {
+    if (!client_) {
+        return;
     }
+    try {
+        if (client_->is_connected()) {
+            (void)wait(client_->disconnect());
+        }
+    } catch (const ::mqtt::exception&) {
+        // Closing anyway; nothing useful to report.
+    }
+    client_.reset();  // MQTTAsync_destroy: waits for Paho's callbacks to finish
+    last_token_.reset();
 }
 
 Status PahoClient::connect(const ConnectionOptions& options) {
     if (options.broker_uri.empty()) {
         return make_error(ErrorCode::InvalidArgument, "broker_uri is required");
     }
+    const std::scoped_lock lock{client_mutex_};
+    close_locked();
     try {
         client_ = std::make_unique<::mqtt::async_client>(options.broker_uri, options.client_id);
         client_->set_message_callback([this](::mqtt::const_message_ptr m) {
@@ -67,42 +91,37 @@ Status PahoClient::connect(const ConnectionOptions& options) {
         if (options.tls) {
             builder.ssl(make_ssl(*options.tls));
         }
-        if (!client_->connect(builder.finalize())->wait_for(timeout_)) {
+        if (!wait(client_->connect(builder.finalize()))) {
+            client_.reset();
             return make_error(ErrorCode::ConnectionFailed, "connect timed out");
         }
     } catch (const ::mqtt::exception& e) {
+        client_.reset();
         return std::unexpected{to_error(ErrorCode::ConnectionFailed, "connect", e)};
     }
     return {};
 }
 
 Status PahoClient::disconnect() {
-    if (!client_) {
-        return {};
-    }
-    try {
-        if (client_->is_connected()) {
-            client_->disconnect()->wait_for(timeout_);
-        }
-    } catch (const ::mqtt::exception& e) {
-        return std::unexpected{to_error(ErrorCode::ConnectionFailed, "disconnect", e)};
-    }
+    const std::scoped_lock lock{client_mutex_};
+    close_locked();
     return {};
 }
 
 bool PahoClient::is_connected() const noexcept {
+    const std::scoped_lock lock{client_mutex_};
     return client_ && client_->is_connected();
 }
 
 Status PahoClient::publish(const Message& message) {
-    if (!is_connected()) {
+    const std::scoped_lock lock{client_mutex_};
+    if (!client_ || !client_->is_connected()) {
         return make_error(ErrorCode::NotConnected, "publish while disconnected");
     }
     try {
-        auto token = client_->publish(message.topic.str(), message.payload.data(),
-                                      message.payload.size(), static_cast<int>(message.qos),
-                                      message.retain);
-        if (!token->wait_for(timeout_)) {
+        if (!wait(client_->publish(message.topic.str(), message.payload.data(),
+                                   message.payload.size(), static_cast<int>(message.qos),
+                                   message.retain))) {
             return make_error(ErrorCode::ConnectionFailed, "publish timed out");
         }
     } catch (const ::mqtt::exception& e) {
@@ -112,16 +131,16 @@ Status PahoClient::publish(const Message& message) {
 }
 
 Status PahoClient::subscribe(std::string_view filter, QoS qos) {
-    if (!is_connected()) {
+    const std::scoped_lock lock{client_mutex_};
+    if (!client_ || !client_->is_connected()) {
         return make_error(ErrorCode::NotConnected, "subscribe while disconnected");
     }
     try {
-        auto token = client_->subscribe(std::string{filter}, static_cast<int>(qos));
-        if (!token->wait_for(timeout_)) {
+        if (!wait(client_->subscribe(std::string{filter}, static_cast<int>(qos)))) {
             return make_error(ErrorCode::ConnectionFailed, "subscribe timed out");
         }
         // MQTT signals a refused subscription with reason code 0x80, not an error.
-        if (token->get_reason_code() >= 0x80) {
+        if (last_token_->get_reason_code() >= 0x80) {
             return make_error(ErrorCode::PermissionDenied,
                               std::format("broker refused subscription to '{}'", filter));
         }
@@ -132,11 +151,12 @@ Status PahoClient::subscribe(std::string_view filter, QoS qos) {
 }
 
 Status PahoClient::unsubscribe(std::string_view filter) {
-    if (!is_connected()) {
+    const std::scoped_lock lock{client_mutex_};
+    if (!client_ || !client_->is_connected()) {
         return make_error(ErrorCode::NotConnected, "unsubscribe while disconnected");
     }
     try {
-        client_->unsubscribe(std::string{filter})->wait_for(timeout_);
+        (void)wait(client_->unsubscribe(std::string{filter}));
     } catch (const ::mqtt::exception& e) {
         return std::unexpected{to_error(ErrorCode::ConnectionFailed, "unsubscribe", e)};
     }

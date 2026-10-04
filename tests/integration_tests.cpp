@@ -92,12 +92,20 @@ TEST_F(EndToEnd, AttackerCannotReplayOrInject) {
     // The eavesdropper sees only ciphertext.
     EXPECT_EQ(bytes_to_string(captured[0].payload).find("21.5"), std::string::npos);
 
+    std::vector<ErrorCode> reasons;
+    gateway_->on_rejected([&](std::string_view topic, const Error& error) {
+        EXPECT_EQ(topic, "sensors/room1/temp");
+        reasons.push_back(error.code);
+    });
+
     attacker->set_message_handler({});
     ASSERT_TRUE(attacker->publish(captured[0]).has_value());                          // replay
     ASSERT_TRUE(attacker->publish(test::message("sensors/room1/temp", "99")).has_value());  // forge
 
     EXPECT_EQ(received_.size(), 1U);
     EXPECT_EQ(gateway_->stats().rejected_inbound, 2U);
+    EXPECT_EQ(reasons, (std::vector<ErrorCode>{ErrorCode::ReplayDetected,
+                                               ErrorCode::MalformedMessage}));
     EXPECT_EQ(repo_->size(), 1U);
 }
 

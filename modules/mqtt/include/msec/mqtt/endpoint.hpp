@@ -29,6 +29,8 @@ struct EndpointStats {
 class Endpoint final {
 public:
     using ApplicationHandler = std::function<void(const Message&)>;
+    /// Observes inbound messages a layer rejected (topic, reason), e.g. for metrics.
+    using RejectionHandler = std::function<void(std::string_view topic, const Error& error)>;
 
     Endpoint(std::shared_ptr<IMqttClient> client, Pipeline pipeline,
              std::shared_ptr<ILogger> logger);
@@ -46,6 +48,7 @@ public:
     [[nodiscard]] Status subscribe(std::string_view filter, QoS qos);
 
     void on_message(ApplicationHandler handler);
+    void on_rejected(RejectionHandler handler);
     [[nodiscard]] EndpointStats stats() const noexcept;
 
 private:
@@ -57,6 +60,7 @@ private:
 
     std::mutex handler_mutex_;
     ApplicationHandler app_handler_;
+    RejectionHandler rejection_handler_;
 
     std::atomic<std::uint64_t> published_{0};
     std::atomic<std::uint64_t> delivered_{0};

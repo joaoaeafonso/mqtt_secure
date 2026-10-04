@@ -269,6 +269,32 @@ TEST_F(SecurityLayerTest, DisabledChecksStillAuthenticate) {
     EXPECT_EQ(receiver->on_inbound(wire).error().code, ErrorCode::AuthenticationFailed);
 }
 
+TEST_F(SecurityLayerTest, SwitchesTakeEffectAtRuntime) {
+    const auto wire = protect("sensors/t", "21.5C");
+    ASSERT_TRUE(receiver_->on_inbound(wire).has_value());
+
+    receiver_->set_enforce_replay_protection(false);
+    EXPECT_TRUE(receiver_->on_inbound(wire).has_value());
+    EXPECT_FALSE(receiver_->config().enforce_replay_protection);
+
+    // Back on: the window kept its state, so the old message is still a replay.
+    receiver_->set_enforce_replay_protection(true);
+    EXPECT_EQ(receiver_->on_inbound(wire).error().code, ErrorCode::ReplayDetected);
+
+    sender_->set_protection(PayloadProtection::AuthenticateOnly);
+    const auto readable = protect("sensors/t", "21.6C");
+    EXPECT_NE(bytes_to_string(readable.payload).find("21.6C"), std::string::npos);
+    EXPECT_EQ(receiver_->on_inbound(readable).error().code, ErrorCode::AuthenticationFailed);
+    receiver_->set_protection(PayloadProtection::AuthenticateOnly);
+    EXPECT_TRUE(receiver_->on_inbound(readable).has_value());
+
+    const auto stale = protect("sensors/t", "21.7C");
+    clock_->advance(61s);
+    EXPECT_EQ(receiver_->on_inbound(stale).error().code, ErrorCode::MessageExpired);
+    receiver_->set_enforce_freshness(false);
+    EXPECT_TRUE(receiver_->on_inbound(stale).has_value());
+}
+
 TEST(SecurityLayerFactory, RejectsMissingDependencies) {
     EXPECT_FALSE(SecurityLayer::create({}, {}).has_value());
 }
