@@ -37,10 +37,26 @@ cmake --preset bench && cmake --build --preset bench
 | `7_full_persist_plain`   | `[persistence, security]`        | stores plaintext                                   |
 | `8_full_persist_at_rest` | `[security, persistence]`        | stores envelopes                                   |
 
+Every profile runs in three topic zones (benchmark name `zone/profile/payload:N`):
+
+| Zone | Broker | Topics |
+|---|---|---|
+| `noacl` | no ACL | `open/sensors/...` |
+| `open` | ACL, `open/#` readable & writable by every client | `open/sensors/...` |
+| `restricted` | ACL, only `sensor-1` writes, only `gateway` reads | `restricted/sensors/...` |
+
+An eavesdropper (`mallory`) stays subscribed to `#` throughout, so wildcard
+fan-out is part of the cost wherever the ACL lets it through.
+
 Each profile runs at 16 B, 256 B, 4 KiB and 64 KiB payloads. Besides time and
-throughput, every row reports `wire_B` / `overhead_B` and 0/1 columns from an
-attack probe run before timing: `confid` (attacker cannot read the payload),
-`replay`, `tamper`, `rebind`, `inject` (gateway rejected the attack).
+throughput, every row reports `wire_B` / `overhead_B`, `leak` (fraction of
+messages the `#` subscriber received) and results of an attack probe run before
+timing: `confid` (attacker cannot read the payload), `replay`, `tamper`,
+`rebind`, `inject` (attack stopped) and `by_acl` (how many of the 4 attacks the
+broker stopped before the gateway pipeline was even involved).
+
+The benchmark pins glibc's allocator (no heap trimming) so results don't depend
+on run order; `MSEC_BENCH_DEFAULT_MALLOC=1` measures with the defaults.
 
 Scope: the loopback broker is in-process and synchronous, so this measures the
 CPU cost of the layers only. TLS / broker authentication (defence layer 1) and
@@ -81,6 +97,16 @@ flowchart TB
     SL --> AE & KS & RG & EN
     PEL --> RP
 ```
+
+### Topic zones and ACL
+
+`mqtt::AccessControlList` (Mosquitto `acl_file` semantics, deny by default) can
+be passed to `LoopbackBroker::create()`. Publishing needs Write access
+(`PermissionDenied` otherwise); Read access is checked per message at delivery,
+so a client subscribed to `#` only receives the topics it may read. The demo
+uses two zones: `open/#` for everyone and `restricted/` for sensor → gateway.
+Rules are keyed by client id, which is only a claim until broker authentication
+(TLS client certs / passwords) is in place.
 
 ### Module dependency rule
 

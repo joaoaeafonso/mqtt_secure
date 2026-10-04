@@ -19,6 +19,7 @@ enum class ErrorCode : std::uint8_t {
     NotConnected,
     CryptoFailure,
     AuthenticationFailed,
+    PermissionDenied,
     ReplayDetected,
     MessageExpired,
     MalformedMessage,
@@ -36,6 +37,7 @@ enum class ErrorCode : std::uint8_t {
         case ErrorCode::NotConnected:         return "NotConnected";
         case ErrorCode::CryptoFailure:        return "CryptoFailure";
         case ErrorCode::AuthenticationFailed: return "AuthenticationFailed";
+        case ErrorCode::PermissionDenied:     return "PermissionDenied";
         case ErrorCode::ReplayDetected:       return "ReplayDetected";
         case ErrorCode::MessageExpired:       return "MessageExpired";
         case ErrorCode::MalformedMessage:     return "MalformedMessage";

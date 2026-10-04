@@ -12,6 +12,7 @@
 #include "msec/core/logger.hpp"
 #include "msec/data/in_memory_repository.hpp"
 #include "msec/data/persistence_layer.hpp"
+#include "msec/mqtt/access_control.hpp"
 #include "msec/mqtt/endpoint.hpp"
 #include "msec/mqtt/loopback_broker.hpp"
 #include "msec/security/key_store.hpp"
@@ -66,7 +67,14 @@ int main() {
         .cipher = cipher, .key_store = keys, .random = rng, .clock = clock};
     const security::SecurityConfig config{.sending_key_id = kSensorKey};
 
-    auto broker = mqtt::LoopbackBroker::create();
+    // Two topic zones, enforced by the broker (defence layer 1, authorization):
+    //   open/#        anyone may publish and read (subscribing to '#' sees it)
+    //   restricted/   only sensor-1 publishes its room, only the gateway reads
+    mqtt::AccessControlList acl;
+    require(acl.allow_all("open/#", mqtt::Access::ReadWrite), "acl open");
+    require(acl.allow("sensor-1", "restricted/sensors/room1/#", mqtt::Access::Write), "acl sensor");
+    require(acl.allow("gateway", "restricted/sensors/#", mqtt::Access::Read), "acl gateway");
+    auto broker = mqtt::LoopbackBroker::create(std::move(acl));
 
     // Sensor: [security] ─▶ MQTT
     auto sensor_pipeline = require(
@@ -92,40 +100,62 @@ int main() {
 
     require(sensor.start({.client_id = "sensor-1"}), "sensor start");
     require(gateway.start({.client_id = "gateway"}), "gateway start");
-    require(gateway.subscribe("sensors/#", QoS::AtLeastOnce), "subscribe");
+    require(gateway.subscribe("restricted/sensors/#", QoS::AtLeastOnce), "subscribe restricted");
+    require(gateway.subscribe("open/#", QoS::AtLeastOnce), "subscribe open");
 
-    // An attacker with broker access records traffic.
+    // An attacker connected to the broker subscribes to everything.
     auto attacker = mqtt::LoopbackClient::create(broker);
     require(attacker->connect({.client_id = "mallory"}), "attacker connect");
     std::vector<Message> captured;
     attacker->set_message_handler([&](Message m) { captured.push_back(std::move(m)); });
-    require(attacker->subscribe("sensors/#", QoS::AtMostOnce), "attacker subscribe");
+    require(attacker->subscribe("#", QoS::AtMostOnce), "attacker subscribe");
 
-    // 1. Legitimate traffic.
+    const auto topic = [](std::string_view name) { return require(Topic::create(name), "topic"); };
+    const Topic restricted = topic("restricted/sensors/room1/temp");
+    const Topic open = topic("open/sensors/room1/status");
+
+    // 1. Legitimate traffic: three restricted readings, two open status messages.
     for (const auto* reading : {"21.4", "21.5", "21.7"}) {
-        require(sensor.publish(Message{.topic = require(Topic::create("sensors/room1/temp"), "topic"),
-                                       .payload = to_bytes(reading)}),
-                "publish");
+        require(sensor.publish(Message{.topic = restricted, .payload = to_bytes(reading)}),
+                "publish restricted");
+    }
+    for (const auto* status : {"online", "battery 87%"}) {
+        require(sensor.publish(Message{.topic = open, .payload = to_bytes(status)}), "publish open");
     }
 
-    // 2. Attacks.
+    // 2. Attacks. The ACL hides the restricted zone entirely; in the open zone
+    //    the attacker sees (encrypted) traffic, and payload security takes over.
     attacker->set_message_handler({});
     logger->log(LogLevel::Info, "demo",
-                std::format("attacker sees ciphertext of {} bytes", captured.at(0).payload.size()));
-    require(attacker->publish(captured.at(0)), "replay");  // replay
+                std::format("attacker captured {} messages (all open), ciphertext of {} bytes",
+                            captured.size(), captured.at(0).payload.size()));
+
+    std::size_t denied_by_acl = 0;
+    const auto attack = [&](const Message& message, std::string_view what) {
+        if (auto sent = attacker->publish(message); !sent) {
+            ++denied_by_acl;
+            logger->log(LogLevel::Info, "demo",
+                        std::format("{}: denied by broker ({})", what, sent.error().message));
+        }
+    };
+    attack(captured.at(0), "replay");                      // rejected by replay guard
     Message forged = captured.at(1);
     forged.payload.back() ^= std::byte{0x01};
-    require(attacker->publish(forged), "tamper");          // bit flip
-    Message moved = captured.at(2);
-    moved.topic = require(Topic::create("sensors/room2/temp"), "topic");
-    require(attacker->publish(moved), "rebind");           // topic rebinding
-    require(attacker->publish(Message{.topic = require(Topic::create("sensors/room1/temp"), "t"),
-                                      .payload = to_bytes("99.9")}),
-            "inject");                                      // plaintext injection
+    attack(forged, "tamper");                              // rejected by AEAD
+    Message moved = captured.at(0);
+    moved.topic = restricted;
+    attack(moved, "rebind into restricted");               // denied by ACL
+    attack(Message{.topic = restricted, .payload = to_bytes("99.9")},
+           "inject restricted");                           // denied by ACL
+    attack(Message{.topic = open, .payload = to_bytes("offline")},
+           "inject open");                                 // rejected: not an envelope
 
     const auto stats = gateway.stats();
     logger->log(LogLevel::Info, "demo",
-                std::format("gateway delivered={} rejected={} stored={}", stats.delivered,
-                            stats.rejected_inbound, repository->size()));
-    return stats.delivered == 3 && stats.rejected_inbound == 4 ? EXIT_SUCCESS : EXIT_FAILURE;
+                std::format("gateway delivered={} rejected={} stored={}; broker denied={}",
+                            stats.delivered, stats.rejected_inbound, repository->size(),
+                            denied_by_acl));
+    const bool ok = captured.size() == 2 && stats.delivered == 5 &&
+                    stats.rejected_inbound == 3 && denied_by_acl == 2;
+    return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
