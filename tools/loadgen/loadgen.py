@@ -4,6 +4,7 @@ and an attacker, with every security feature switchable at runtime.
 
   live     run the lab with a web dashboard; flip features and watch the effect
   matrix   apply each combination of settings in turn, measure, write a table
+  scenarios  run the named attack-vs-defence experiments, report PASS/FAIL
   agent    run sensors or an attacker on another machine for a live/matrix controller
 
 Configuration: lab.example.toml documents every setting. Pass a file with
@@ -187,6 +188,50 @@ def cmd_matrix(args) -> None:
     log(f"\nresults written to {out}")
 
 
+# ---------------------------------------------------------------- scenarios ---
+
+def cmd_scenarios(args) -> None:
+    import scenarios as sc
+
+    if args.list:
+        for s in sc.SCENARIOS:
+            print(f"{s.name:24} {s.attack} vs {s.defence}\n{'':24} expected: {s.expect}")
+        return
+    only = set(args.only.split(",")) if args.only else None
+    unknown = (only or set()) - {s.name for s in sc.SCENARIOS}
+    if unknown:
+        raise ValueError(f"unknown scenario(s): {', '.join(sorted(unknown))}")
+    config = load_config(args)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out = Path(args.out or REPO / "build" / "loadtest" / f"scenarios-{stamp}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cluster = control_server(args, config)
+    lab = Lab(config, args.gateway, None, args.verbose,
+              log if cluster else (lambda m: None), cluster)
+    try:
+        lab.start()
+        rows = sc.run(lab, args.settle, args.duration, only, log)
+    finally:
+        lab.stop()
+        if cluster:
+            cluster.stop()
+
+    with open(out.with_suffix(".csv"), "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    table = ["| Scenario | Attack | Defence | Expected | Result | Evidence |",
+             "|---|---|---|---|---|---|"]
+    table += [f"| {r['scenario']} | {r['attack']} | {r['defence']} | {r['expected']} | "
+              f"{r['result']} | {r['evidence']} |" for r in rows]
+    out.with_suffix(".md").write_text("\n".join(table) + "\n", encoding="utf-8")
+    print("\n".join(table))
+    failed = [r["scenario"] for r in rows if r["result"] != "PASS"]
+    log(f"\n{len(rows) - len(failed)}/{len(rows)} passed; results in {out}.{{md,csv}}")
+    if failed:
+        sys.exit(f"failed: {', '.join(failed)}")
+
+
 # -------------------------------------------------------------------- agent ---
 
 def cmd_agent(args) -> None:
@@ -235,6 +280,16 @@ def main() -> None:
     p.add_argument("--duration", type=float, default=10, help="measurement window, seconds")
     p.add_argument("--out", help="CSV path (default build/loadtest/matrix-<time>.csv)")
     p.set_defaults(func=cmd_matrix)
+
+    p = sub.add_parser("scenarios", help="run attack-vs-defence experiments (PASS/FAIL)")
+    common(p)
+    p.add_argument("--list", action="store_true", help="list the scenarios and exit")
+    p.add_argument("--only", help="comma-separated scenario names")
+    p.add_argument("--settle", type=float, default=3, help="seconds after each change")
+    p.add_argument("--duration", type=float, default=6, help="measurement window, seconds")
+    p.add_argument("--out", help="output path without extension "
+                                 "(default build/loadtest/scenarios-<time>)")
+    p.set_defaults(func=cmd_scenarios)
 
     p = sub.add_parser("agent", help="run sensors or an attacker for a remote controller")
     p.add_argument("--controller", required=True, help=f"HOST[:PORT] (default port {DEFAULT_CONTROL_PORT})")

@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build g++ libssl-dev \
+            libpaho-mqtt-dev libpaho-mqttpp-dev libgtest-dev mosquitto python3-venv
+      - name: Build and test (ASan + UBSan)
+        run: |
+          cmake --preset dev
+          cmake --build --preset dev
+          ctest --preset dev
+      - name: Load-lab unit tests (Python)
+        run: |
+          python3 -m venv tools/loadgen/.venv
+          tools/loadgen/.venv/bin/pip install -q -r tools/loadgen/requirements.txt
+          tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
+      - name: Scenarios (end to end against a real Mosquitto)
+        run: |
+          cmake --preset bench && cmake --build --preset bench
+          tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios \
+            --set load.sensors=10 --set load.rate=10 --settle 3 --duration 5
+
+  fuzz:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build clang-18 \
+            libclang-rt-18-dev libssl-dev
+      - name: Build fuzzers
+        run: |
+          cmake --preset fuzz -DCMAKE_CXX_COMPILER=clang++-18
+          cmake --build --preset fuzz
+      - name: Fuzz (60 s each)
+        run: |
+          for target in envelope security_inbound; do
+            ./build/fuzz/fuzz/fuzz_$target -max_total_time=60 fuzz/corpus/envelope
+          done
+          ./build/fuzz/fuzz/fuzz_topic -max_total_time=60 fuzz/corpus/topic

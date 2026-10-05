@@ -1,5 +1,4 @@
 set(_sources
-    src/topic_filter.cpp
     src/access_control.cpp
     src/loopback_broker.cpp
     src/endpoint.cpp)

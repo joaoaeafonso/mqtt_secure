@@ -5,9 +5,20 @@ One CertificateAuthority signs everything. Per run, generate() writes:
     pki/ca.crt                       trust anchor (public: every client gets it)
     pki/server.{crt,key}             broker; SAN localhost, 127.0.0.1 + advertised names
     pki/clients/<name>.{crt,key}     gateway and local sensors (CN = MQTT username)
+    pki/issued/<name>.crt            every client certificate issued (for revocation)
+    pki/crl.pem                      revoked client certificates (mtls)
     credentials.txt                  "<user> <password>" for gateway and every sensor
-    passwd                           the same, hashed for mosquitto (mosquitto_passwd -U)
-    keys.txt                         "<key id> <hex>" payload keys, key id n = sensor-<n>
+    passwd                           the same minus revoked users, hashed for mosquitto
+    keys.txt                         the gateway's payload keys (see below)
+    device-keys.txt                  the local sensors' payload keys
+
+Payload keys (msec_envelope.KeySet, "<id> <kind> <hex> <owner>"): per device an
+AES key (aead) and an Ed25519 key pair; key id = epoch * EPOCH_STRIDE + device,
+device 0 = the gateway. The gateway gets every aead key and public key but
+only its own private key: a signature then proves a sensor made the message,
+which a shared AES key cannot. A device gets its own aead + private key plus
+the gateway's aead key (the downlink "group key" every actuator shares) and the
+gateway's public key.
 
 Remote sensors (on agent machines) generate their own private keys; the CA only
 signs their CSRs (issue_from_csr), so those keys never leave the agent.
@@ -30,8 +41,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-from msec_envelope import KEY_SIZE
+from msec_envelope import AEAD, KEY_SIZE, SIGN_PRIVATE, SIGN_PUBLIC, KeySet, public_key
 
+EPOCH_STRIDE = 1_000_000
+GATEWAY = 0
 LEAF_VALIDITY = dt.timedelta(days=2)
 CA_VALIDITY = dt.timedelta(days=365)
 
@@ -103,6 +116,19 @@ class CertificateAuthority:
     @property
     def pem(self) -> bytes:
         return cert_pem(self.cert)
+
+    def crl(self, revoked: list[x509.Certificate]) -> bytes:
+        """A CRL listing these certificates (PEM), valid for the lab's lifetime."""
+        now = dt.datetime.now(dt.timezone.utc)
+        builder = (x509.CertificateRevocationListBuilder()
+                   .issuer_name(self.cert.subject)
+                   .last_update(now - dt.timedelta(minutes=5))
+                   .next_update(now + LEAF_VALIDITY))
+        for cert in revoked:
+            builder = builder.add_revoked_certificate(
+                x509.RevokedCertificateBuilder().serial_number(cert.serial_number)
+                .revocation_date(now - dt.timedelta(minutes=1)).build())
+        return builder.sign(self.key, hashes.SHA256()).public_bytes(serialization.Encoding.PEM)
 
     def issue(self, common_name: str, public_key, *, server: bool = False,
               names: list[str] | None = None) -> x509.Certificate:
@@ -179,9 +205,88 @@ class Pki:
     def keys(self) -> Path:
         return self.root / "keys.txt"
 
+    @property
+    def device_keys(self) -> Path:
+        return self.root / "device-keys.txt"
+
+    @property
+    def crl(self) -> Path:
+        return self.root / "pki" / "crl.pem"
+
+    def issued(self, name: str) -> Path:
+        return self.root / "pki" / "issued" / f"{name}.crt"
+
+    def record_issued(self, name: str, pem: bytes) -> None:
+        self.issued(name).parent.mkdir(parents=True, exist_ok=True)
+        self.issued(name).write_bytes(pem)
+
+
+def key_id(device: int, epoch: int) -> int:
+    return epoch * EPOCH_STRIDE + device
+
+
+def owner(device: int) -> str:
+    return "gateway" if device == GATEWAY else f"sensor-{device}"
+
+
+def make_keys(sensor_ids: list[int], epoch: int) -> KeySet:
+    """Fresh payload keys for the gateway and these sensors."""
+    keys = KeySet()
+    for device in [GATEWAY, *sensor_ids]:
+        kid, name = key_id(device, epoch), owner(device)
+        signing = secrets.token_bytes(KEY_SIZE)
+        keys.add(kid, AEAD, secrets.token_bytes(KEY_SIZE), name)
+        keys.add(kid, SIGN_PRIVATE, signing, name)
+        keys.add(kid, SIGN_PUBLIC, public_key(signing), name)
+    return keys
+
+
+def gateway_view(keys: KeySet) -> KeySet:
+    """Every aead and public key; the private signing key of the gateway only."""
+    out = KeySet()
+    for kid in keys.aead:
+        out.add(kid, AEAD, keys.aead[kid], keys.owners.get(kid))
+    for kid in keys.sign_public:
+        out.add(kid, SIGN_PUBLIC, keys.sign_public[kid], keys.owners.get(kid))
+    for kid, key in keys.sign_private.items():
+        if keys.owners.get(kid) == "gateway":
+            out.add(kid, SIGN_PRIVATE, key, "gateway")
+    return out
+
+
+def device_view(keys: KeySet, sensor_ids: list[int]) -> KeySet:
+    """What these sensors hold: their own keys, the gateway's aead and public key."""
+    names = {owner(n) for n in sensor_ids}
+    out = KeySet()
+    for kid, name in keys.owners.items():
+        if name in names:
+            out.merge(keys.subset([kid], (AEAD, SIGN_PRIVATE)))
+        elif name == "gateway":
+            out.merge(keys.subset([kid], (AEAD, SIGN_PUBLIC)))
+    return out
+
+
+def write_keys(path: Path, keys: KeySet) -> None:
+    write_private(path, ("# key id, kind, 32-byte key (hex), owner. Test keys only.\n"
+                         + "".join(line + "\n" for line in keys.lines())).encode())
+
+
+def write_passwd(pki: Pki, passwords: dict[str, str], revoked: set[str]) -> None:
+    """mosquitto's password file, without revoked users."""
+    write_private(pki.passwd, "".join(f"{u}:{p}\n" for u, p in passwords.items()
+                                      if u not in revoked).encode())
+    subprocess.run(["mosquitto_passwd", "-U", str(pki.passwd)], check=True)
+    pki.passwd.chmod(0o600)
+
+
+def write_crl(pki: Pki, ca: CertificateAuthority, revoked: set[str]) -> None:
+    certs = [x509.load_pem_x509_certificate(pki.issued(name).read_bytes())
+             for name in sorted(revoked) if pki.issued(name).exists()]
+    pki.crl.write_bytes(ca.crl(certs))
+
 
 def generate(root: Path, ca: CertificateAuthority, sensor_ids: list[int],
-             local_sensor_ids: list[int], server_names: list[str]) -> Pki:
+             local_sensor_ids: list[int], server_names: list[str]) -> tuple[Pki, KeySet]:
     """Credentials for one lab run. Certificates (with private keys) are made here
     only for the gateway and local sensors; remote sensors enrol via CSR."""
     pki = Pki(root)
@@ -197,20 +302,21 @@ def generate(root: Path, ca: CertificateAuthority, sensor_ids: list[int],
     for name in ["gateway"] + [f"sensor-{n}" for n in local_sensor_ids]:
         key = new_key()
         pki.clients_dir.mkdir(parents=True, exist_ok=True)
-        pki.client_cert(name).write_bytes(cert_pem(ca.issue(name, key.public_key())))
+        pem = cert_pem(ca.issue(name, key.public_key()))
+        pki.client_cert(name).write_bytes(pem)
+        pki.record_issued(name, pem)
         write_private(pki.client_key(name), key_pem(key))
 
     users = ["gateway"] + [f"sensor-{n}" for n in sensor_ids]
     passwords = {name: secrets.token_urlsafe(16) for name in users}
     write_private(pki.credentials, "".join(f"{u} {p}\n" for u, p in passwords.items()).encode())
-    write_private(pki.passwd, "".join(f"{u}:{p}\n" for u, p in passwords.items()).encode())
-    subprocess.run(["mosquitto_passwd", "-U", str(pki.passwd)], check=True)
-    pki.passwd.chmod(0o600)
+    write_passwd(pki, passwords, set())
+    write_crl(pki, ca, set())
 
-    lines = ["# key id, 32-byte AES key (hex). Test keys only.\n"]
-    lines += [f"{n} {secrets.token_hex(KEY_SIZE)}\n" for n in sensor_ids]
-    write_private(pki.keys, "".join(lines).encode())
-    return pki
+    keys = make_keys(sensor_ids, epoch=0)
+    write_keys(pki.keys, gateway_view(keys))
+    write_keys(pki.device_keys, device_view(keys, local_sensor_ids))
+    return pki, keys
 
 
 def read_credentials(path: Path) -> dict[str, str]:

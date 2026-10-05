@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include "msec/core/logger.hpp"
 #include "msec/core/pipeline.hpp"
@@ -29,8 +30,15 @@ struct EndpointStats {
 class Endpoint final {
 public:
     using ApplicationHandler = std::function<void(const Message&)>;
-    /// Observes inbound messages a layer rejected (topic, reason), e.g. for metrics.
-    using RejectionHandler = std::function<void(std::string_view topic, const Error& error)>;
+    /// What is known about a rejected inbound message (its payload is gone:
+    /// the pipeline consumed it).
+    struct Rejected {
+        std::string topic;
+        bool retained{false};
+        bool duplicate{false};
+    };
+    /// Observes inbound messages a layer rejected, e.g. for metrics.
+    using RejectionHandler = std::function<void(const Rejected& message, const Error& error)>;
 
     Endpoint(std::shared_ptr<IMqttClient> client, Pipeline pipeline,
              std::shared_ptr<ILogger> logger);

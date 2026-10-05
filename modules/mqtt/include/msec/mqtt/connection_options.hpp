@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -18,6 +19,11 @@ struct TlsOptions {
     bool verify_peer{true};  // must stay true outside of tests
 };
 
+enum class ProtocolVersion : std::uint8_t {
+    V3_1_1 = 4,
+    V5 = 5,  ///< reason codes on every ack and disconnect, e.g. "session taken over"
+};
+
 struct ConnectionOptions {
     std::string broker_uri{};  // e.g. "ssl://broker.local:8883"
     std::string client_id{};
@@ -25,7 +31,8 @@ struct ConnectionOptions {
     std::optional<std::string> username{};
     std::optional<SecureBuffer> password{};
     std::chrono::seconds keep_alive{30};
-    bool clean_session{true};
+    bool clean_session{true};  ///< MQTT 5: clean start
+    ProtocolVersion protocol{ProtocolVersion::V3_1_1};
 };
 
 }  // namespace msec::mqtt

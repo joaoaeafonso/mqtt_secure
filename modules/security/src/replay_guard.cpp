@@ -38,4 +38,9 @@ Status ReplayGuard::check_and_record(KeyId key_id, std::uint64_t sequence) {
     return {};
 }
 
+void ReplayGuard::forget(KeyId key_id) {
+    const std::scoped_lock lock{mutex_};
+    windows_.erase(key_id);
+}
+
 }  // namespace msec::security

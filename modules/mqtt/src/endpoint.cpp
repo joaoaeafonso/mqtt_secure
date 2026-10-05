@@ -72,12 +72,14 @@ EndpointStats Endpoint::stats() const noexcept {
 }
 
 void Endpoint::handle_incoming(Message message) {
-    const std::string topic = message.topic.str();
+    Rejected info{.topic = message.topic.str(),
+                  .retained = message.retain,
+                  .duplicate = message.duplicate};
     auto processed = pipeline_.process_inbound(std::move(message));
     if (!processed) {
         rejected_inbound_.fetch_add(1, std::memory_order_relaxed);
         logger_->log(LogLevel::Warn, kComponent,
-                     std::format("inbound on '{}' rejected ({}): {}", topic,
+                     std::format("inbound on '{}' rejected ({}): {}", info.topic,
                                  to_string(processed.error().code), processed.error().message));
         RejectionHandler observer;
         {
@@ -85,7 +87,7 @@ void Endpoint::handle_incoming(Message message) {
             observer = rejection_handler_;
         }
         if (observer) {
-            observer(topic, processed.error());
+            observer(info, processed.error());
         }
         return;
     }

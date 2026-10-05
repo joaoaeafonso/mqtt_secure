@@ -103,7 +103,7 @@ class Run:
             (clients / f"{name}.crt").write_text(cert)
         keys_file = self.dir / "keys.txt"
         pki_module.write_private(keys_file, "".join(
-            f"{i} {k}\n" for i, k in message["keys"].items()).encode())
+            line + "\n" for line in message["keys"]).encode())
         self.worker = SensorFleet(self.ids, self.processes, keys_file=str(keys_file),
                                   credentials=message["passwords"], clients_dir=str(clients),
                                   **settings)

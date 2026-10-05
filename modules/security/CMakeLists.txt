@@ -1,11 +1,15 @@
 set(_sources
     src/key_store.cpp
+    src/key_policy.cpp
     src/envelope.cpp
     src/replay_guard.cpp
     src/security_layer.cpp)
 
 if(MSEC_WITH_OPENSSL)
-    list(APPEND _sources src/openssl/aes_gcm_cipher.cpp src/openssl/random_source.cpp)
+    list(APPEND _sources
+        src/openssl/aes_gcm_cipher.cpp
+        src/openssl/ed25519_signer.cpp
+        src/openssl/random_source.cpp)
 endif()
 
 msec_add_module(

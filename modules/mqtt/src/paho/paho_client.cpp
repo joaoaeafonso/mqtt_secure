@@ -67,18 +67,24 @@ Status PahoClient::connect(const ConnectionOptions& options) {
     const std::scoped_lock lock{client_mutex_};
     close_locked();
     try {
-        client_ = std::make_unique<::mqtt::async_client>(options.broker_uri, options.client_id);
+        const int version = static_cast<int>(options.protocol);
+        client_ = std::make_unique<::mqtt::async_client>(
+            options.broker_uri, options.client_id, ::mqtt::create_options{version});
         client_->set_message_callback([this](::mqtt::const_message_ptr m) {
             const auto& payload = m->get_payload();
             on_message(m->get_topic(),
                        std::as_bytes(std::span{payload.data(), payload.size()}),
-                       static_cast<QoS>(m->get_qos()), m->is_retained());
+                       static_cast<QoS>(m->get_qos()), m->is_retained(), m->is_duplicate());
         });
 
         auto builder = ::mqtt::connect_options_builder{};
-        builder.clean_session(options.clean_session)
-            .keep_alive_interval(options.keep_alive)
-            .connect_timeout(timeout_);
+        builder.mqtt_version(version);
+        if (options.protocol == ProtocolVersion::V5) {
+            builder.clean_start(options.clean_session);
+        } else {
+            builder.clean_session(options.clean_session);
+        }
+        builder.keep_alive_interval(options.keep_alive).connect_timeout(timeout_);
         if (options.username) {
             builder.user_name(*options.username);
         }
@@ -169,7 +175,8 @@ void PahoClient::set_message_handler(MessageHandler handler) {
     handler_ = std::move(shared);
 }
 
-void PahoClient::on_message(const std::string& topic, ByteView payload, QoS qos, bool retain) {
+void PahoClient::on_message(const std::string& topic, ByteView payload, QoS qos, bool retain,
+                            bool duplicate) {
     std::shared_ptr<const MessageHandler> handler;
     {
         const std::scoped_lock lock{handler_mutex_};
@@ -182,7 +189,8 @@ void PahoClient::on_message(const std::string& topic, ByteView payload, QoS qos,
     (*handler)(Message{.topic = std::move(*valid_topic),
                        .payload = Bytes(payload.begin(), payload.end()),
                        .qos = qos,
-                       .retain = retain});
+                       .retain = retain,
+                       .duplicate = duplicate});
 }
 
 }  // namespace msec::mqtt::paho

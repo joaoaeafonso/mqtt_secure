@@ -18,6 +18,7 @@
     --control: #f0efec;
     --accent: #2a78d6;
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7;
     --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
@@ -27,6 +28,7 @@
       --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
       --control: #262624; --accent: #3987e5;
       --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --s5: #d55181; --s6: #008300; --s7: #9085e9;
     }
   }
   :root[data-theme="dark"] {
@@ -35,6 +37,7 @@
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10);
     --control: #262624; --accent: #3987e5;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9;
   }
   * { box-sizing: border-box; }
   body {
@@ -96,6 +99,12 @@
     font-variant-numeric: tabular-nums;
   }
   .fixed { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .action {
+    font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--control); color: var(--ink);
+  }
+  .action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .inline { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
   #events { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font-size: 12.5px; }
   #events li { display: flex; gap: 8px; padding: 3px 0; border-top: 1px solid var(--border); }
   #events li:first-child { border-top: 0; }
@@ -144,17 +153,48 @@
         <div class="seg" data-key="transport.mode" data-options="plain,tls,mtls" data-labels="Plain,TLS,mTLS"></div></div>
       <div class="row"><label for="t-auth">Authentication<small>username + password</small></label>
         <span class="switch"><input type="checkbox" id="t-auth" data-key="transport.auth"><span></span></span></div>
-      <div class="row"><label for="t-acl">Topic ACL<small>open/ for all, restricted/ per client</small></label>
+      <div class="row"><label>TLS version<small>restarts broker</small></label>
+        <div class="seg" data-key="transport.tls_version" data-options="1.2,1.3" data-labels="1.2,1.3"></div></div>
+      <div class="row"><label>MQTT version<small>all clients reconnect</small></label>
+        <div class="seg" data-key="transport.protocol" data-options="3.1.1,5" data-labels="3.1.1,5"></div></div>
+      <div class="row"><label for="t-acl">Topic ACL<small>open/ for all, restricted/ per client; off = no ACL</small></label>
         <span class="switch"><input type="checkbox" id="t-acl" data-key="transport.acl"><span></span></span></div>
+      <div class="row"><label for="t-cid">Client id = username<small>no session takeover by id reuse; restarts broker</small></label>
+        <span class="switch"><input type="checkbox" id="t-cid" data-key="transport.clientid_binding"><span></span></span></div>
+      <div class="row"><label for="t-sys">$SYS topics<small>broker statistics, readable by all without ACL</small></label>
+        <span class="switch"><input type="checkbox" id="t-sys" data-key="transport.sys_topics"><span></span></span></div>
+      <div class="row"><label for="t-pkt">Max packet<small>bytes, 0 = no limit; restarts broker</small></label>
+        <input type="number" id="t-pkt" min="0" step="1" data-key="transport.max_packet"></div>
+      <div class="row"><label for="t-conn">Max connections<small>0 = no limit; restarts broker</small></label>
+        <input type="number" id="t-conn" min="0" step="1" data-key="transport.max_connections"></div>
     </section>
     <section class="card" aria-labelledby="h-payload">
       <h2 id="h-payload">Payload · end to end</h2>
       <div class="row"><label>Protection</label>
-        <div class="seg" data-key="payload.protection" data-options="none,auth_only,encrypt" data-labels="None,Auth only,Encrypt"></div></div>
+        <div class="seg" data-key="payload.protection" data-options="none,auth_only,encrypt,sign" data-labels="None,Auth,Encrypt,Sign"></div></div>
       <div class="row"><label for="p-fresh">Freshness check<small>reject messages older than 60 s</small></label>
         <span class="switch"><input type="checkbox" id="p-fresh" data-key="payload.freshness"><span></span></span></div>
       <div class="row"><label for="p-replay">Replay protection<small>sequence-number window</small></label>
         <span class="switch"><input type="checkbox" id="p-replay" data-key="payload.replay"><span></span></span></div>
+      <div class="row"><label for="p-bind">Key → topic binding<small>a key may only publish on its owner's topics</small></label>
+        <span class="switch"><input type="checkbox" id="p-bind" data-key="payload.key_binding"><span></span></span></div>
+      <div class="row"><label for="p-rate">Rate limit<small>msg/s per topic at the gateway, 0 = off</small></label>
+        <input type="number" id="p-rate" min="0" step="1" data-key="payload.rate_limit"></div>
+      <div class="row"><label>Key rotation<small>new keys for every device; old ones revoked after 3 s</small></label>
+        <span class="inline"><span class="fixed" id="p-epoch"></span>
+          <button type="button" class="action" id="p-rotate">Rotate</button></span></div>
+    </section>
+    <section class="card" aria-labelledby="h-downlink">
+      <h2 id="h-downlink">Downlink · gateway → actuators</h2>
+      <div class="row"><label for="d-rate">Commands<small>per second, protected like uplink</small></label>
+        <input type="number" id="d-rate" min="0" step="1" data-key="downlink.rate"></div>
+    </section>
+    <section class="card" aria-labelledby="h-response">
+      <h2 id="h-response">Incident response</h2>
+      <div class="row"><label for="r-sensor">Revoke a sensor<small>keys, password, certificate (CRL); permanent</small></label>
+        <span class="inline"><input type="number" id="r-sensor" min="1" step="1" aria-label="sensor number">
+          <button type="button" class="action" id="r-revoke">Revoke</button></span></div>
+      <div class="row"><label>Revoked</label><span class="fixed" id="r-list"></span></div>
     </section>
     <section class="card" aria-labelledby="h-storage">
       <h2 id="h-storage">Storage · gateway</h2>
@@ -204,6 +244,9 @@ const REJECTION_SERIES = [
   ["ReplayDetected", "Replay detected"],
   ["MalformedMessage", "Malformed / not an envelope"],
   ["MessageExpired", "Expired"],
+  ["PermissionDenied", "Key not allowed on topic"],
+  ["ProtectionNotAccepted", "Protection mode refused"],
+  ["RateLimited", "Rate limited"],
 ];
 const CHARTS = [
   { title: "Throughput", unit: "msg/s", sub: "sent by sensors vs. accepted by the gateway",
@@ -217,8 +260,10 @@ const CHARTS = [
   { title: "What the attacker achieves", unit: "msg/s", sub: "received via # · forgeries and replays the gateway accepted",
     series: [["Eavesdropped", p => p.eavesdropped], ["Forged accepted", p => p.forged_ok],
              ["Replays accepted", p => p.replays_ok]] },
+  { title: "Downlink commands", unit: "msg/s", sub: "sent by the gateway · verified and rejected by the actuators",
+    series: [["Sent", p => p.cmd_sent], ["Accepted", p => p.cmd_ok], ["Rejected", p => p.cmd_rejected]] },
 ];
-const COLORS = ["--s1", "--s2", "--s3", "--s4"];
+const COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7"];
 
 let config = null;
 let history = [];
@@ -271,6 +316,14 @@ function initControls() {
       const v = Number(input.value);
       if (input.value !== "" && v >= 0) apply(input.dataset.key, input.step === "1" ? Math.round(v) : v);
     }));
+  document.getElementById("p-rotate").addEventListener("click", () =>
+    apply("payload.key_epoch", config.payload.key_epoch + 1));
+  document.getElementById("r-revoke").addEventListener("click", () => {
+    const n = Math.round(Number(document.getElementById("r-sensor").value));
+    if (!(n >= 1)) return;
+    const list = config.response.revoked ? config.response.revoked.split(",") : [];
+    if (!list.includes(String(n))) apply("response.revoked", [...list, String(n)].join(","));
+  });
 }
 
 function renderControls() {
@@ -283,6 +336,9 @@ function renderControls() {
   });
   document.getElementById("l-fixed").textContent =
     `${config.load.sensors} · ${config.load.processes} · ${config.load.qos}`;
+  document.getElementById("p-epoch").textContent = `epoch ${config.payload.key_epoch}`;
+  document.getElementById("r-list").textContent =
+    config.response.revoked ? config.response.revoked.split(",").map(n => `sensor-${n}`).join(", ") : "none";
 }
 
 function pill(id, state, label, value) {
@@ -296,13 +352,16 @@ function renderStatus() {
   const t = config.transport;
   const mode = { plain: "plain TCP", tls: "TLS", mtls: "mutual TLS" }[t.mode];
   pill("pill-broker", t.mode === "plain" ? "warning" : "good", "Broker",
-       `${mode}, auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`);
+       `${mode}${t.mode === "plain" ? "" : " " + t.tls_version}, MQTT ${t.protocol}, ` +
+       `auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`);
   if (!p) return;
   pill("pill-gateway", p.gw_connected ? "good" : "critical", "Gateway",
        p.gw_connected ? "connected" : "disconnected");
   const up = p.sensors_up, total = p.sensors_total;
-  pill("pill-sensors", up === total ? "good" : up ? "warning" : "critical", "Sensors",
-       `${up}/${total} up` + (p.sensor_error ? ` (${p.sensor_error})` : ""));
+  const revoked = config.response.revoked ? config.response.revoked.split(",").length : 0;
+  pill("pill-sensors", up >= total - revoked ? "good" : up ? "warning" : "critical", "Sensors",
+       `${up}/${total} up` + (revoked ? `, ${revoked} revoked` : "") +
+       (p.sensor_error ? ` (${p.sensor_error})` : ""));
   const a = p.attacker;
   pill("pill-attacker", !a.enabled ? "good" : a.connected ? "critical" : "good", "Attacker",
        a.enabled ? a.detail : "off");

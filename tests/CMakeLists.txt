@@ -15,9 +15,12 @@ include(GoogleTest)
 msec_add_test(NAME core_tests  SOURCES core_tests.cpp  DEPS msec::core)
 msec_add_test(NAME mqtt_tests  SOURCES mqtt_tests.cpp  DEPS msec::mqtt)
 msec_add_test(NAME data_tests  SOURCES data_tests.cpp  DEPS msec::data)
+msec_add_test(NAME limits_tests SOURCES limits_tests.cpp DEPS msec::limits)
 
 if(MSEC_WITH_OPENSSL)
     msec_add_test(NAME security_tests    SOURCES security_tests.cpp    DEPS msec::security)
+    target_compile_definitions(security_tests PRIVATE
+        MSEC_ENVELOPE_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/vectors/envelope_vectors.txt")
     msec_add_test(NAME integration_tests SOURCES integration_tests.cpp
                   DEPS msec::mqtt msec::security msec::data)
 endif()

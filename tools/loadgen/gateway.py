@@ -18,7 +18,7 @@ def on_off(value: bool) -> str:
 
 class GatewayProcess:
     def __init__(self, binary: Path, pki: Pki, host: str, port: int, config: dict,
-                 verbose: bool = False) -> None:
+                 verbose: bool = False, sending_key: int = 0) -> None:
         if not binary.exists():
             raise RuntimeError(f"{binary} not found; build it with: "
                                "cmake --preset bench && cmake --build --preset bench")
@@ -26,12 +26,16 @@ class GatewayProcess:
         cmd = [str(binary),
                "--host", host, "--port", str(port), "--tls-port", str(port),
                "--mtls-port", str(port), "--transport", t["mode"],
+               "--protocol", str(t["protocol"]), "--qos", str(config["load"]["qos"]),
                "--ca", str(pki.ca), "--cert", str(pki.client_cert("gateway")),
                "--key", str(pki.client_key("gateway")),
                "--username", "gateway", "--credentials", str(pki.credentials),
                "--keys", str(pki.keys),
                "--protection", p["protection"], "--freshness", on_off(p["freshness"]),
-               "--replay", on_off(p["replay"]), "--persistence", s["persistence"],
+               "--replay", on_off(p["replay"]), "--key-binding", on_off(p["key_binding"]),
+               "--rate-limit", str(p["rate_limit"]), "--persistence", s["persistence"],
+               "--sending-key", str(sending_key),
+               "--downlink", str(config["downlink"]["rate"]), "--zone", config["load"]["zone"],
                "--control", "stdin", "--stats", "json", "--report", "1000"]
         if verbose:
             cmd.append("--verbose")
@@ -71,6 +75,12 @@ class GatewayProcess:
 
     def set(self, key: str, value) -> None:
         self.send(f"set {key} {on_off(value) if isinstance(value, bool) else value}")
+
+    def add_key(self, line: str) -> None:
+        self.send(f"key add {line}")
+
+    def revoke_key(self, key_id: int) -> None:
+        self.send(f"key revoke {key_id}")
 
     def reconnect(self) -> None:
         self.send("reconnect")

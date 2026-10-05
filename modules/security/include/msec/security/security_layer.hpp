@@ -4,21 +4,20 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 
 #include "msec/core/clock.hpp"
 #include "msec/core/layer.hpp"
 #include "msec/security/aead_cipher.hpp"
+#include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
 #include "msec/security/random_source.hpp"
 #include "msec/security/replay_guard.hpp"
+#include "msec/security/signature_scheme.hpp"
+#include "msec/security/types.hpp"
 
 namespace msec::security {
-
-enum class PayloadProtection : std::uint8_t {
-    Encrypt,           ///< AEAD: confidentiality + integrity (default)
-    AuthenticateOnly,  ///< AEAD with empty plaintext (GMAC): integrity, payload stays readable
-};
 
 struct SecurityConfig {
     KeyId sending_key_id{0};
@@ -26,33 +25,48 @@ struct SecurityConfig {
     std::chrono::milliseconds max_clock_skew{std::chrono::seconds{5}};
     std::size_t max_tracked_senders{1024};
 
-    /// Must match on both ends; a mismatch makes every message fail authentication.
+    /// How outbound messages are protected. The mode travels (authenticated)
+    /// in the envelope header.
     PayloadProtection protection{PayloadProtection::Encrypt};
+    /// Which modes inbound messages may use; nullopt means exactly `protection`.
+    /// Anything else is rejected with ProtectionNotAccepted, which stops an
+    /// attacker holding a key from downgrading e.g. Encrypt to AuthenticateOnly.
+    std::optional<ProtectionSet> accept{};
 
     /// Ablation switches, intended for benchmarking the cost of each check.
     /// Turning either off weakens the guarantees (stale or replayed messages
     /// are accepted); keep both on in production.
-    /// protection, enforce_freshness and enforce_replay_protection can also be
-    /// changed at runtime through the SecurityLayer setters.
     bool enforce_freshness{true};
     bool enforce_replay_protection{true};
+    /// Reject messages whose key may not publish on their topic. Only has an
+    /// effect when SecurityDependencies::authorization is set.
+    bool enforce_key_binding{true};
 };
 
 struct SecurityDependencies {
     std::shared_ptr<const IAeadCipher> cipher;
-    std::shared_ptr<const IKeyStore> key_store;
+    std::shared_ptr<const IKeyStore> key_store;  ///< AEAD keys (Encrypt, AuthenticateOnly)
     std::shared_ptr<IRandomSource> random;
     std::shared_ptr<const IClock> clock;
+
+    /// Needed only for PayloadProtection::Sign.
+    std::shared_ptr<const ISignatureScheme> signer{};
+    std::shared_ptr<const IKeyStore> signing_keys{};  ///< private keys, to send
+    std::shared_ptr<const IKeyStore> verify_keys{};   ///< public keys, to receive
+
+    /// Optional key → topic authorization (see KeyTopicPolicy).
+    std::shared_ptr<const IKeyAuthorization> authorization{};
 };
 
 /// End-to-end payload protection, independent of (and in addition to) TLS.
 ///
-/// Outbound: plaintext ─▶ AEAD(seal) ─▶ Envelope
-/// Inbound:  Envelope ─▶ parse ─▶ freshness ─▶ AEAD(open) ─▶ replay check ─▶ plaintext
+/// Outbound: plaintext ─▶ seal (AEAD or signature) ─▶ Envelope
+/// Inbound:  Envelope ─▶ parse ─▶ mode policy ─▶ freshness ─▶ verify/decrypt
+///                   ─▶ key → topic binding ─▶ replay check ─▶ plaintext
 ///
-/// Guarantees: confidentiality, integrity, sender authenticity (per key),
-/// topic binding, freshness and replay protection. SecurityConfig can relax
-/// confidentiality, freshness and replay protection individually.
+/// Guarantees: confidentiality (Encrypt), integrity, sender authenticity (per
+/// key; with Sign also towards third parties), topic binding, freshness and
+/// replay protection. SecurityConfig can relax most of them individually.
 class SecurityLayer final : public ILayer {
     struct PassKey {};
 
@@ -69,25 +83,40 @@ public:
     /// Runtime switches: thread-safe, effective from the next message. The
     /// replay window keeps its state across changes, so turning replay
     /// protection back on does not re-open old sequence numbers.
-    void set_protection(PayloadProtection protection) noexcept;
+    ///
+    /// set_protection changes the sending mode and accepts only that mode
+    /// from then on; set_accepted widens or narrows the acceptance policy.
+    /// Both fail if a mode needs dependencies that are missing (Sign).
+    [[nodiscard]] Status set_protection(PayloadProtection protection);
+    [[nodiscard]] Status set_accepted(ProtectionSet accepted);
     void set_enforce_freshness(bool on) noexcept;
     void set_enforce_replay_protection(bool on) noexcept;
+    void set_enforce_key_binding(bool on) noexcept;
+    /// Key rotation: sign/seal outbound messages with another key from now on.
+    void set_sending_key(KeyId key_id) noexcept;
+    /// Call after revoking a key: frees its replay window. A key id must not
+    /// be reused afterwards, or old messages would replay into a fresh window.
+    void forget_key(KeyId key_id);
     /// The configuration currently in effect, runtime switches included.
     [[nodiscard]] SecurityConfig config() const noexcept;
 
 private:
+    [[nodiscard]] Status can_send(PayloadProtection mode) const;
+    [[nodiscard]] Status can_accept(ProtectionSet modes) const;
     [[nodiscard]] Result<Bytes> protect(PayloadProtection mode, const SecureBuffer& key,
                                         ByteView nonce, ByteView payload, Bytes aad) const;
     [[nodiscard]] Result<Bytes> unprotect(PayloadProtection mode, const SecureBuffer& key,
-                                          ByteView nonce, ByteView protected_payload,
-                                          Bytes aad) const;
+                                          ByteView nonce, ByteView body, Bytes aad) const;
     [[nodiscard]] Status check_freshness(std::int64_t timestamp_ms) const;
     [[nodiscard]] std::int64_t now_ms() const noexcept;
 
     SecurityConfig config_;  // static part; the switches below override it
     std::atomic<PayloadProtection> protection_;
+    std::atomic<std::uint8_t> accept_;
     std::atomic<bool> enforce_freshness_;
     std::atomic<bool> enforce_replay_protection_;
+    std::atomic<bool> enforce_key_binding_;
+    std::atomic<KeyId> sending_key_id_;
     SecurityDependencies deps_;
     ReplayGuard replay_guard_;
     std::atomic<std::uint64_t> next_sequence_{1};

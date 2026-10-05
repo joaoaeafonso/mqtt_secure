@@ -24,6 +24,8 @@ public:
         : max_tracked_keys_{max_tracked_keys} {}
 
     [[nodiscard]] Status check_and_record(KeyId key_id, std::uint64_t sequence);
+    /// Drops a key's window (after revocation or rotation), freeing its slot.
+    void forget(KeyId key_id);
 
 private:
     struct Window {

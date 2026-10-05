@@ -10,10 +10,11 @@ namespace {
 
 constexpr std::array kMagic{std::byte{'M'}, std::byte{'S'}};
 constexpr std::size_t kVersionOffset = 2;
-constexpr std::size_t kKeyIdOffset = 3;
-constexpr std::size_t kSequenceOffset = 7;
-constexpr std::size_t kTimestampOffset = 15;
-constexpr std::size_t kNonceLenOffset = 23;
+constexpr std::size_t kModeOffset = 3;
+constexpr std::size_t kKeyIdOffset = 4;
+constexpr std::size_t kSequenceOffset = 8;
+constexpr std::size_t kTimestampOffset = 16;
+constexpr std::size_t kNonceLenOffset = 24;
 
 void write_be(Bytes& out, std::uint64_t value, std::size_t width) {
     for (std::size_t i = width; i-- > 0;) {
@@ -30,11 +31,12 @@ std::uint64_t read_be(ByteView data, std::size_t offset, std::size_t width) {
 }
 
 Status write_prefix(Bytes& out, const EnvelopeHeader& header, ByteView nonce) {
-    if (nonce.empty() || nonce.size() > kMaxNonceSize) {
+    if (nonce.size() > kMaxNonceSize) {
         return make_error(ErrorCode::InvalidArgument, "invalid nonce size");
     }
     out.insert(out.end(), kMagic.begin(), kMagic.end());
     write_be(out, header.version, 1);
+    write_be(out, static_cast<std::uint8_t>(header.protection), 1);
     write_be(out, header.key_id, 4);
     write_be(out, header.sequence, 8);
     write_be(out, std::bit_cast<std::uint64_t>(header.timestamp_ms), 8);
@@ -67,6 +69,11 @@ Result<Envelope> parse(ByteView data) {
     if (env.header.version != kVersion) {
         return make_error(ErrorCode::MalformedMessage, "unsupported envelope version");
     }
+    const auto mode = protection_from_wire(std::to_integer<std::uint8_t>(data[kModeOffset]));
+    if (!mode) {
+        return make_error(ErrorCode::MalformedMessage, "unknown protection mode");
+    }
+    env.header.protection = *mode;
     env.header.key_id = static_cast<KeyId>(read_be(data, kKeyIdOffset, 4));
     env.header.sequence = read_be(data, kSequenceOffset, 8);
     env.header.timestamp_ms = std::bit_cast<std::int64_t>(read_be(data, kTimestampOffset, 8));
@@ -75,11 +82,11 @@ Result<Envelope> parse(ByteView data) {
     }
 
     const auto nonce_len = std::to_integer<std::size_t>(data[kNonceLenOffset]);
-    if (nonce_len == 0 || nonce_len > kMaxNonceSize) {
+    if (nonce_len > kMaxNonceSize) {
         return make_error(ErrorCode::MalformedMessage, "invalid nonce length");
     }
     if (data.size() <= kFixedHeaderSize + nonce_len) {
-        return make_error(ErrorCode::MalformedMessage, "envelope has no ciphertext");
+        return make_error(ErrorCode::MalformedMessage, "envelope has no body");
     }
     const auto nonce = data.subspan(kFixedHeaderSize, nonce_len);
     const auto ciphertext = data.subspan(kFixedHeaderSize + nonce_len);

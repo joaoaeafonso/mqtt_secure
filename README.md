@@ -2,14 +2,37 @@
 
 Layered security architecture for MQTT-based IoT communication, C++23.
 
+## Quick start
+
+```bash
+./run.sh            # builds what is missing, starts the live lab, opens the dashboard
+```
+
 ## Build
 
 ```bash
-cmake --preset dev        # Debug + ASan/UBSan   (also: tsan, release, ci)
+cmake --preset dev        # Debug + ASan/UBSan   (also: tsan, release, ci, bench, fuzz)
 cmake --build --preset dev
 ctest --preset dev
 ./build/dev/apps/gateway/msec_gateway_demo
 ```
+
+Load-lab unit tests (Python, no broker needed):
+
+```bash
+tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
+```
+
+Fuzzing (Clang + `libclang-rt-18-dev`): `envelope::parse`, topic validation and
+matching, and the whole inbound `SecurityLayer` path on arbitrary bytes.
+
+```bash
+cmake --preset fuzz && cmake --build --preset fuzz
+./build/fuzz/fuzz/fuzz_security_inbound fuzz/corpus/envelope -max_total_time=60
+```
+
+`tests/vectors/envelope_vectors.txt` is checked by both the C++ tests and the
+Python ones, so the two envelope implementations cannot drift apart.
 
 Requires CMake ≥ 3.25, GCC ≥ 13 or Clang ≥ 17, OpenSSL ≥ 3.0, Ninja, and
 Eclipse Paho MQTT C++ (`libpaho-mqttpp-dev`; `-DMSEC_WITH_PAHO=OFF` to build without it).
@@ -41,6 +64,8 @@ cmake --preset bench && cmake --build --preset bench
 | `6_full`                 | security, defaults               | everything                                         |
 | `7_full_persist_plain`   | `[persistence, security]`        | stores plaintext                                   |
 | `8_full_persist_at_rest` | `[security, persistence]`        | stores envelopes                                   |
+| `9_sign`                 | security, `Sign` (Ed25519)       | proof of origin; payload readable                  |
+| `10_full_key_binding`    | security + `KeyTopicPolicy`      | a key may only publish on its owner's topics       |
 
 Every profile runs in three topic zones (benchmark name `zone/profile/payload:N`):
 
@@ -64,8 +89,12 @@ The benchmark pins glibc's allocator (no heap trimming) so results don't depend
 on run order; `MSEC_BENCH_DEFAULT_MALLOC=1` measures with the defaults.
 
 Scope: the loopback broker is in-process and synchronous, so this measures the
-CPU cost of the layers only. TLS / broker authentication (defence layer 1) and
-network latency are not covered yet.
+CPU cost of the layers only. TLS, broker authentication and network latency are
+measured by the load lab below.
+
+Signatures are the expensive option: on the development machine `9_sign` costs
+~205 µs per message end to end (sign + verify) against ~5.4 µs for `6_full`
+(AES-256-GCM), at 256 B.
 
 ## Load lab: every feature switchable, live
 
@@ -81,14 +110,30 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway ─▶ m
 | Setting | Values | Applied live by |
 |---|---|---|
 | `transport.mode` | `plain` · `tls` · `mtls` | broker restart with only that listener; all clients reconnect |
+| `transport.tls_version` | `1.2` · `1.3` | broker restart |
+| `transport.protocol` | `3.1.1` · `5` (MQTT version) | every client reconnects |
 | `transport.auth` | on/off (username + password) | broker reload (`SIGHUP`); clients without valid credentials are dropped |
-| `transport.acl` | on/off (`open/#` for all, `restricted/` per client) | broker reload, effective on the next message |
-| `payload.protection` | `none` · `auth_only` · `encrypt` | gateway pipeline switch + sensors |
-| `payload.freshness`, `payload.replay` | on/off | gateway pipeline switch |
+| `transport.acl` | on/off (`open/#` for all, `restricted/` per client; off = no ACL at all, `$SYS` included) | broker reload, effective on the next message |
+| `transport.clientid_binding` | on/off (`use_username_as_clientid`) | broker restart |
+| `transport.sys_topics` | on/off (`$SYS/#` statistics) | broker reload |
+| `transport.max_packet`, `transport.max_connections` | numbers, 0 = no limit | broker restart |
+| `payload.protection` | `none` · `auth_only` · `encrypt` · `sign` | gateway pipeline switch + sensors + actuators |
+| `payload.freshness`, `payload.replay` | on/off | gateway pipeline switch + actuators |
+| `payload.key_binding` | on/off (a key may only publish on `+/sensors/<owner>/#`) | gateway pipeline switch |
+| `payload.rate_limit` | msg/s per topic, 0 = off | gateway pipeline switch |
+| `payload.key_epoch` | raise it to rotate every payload key | new keys installed, senders switch, old keys revoked 3 s later |
 | `storage.persistence` | `none` · `plain` · `at-rest` | gateway pipeline switch |
+| `downlink.rate` | gateway → actuator commands/s | gateway; every sensor verifies its commands |
+| `response.revoked` | e.g. `"3,7"`, can only grow | gateway drops the keys, broker the passwords, CRL the certificates (mtls) |
 | `load.rate`, `load.payload`, `load.zone` | numbers / `open` · `restricted` | sensors |
 | `attacker.*` | `enabled`, `impersonate`, `inject_rate`, `replay_rate` | attacker |
-| `load.sensors`, `load.processes`, `load.qos`, `broker.*` | | startup only |
+| `load.sensors`, `load.processes`, `load.qos` (0 · 1 · 2), `broker.*` | | startup only |
+
+Which Mosquitto (2.0.18) options apply on `SIGHUP` and which need a restart was
+measured, not assumed: `sys_interval`, the password file and the ACL reload;
+`use_username_as_clientid`, `max_packet_size` and listener options do not.
+Listener options must come after the `listener` line, or Mosquitto silently
+opens an extra default listener on 1883.
 
 Every setting and its default is documented in `tools/loadgen/lab.example.toml`.
 
@@ -120,10 +165,36 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
     --vary payload.protection=none,auth_only,encrypt --settle 3 --duration 10
 ```
 
-Columns: offered vs. delivered msg/s, `loss_pct`, `rejected`, `leak_pct` (share
-the attacker received via `#`), `forged_ok` / `replays_ok` (attacks the gateway
-accepted), latency p50/p99 (sensor send → after the gateway pipeline), gateway
-CPU % and µs per message, broker CPU %. Results go to `build/loadtest/`.
+Columns: offered vs. delivered msg/s, `loss_pct`, `rejected` (and by reason),
+`rate_limited`, `leak_pct` (share the attacker received via `#`), `forged_ok` /
+`replays_ok` (attacks the gateway accepted), downlink `cmd_sent` / `cmd_ok` /
+`cmd_rejected`, `kicked` (sensor connections lost), latency p50/p99 (sensor send →
+after the gateway pipeline), gateway CPU % and µs per message, broker CPU %.
+Results go to `build/loadtest/`.
+
+**Scenarios**: named attack-vs-defence experiments with the outcome the design
+predicts, reported as PASS/FAIL (a regression test for the whole system, and a
+results table for a report):
+
+```bash
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --list
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --set load.sensors=20
+```
+
+| Scenario | Attack vs. defence | Expected |
+|---|---|---|
+| `eavesdrop-open` / `eavesdrop-acl` | subscribe to `#` vs. none / ACL | everything leaks / nothing leaks |
+| `impersonate-no-auth` / `-auth` | claim username `gateway` vs. ACL / ACL + passwords | the claim passes the ACL / the broker refuses it |
+| `inject-unprotected` / `-auth-only` / `-sign` | forged readings vs. none / GMAC / Ed25519 | accepted / rejected / rejected |
+| `replay-no-checks` / `-freshness-only` / `-window` | replays vs. none / 60 s freshness / replay window | accepted / **still accepted** / rejected |
+| `flood-rate-limit` | flood one topic vs. 30 msg/s per topic | excess dropped before crypto |
+| `downlink-commands` | gateway → actuators, protected | every command verified |
+| `modern-transport` | TLS 1.3 + MQTT 5 | works |
+| `key-rotation` | rotate every key while traffic flows | no rejections |
+| `revocation` | revoke sensor-1 | sensor-1 locked out, others continue |
+
+`replay-freshness-only` is the instructive one: a freshness window alone lets
+every replay younger than 60 s through; only the sequence-number window stops them.
 
 ### Sensors and attackers on other machines
 
@@ -180,9 +251,15 @@ control port (8089). The dashboard has no authentication: it binds to
 How it works:
 
 - Fresh credentials are issued per run (`pki.py`): a broker certificate for
-  `localhost`, `127.0.0.1` and the advertised address, and a certificate,
-  password and payload key per client. The attacker gets only the public CA
-  certificate.
+  `localhost`, `127.0.0.1` and the advertised address, and per client a
+  certificate, a password, an AES key and an Ed25519 key pair. The gateway holds
+  every AES key and every public key but only its own private key, so a
+  signature proves which sensor made a message. The attacker gets only the
+  public CA certificate.
+- Every sensor is also an actuator: it subscribes to
+  `<zone>/actuators/sensor-<n>/cmd` and verifies the gateway's commands with the
+  same checks as the C++ receiver (mode policy, freshness, sender = gateway key,
+  replay window).
 - Legitimate clients always present their credentials, so switching
   authentication never interrupts them; only the attacker gets dropped.
 - With `mtls` the certificate CN is the MQTT username (`use_identity_as_username`),
@@ -217,6 +294,8 @@ flowchart TB
     subgraph sec[msec::security]
         SL[SecurityLayer]
         AE[[IAeadCipher]] --- GCM[openssl::AesGcmCipher]
+        SG[[ISignatureScheme]] --- ED[openssl::Ed25519Signer]
+        KP[[IKeyAuthorization]] --- KTP[KeyTopicPolicy]
         KS[[IKeyStore]]
         RG[ReplayGuard]
         EN[Envelope]
@@ -225,13 +304,17 @@ flowchart TB
         PEL[PersistenceLayer]
         RP[[IMessageRepository]] --- IMR[InMemoryMessageRepository]
     end
+    subgraph limits[msec::limits]
+        RL[RateLimitLayer]
+    end
     main --> EP
     EP --> PL --> IL
     EP --> IC --- LB
     IC --- PC
     SL -. implements .-> IL
     PEL -. implements .-> IL
-    SL --> AE & KS & RG & EN
+    RL -. implements .-> IL
+    SL --> AE & SG & KP & KS & RG & EN
     PEL --> RP
 ```
 
@@ -251,6 +334,7 @@ Rules are keyed by client id, which is only a claim until broker authentication
 core  ◀── mqtt
 core  ◀── security
 core  ◀── data
+core  ◀── limits
 apps  ──▶ everything (composition root)
 ```
 
@@ -294,8 +378,7 @@ keeps its state across changes.
 3. `add_subdirectory(modules/<name>)` in the root `CMakeLists.txt`.
 4. `.add(...)` it in the pipeline in `main.cpp`.
 
-Candidate layers: rate limiting / DoS protection, schema validation,
-access control (topic ACLs), audit log, compression (place it *above*
+Candidate layers: schema validation, audit log, compression (place it *above*
 security: compressing ciphertext is useless and compress-then-encrypt can
 leak information, see CRIME/BREACH, so think about whether you want it at all).
 
@@ -305,18 +388,28 @@ Two independent layers of protection (defence in depth):
 
 | Layer | Mechanism | Protects against |
 |---|---|---|
-| Transport | TLS (`ConnectionOptions::tls`, mutual TLS) | network eavesdropping, MITM to broker |
-| Payload (`SecurityLayer`) | AES-256-GCM AEAD, end-to-end | a **compromised or curious broker**, rogue subscribers |
+| Transport | TLS 1.2/1.3 (`ConnectionOptions::tls`, mutual TLS), passwords, ACL, client-id binding | network eavesdropping, MITM to broker, unauthorised clients, session takeover |
+| Payload (`SecurityLayer`) | AES-256-GCM AEAD or Ed25519 signatures, end-to-end | a **compromised or curious broker**, rogue subscribers, other devices |
+| Gateway (`RateLimitLayer`) | token bucket per topic, before any crypto | message floods |
 
 The payload layer works even if the broker is untrusted, which TLS alone
 cannot provide since TLS terminates at the broker.
 
-### Envelope format (big-endian)
+### Envelope format v2 (big-endian)
 
 ```
-| "MS" | ver | key id (4) | sequence (8) | timestamp ms (8) | N | nonce (N) | ciphertext ‖ tag |
-|<───────────────── authenticated as associated data (+ MQTT topic) ─────────────────>|
+| "MS" | ver | mode | key id (4) | sequence (8) | timestamp ms (8) | N | nonce (N) | body |
+|<──────────────── authenticated as associated data (+ MQTT topic) ────────────────>|
+
+mode 1 encrypt    body = ciphertext ‖ GCM tag
+mode 2 auth_only  body = payload ‖ GCM tag over (AAD ‖ payload)
+mode 3 sign       body = payload ‖ Ed25519 signature over (AAD ‖ payload), N = 0
 ```
+
+The mode travels in the header, so receivers decide by policy which modes they
+accept (`SecurityConfig::accept`); anything else is `ProtectionNotAccepted`. A
+key holder therefore cannot downgrade traffic, and relabelling the mode breaks
+authentication because the header is part of the AAD.
 
 ### Threats addressed
 
@@ -330,13 +423,26 @@ cannot provide since TLS terminates at the broker.
 | Delayed / pre-recorded messages | timestamp freshness window | `RejectsExpiredMessages` |
 | Forged plaintext injection | envelope parse + authentication | `AttackerCannotReplayOrInject` |
 | Compromised device | per-device key ids + revocation | `RejectsRevokedKey` |
+| Compromised device writing as another device | key → topic binding (`KeyTopicPolicy`) | `KeyMayOnlyPublishOnItsOwnersTopics` |
+| Protection downgrade | mode in the authenticated header + acceptance policy | `ReceiverPolicyDecidesWhichModesAreAccepted`, `ModeFieldIsAuthenticated` |
+| Gateway (or anyone with the shared key) forging device data | Ed25519 signatures: the gateway holds only public keys | `SignedPayloadIsReadableVerifiableAndTamperProof` |
+| Stolen or leaked keys | key rotation (epochs) + revocation, replay windows freed | `SendingKeyCanBeRotated`, `ForgettingAKeyFreesItsSlot` |
+| Message floods | per-topic rate limit before crypto, bounded state | `limits_tests` |
 | Memory exhaustion via fake senders | bounded `ReplayGuard`, bounded repository | `KeysAreIndependentAndBounded` |
 | Decryption oracle | uniform `AuthenticationFailed`; replay state updated only after auth | — |
 
 ### Known limitations (honest list for the report)
 
-- **Key distribution** is out of scope: keys are pre-shared. Next step:
-  provisioning, rotation, or an ECDH handshake per device.
+- **Key distribution**: keys are pre-shared (the lab's controller distributes
+  them over its pinned TLS channel). Rotation and revocation exist; an ECDH
+  handshake per device would remove pre-shared secrets altogether.
+- **Downlink uses a group key in the AEAD modes.** Every actuator holds the
+  gateway's AES key, so a compromised actuator can forge commands to all the
+  others. With `sign` the actuators hold only the gateway's public key and
+  cannot. This is the main argument for signatures on command paths.
+- **The rate limit is per topic**, and the publisher chooses the topic: an
+  attacker flooding a victim's topic also uses up the victim's budget.
+  Per-client limits belong in the broker, which knows who sent what.
 - **Sequence counters are not persisted.** A sender restart restarts at 1 and
   the receiver will reject it as a replay until the window is passed. Fix:
   persist the counter, or add an epoch/session id to the header.
@@ -345,8 +451,6 @@ cannot provide since TLS terminates at the broker.
 - **Random 96-bit nonces** are safe for roughly 2³² messages per key. For
   long-lived keys, rotate or switch to XChaCha20-Poly1305.
 - **One key = one sender.** Sharing a key across devices breaks the replay window.
-- The loopback broker is a test double; a real `IMqttClient` adapter
-  (Eclipse Paho C++ or libmosquitto) is the next step.
 
 ## Engineering practices
 

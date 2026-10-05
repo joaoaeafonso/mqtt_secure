@@ -41,7 +41,8 @@ public:
     void set_message_handler(MessageHandler handler) override;
 
 private:
-    void on_message(const std::string& topic, ByteView payload, QoS qos, bool retain);
+    void on_message(const std::string& topic, ByteView payload, QoS qos, bool retain,
+                    bool duplicate);
 
     void close_locked();
     /// Waits for `token`, then parks it in last_token_ (see there).

@@ -5,4 +5,4 @@ endif()
 
 add_executable(msec_load_gateway main.cpp)
 target_link_libraries(msec_load_gateway PRIVATE
-    msec::mqtt msec::security msec::data msec::project_options)
+    msec::mqtt msec::security msec::data msec::limits msec::project_options)

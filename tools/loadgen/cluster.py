@@ -14,9 +14,11 @@ Trust bootstrap, in this order:
   3. For each sensor it is assigned, the agent generates the private key
      locally and sends only a CSR; the controller signs it for exactly the
      identity it assigned. Sensor private keys never leave the agent.
-  4. Shared secrets that are shared by nature (MQTT passwords, AES payload
-     keys) travel only over this verified channel, and only those of the
-     sensors the agent runs. The attacker role receives only the public CA.
+  4. Secrets the controller must know anyway (MQTT passwords, AES payload
+     keys, Ed25519 payload signing keys) travel only over this verified
+     channel, and only those of the sensors the agent runs (plus the
+     gateway's downlink AES key and public key, which every actuator needs).
+     The attacker role receives only the public CA.
 
 The controller identity (CA, its certificate and the token) persists in a
 state directory, so agents can stay up across many lab runs and reconnect on
@@ -40,8 +42,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pki as pki_module
+from sensors import summarize
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2  # 2: key files carry kinds and owners (aead + Ed25519)
 DEFAULT_CONTROL_PORT = 8089
 ROLES = ("sensors", "attacker")
 
@@ -294,18 +297,21 @@ class RemoteSensors:
     """A slice of the sensor fleet running on an agent; same interface as SensorFleet."""
 
     def __init__(self, agent: AgentHandle, ids: list[int], ca: pki_module.CertificateAuthority,
-                 passwords: dict[str, str], keys: dict[int, str], settings: dict) -> None:
+                 passwords: dict[str, str], key_lines: list[str], settings: dict,
+                 record_issued=None) -> None:
         self.agent, self.ids = agent, ids
         agent.send({"type": "assign", "role": "sensors", "ids": ids})
         csrs = agent.expect("csrs", timeout=120)["csrs"]
         certs = {}
         for sensor_id in ids:
             name = f"sensor-{sensor_id}"
-            certs[name] = pki_module.cert_pem(
-                ca.issue_from_csr(csrs[name], expected_cn=name)).decode()
+            pem = pki_module.cert_pem(ca.issue_from_csr(csrs[name], expected_cn=name))
+            if record_issued:
+                record_issued(name, pem)  # kept for revocation (CRL)
+            certs[name] = pem.decode()
         agent.send({"type": "provision", "ca": ca.pem.decode(), "certs": certs,
                     "passwords": {f"sensor-{i}": passwords[f"sensor-{i}"] for i in ids},
-                    "keys": {str(i): keys[i] for i in ids},
+                    "keys": key_lines,
                     "settings": {**settings, "transport": transport_for_agent(settings["transport"])}})
         agent.expect("started", timeout=60)
 
@@ -364,14 +370,18 @@ class FleetGroup:
         for m in self.members:
             m.update(**change)
 
+    def rotate(self, keys, epoch: int) -> None:
+        """Key rotation: each member gets only its own sensors' new keys."""
+        for m in self.members:
+            m.update(add_keys=pki_module.device_view(keys, m.ids).lines())
+            m.update(epoch=epoch)
+
     def poll(self) -> dict:
         reports = [(name, m.poll()) for name, m in zip(self.names, self.members)]
+        out = summarize([r for _, r in reports], sum(r.get("total", 0) for _, r in reports))
         errors = [f"{name}: {r['last_error']}" for name, r in reports if r.get("last_error")]
-        return {"sent": sum(r.get("sent", 0) for _, r in reports),
-                "skipped": sum(r.get("skipped", 0) for _, r in reports),
-                "up": sum(r.get("up", 0) for _, r in reports),
-                "total": sum(r.get("total", 0) for _, r in reports),
-                "last_error": errors[-1] if errors else ""}
+        out["last_error"] = errors[-1] if errors else ""
+        return out
 
     def stop(self) -> None:
         for m in self.members:

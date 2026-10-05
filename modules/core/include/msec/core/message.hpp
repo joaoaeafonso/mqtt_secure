@@ -38,7 +38,8 @@ struct Message {
     Topic topic;
     Bytes payload{};
     QoS qos{QoS::AtLeastOnce};
-    bool retain{false};
+    bool retain{false};     ///< inbound: delivered from the broker's retained store
+    bool duplicate{false};  ///< inbound: the DUP flag (a QoS 1/2 redelivery)
 };
 
 }  // namespace msec

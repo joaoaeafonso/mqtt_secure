@@ -14,19 +14,23 @@ namespace msec::security {
 ///
 ///   offset size  field
 ///   0      2     magic "MS"
-///   2      1     version (1)
-///   3      4     key id
-///   7      8     sequence number      (monotonic per key, starts at 1)
-///   15     8     timestamp, ms since Unix epoch (signed)
-///   23     1     nonce length N
-///   24     N     nonce
-///   24+N   …     ciphertext || tag
+///   2      1     version (2)
+///   3      1     protection mode      (1 encrypt, 2 auth_only, 3 sign)
+///   4      4     key id
+///   8      8     sequence number      (monotonic per key, starts at 1)
+///   16     8     timestamp, ms since Unix epoch (signed)
+///   24     1     nonce length N       (0 for sign: signatures need no nonce)
+///   25     N     nonce
+///   25+N   …     body:  encrypt    ciphertext || tag
+///                       auth_only  payload    || tag
+///                       sign       payload    || signature
 ///
-/// Everything before the ciphertext, plus the MQTT topic, is authenticated as
-/// associated data, so header fields cannot be altered and a valid message
-/// cannot be re-published onto a different topic.
+/// Everything before the body, plus the MQTT topic, is authenticated as
+/// associated data, so header fields (the mode included) cannot be altered and
+/// a valid message cannot be re-published onto a different topic.
 struct EnvelopeHeader {
-    std::uint8_t version{1};
+    std::uint8_t version{2};
+    PayloadProtection protection{PayloadProtection::Encrypt};
     KeyId key_id{0};
     std::uint64_t sequence{0};
     std::int64_t timestamp_ms{0};
@@ -35,13 +39,13 @@ struct EnvelopeHeader {
 struct Envelope {
     EnvelopeHeader header{};
     Bytes nonce{};
-    Bytes ciphertext{};
+    Bytes ciphertext{};  ///< the body (see above)
 };
 
 namespace envelope {
 
-inline constexpr std::uint8_t kVersion = 1;
-inline constexpr std::size_t kFixedHeaderSize = 24;
+inline constexpr std::uint8_t kVersion = 2;
+inline constexpr std::size_t kFixedHeaderSize = 25;
 inline constexpr std::size_t kMaxNonceSize = 32;
 
 [[nodiscard]] Result<Bytes> serialize(const Envelope& envelope);

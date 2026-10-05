@@ -1,10 +1,10 @@
-#include "msec/mqtt/topic_filter.hpp"
+#include "msec/core/topic_filter.hpp"
 
 #include <vector>
 
 #include "msec/core/message.hpp"
 
-namespace msec::mqtt {
+namespace msec {
 namespace {
 
 std::vector<std::string_view> split_levels(std::string_view text) {
@@ -67,4 +67,4 @@ bool topic_matches(std::string_view filter, std::string_view topic) {
     return f.size() == t.size();
 }
 
-}  // namespace msec::mqtt
+}  // namespace msec

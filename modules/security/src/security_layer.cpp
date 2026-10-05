@@ -19,19 +19,67 @@ Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig conf
     if (config.max_message_age.count() <= 0 || config.max_clock_skew.count() < 0) {
         return make_error(ErrorCode::InvalidArgument, "invalid freshness configuration");
     }
-    return std::make_unique<SecurityLayer>(PassKey{}, config, std::move(deps));
+    if (!config.accept) {
+        config.accept = ProtectionSet{config.protection};
+    }
+    auto layer = std::make_unique<SecurityLayer>(PassKey{}, config, std::move(deps));
+    if (auto ok = layer->can_send(config.protection); !ok) {
+        return std::unexpected{std::move(ok.error())};
+    }
+    if (auto ok = layer->can_accept(*config.accept); !ok) {
+        return std::unexpected{std::move(ok.error())};
+    }
+    return layer;
 }
 
 SecurityLayer::SecurityLayer(PassKey /*key*/, SecurityConfig config, SecurityDependencies deps)
     : config_{config},
       protection_{config.protection},
+      accept_{config.accept.value_or(ProtectionSet{config.protection}).bits()},
       enforce_freshness_{config.enforce_freshness},
       enforce_replay_protection_{config.enforce_replay_protection},
+      enforce_key_binding_{config.enforce_key_binding},
+      sending_key_id_{config.sending_key_id},
       deps_{std::move(deps)},
       replay_guard_{config.max_tracked_senders} {}
 
-void SecurityLayer::set_protection(PayloadProtection protection) noexcept {
+Status SecurityLayer::can_send(PayloadProtection mode) const {
+    if (mode == PayloadProtection::Sign && (!deps_.signer || !deps_.signing_keys)) {
+        return make_error(ErrorCode::InvalidState,
+                          "sign mode needs a signature scheme and signing keys");
+    }
+    return {};
+}
+
+Status SecurityLayer::can_accept(ProtectionSet modes) const {
+    if (modes.empty()) {
+        return make_error(ErrorCode::InvalidArgument, "accept at least one protection mode");
+    }
+    if (modes.contains(PayloadProtection::Sign) && (!deps_.signer || !deps_.verify_keys)) {
+        return make_error(ErrorCode::InvalidState,
+                          "accepting signatures needs a signature scheme and public keys");
+    }
+    return {};
+}
+
+Status SecurityLayer::set_protection(PayloadProtection protection) {
+    if (auto ok = can_send(protection); !ok) {
+        return ok;
+    }
+    if (auto ok = can_accept(ProtectionSet{protection}); !ok) {
+        return ok;
+    }
     protection_.store(protection, std::memory_order_relaxed);
+    accept_.store(ProtectionSet{protection}.bits(), std::memory_order_relaxed);
+    return {};
+}
+
+Status SecurityLayer::set_accepted(ProtectionSet accepted) {
+    if (auto ok = can_accept(accepted); !ok) {
+        return ok;
+    }
+    accept_.store(accepted.bits(), std::memory_order_relaxed);
+    return {};
 }
 
 void SecurityLayer::set_enforce_freshness(bool on) noexcept {
@@ -42,22 +90,44 @@ void SecurityLayer::set_enforce_replay_protection(bool on) noexcept {
     enforce_replay_protection_.store(on, std::memory_order_relaxed);
 }
 
+void SecurityLayer::set_enforce_key_binding(bool on) noexcept {
+    enforce_key_binding_.store(on, std::memory_order_relaxed);
+}
+
+void SecurityLayer::set_sending_key(KeyId key_id) noexcept {
+    sending_key_id_.store(key_id, std::memory_order_relaxed);
+}
+
+void SecurityLayer::forget_key(KeyId key_id) { replay_guard_.forget(key_id); }
+
 SecurityConfig SecurityLayer::config() const noexcept {
     SecurityConfig current = config_;
+    current.sending_key_id = sending_key_id_.load(std::memory_order_relaxed);
     current.protection = protection_.load(std::memory_order_relaxed);
+    current.accept = ProtectionSet::from_bits(accept_.load(std::memory_order_relaxed));
     current.enforce_freshness = enforce_freshness_.load(std::memory_order_relaxed);
     current.enforce_replay_protection = enforce_replay_protection_.load(std::memory_order_relaxed);
+    current.enforce_key_binding = enforce_key_binding_.load(std::memory_order_relaxed);
     return current;
 }
 
 Result<Message> SecurityLayer::on_outbound(Message message) {
-    auto key = deps_.key_store->find(config_.sending_key_id);
+    const PayloadProtection mode = protection_.load(std::memory_order_relaxed);
+    const bool sign = mode == PayloadProtection::Sign;
+    const auto& store = sign ? deps_.signing_keys : deps_.key_store;
+    if (!store) {
+        return make_error(ErrorCode::InvalidState, "no signing keys configured");
+    }
+    const KeyId sending_key = sending_key_id_.load(std::memory_order_relaxed);
+    auto key = store->find(sending_key);
     if (!key) {
         return std::unexpected{std::move(key.error())};
     }
     const SecureBuffer& key_material = **key;
-    if (key_material.size() != deps_.cipher->key_size()) {
-        return make_error(ErrorCode::CryptoFailure, "key size does not match cipher");
+    const std::size_t expected_size =
+        sign ? deps_.signer->private_key_size() : deps_.cipher->key_size();
+    if (key_material.size() != expected_size) {
+        return make_error(ErrorCode::CryptoFailure, "key size does not match algorithm");
     }
 
     const std::uint64_t sequence = next_sequence_.fetch_add(1, std::memory_order_relaxed);
@@ -65,13 +135,16 @@ Result<Message> SecurityLayer::on_outbound(Message message) {
         return make_error(ErrorCode::InvalidState, "sequence space exhausted; rotate key");
     }
 
-    Bytes nonce(deps_.cipher->nonce_size());
-    if (auto ok = deps_.random->fill(nonce); !ok) {
-        return std::unexpected{std::move(ok.error())};
+    Bytes nonce(sign ? 0 : deps_.cipher->nonce_size());
+    if (!nonce.empty()) {
+        if (auto ok = deps_.random->fill(nonce); !ok) {
+            return std::unexpected{std::move(ok.error())};
+        }
     }
 
     const EnvelopeHeader header{.version = envelope::kVersion,
-                                .key_id = config_.sending_key_id,
+                                .protection = mode,
+                                .key_id = sending_key,
                                 .sequence = sequence,
                                 .timestamp_ms = now_ms()};
 
@@ -79,14 +152,13 @@ Result<Message> SecurityLayer::on_outbound(Message message) {
     if (!aad) {
         return std::unexpected{std::move(aad.error())};
     }
-    auto ciphertext = protect(protection_.load(std::memory_order_relaxed), key_material, nonce,
-                              message.payload, std::move(*aad));
-    if (!ciphertext) {
-        return std::unexpected{std::move(ciphertext.error())};
+    auto body = protect(mode, key_material, nonce, message.payload, std::move(*aad));
+    if (!body) {
+        return std::unexpected{std::move(body.error())};
     }
 
     auto wire = envelope::serialize(
-        Envelope{.header = header, .nonce = std::move(nonce), .ciphertext = std::move(*ciphertext)});
+        Envelope{.header = header, .nonce = std::move(nonce), .ciphertext = std::move(*body)});
     if (!wire) {
         return std::unexpected{std::move(wire.error())};
     }
@@ -100,8 +172,16 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
     if (!env) {
         return std::unexpected{std::move(env.error())};
     }
-    if (env->nonce.size() != deps_.cipher->nonce_size()) {
-        return make_error(ErrorCode::MalformedMessage, "nonce size does not match cipher");
+    const PayloadProtection mode = env->header.protection;
+    // The mode field is not authenticated yet, but it is part of the AAD: a
+    // forged mode can only make verification fail, never weaken it.
+    if (!ProtectionSet::from_bits(accept_.load(std::memory_order_relaxed)).contains(mode)) {
+        return make_error(ErrorCode::ProtectionNotAccepted,
+                          std::format("protection mode '{}' not accepted", to_string(mode)));
+    }
+    const bool sign = mode == PayloadProtection::Sign;
+    if (env->nonce.size() != (sign ? 0 : deps_.cipher->nonce_size())) {
+        return make_error(ErrorCode::MalformedMessage, "nonce size does not match algorithm");
     }
 
     // Cheap checks first: reject stale/future messages before doing crypto.
@@ -111,7 +191,10 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
         }
     }
 
-    auto key = deps_.key_store->find(env->header.key_id);
+    const auto& store = sign ? deps_.verify_keys : deps_.key_store;
+    auto key = store ? store->find(env->header.key_id)
+                     : Result<std::shared_ptr<const SecureBuffer>>{
+                           make_error(ErrorCode::NotFound, "no key store")};
     if (!key) {
         return make_error(ErrorCode::AuthenticationFailed, "unknown key id");
     }
@@ -119,11 +202,20 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
     if (!aad) {
         return std::unexpected{std::move(aad.error())};
     }
-    auto plaintext = unprotect(protection_.load(std::memory_order_relaxed), **key, env->nonce,
-                               env->ciphertext, std::move(*aad));
+    auto plaintext = unprotect(mode, **key, env->nonce, env->ciphertext, std::move(*aad));
     if (!plaintext) {
-        // Do not distinguish *why* decryption failed: avoids an oracle.
+        // Do not distinguish *why* verification failed: avoids an oracle.
         return make_error(ErrorCode::AuthenticationFailed, "message authentication failed");
+    }
+
+    // Authentic, but is this key allowed to speak on this topic? Checked only
+    // after authentication, so unauthenticated input cannot probe the policy.
+    if (deps_.authorization && enforce_key_binding_.load(std::memory_order_relaxed) &&
+        !deps_.authorization->may_publish(env->header.key_id, message.topic.str())) {
+        secure_zero(*plaintext);
+        return make_error(ErrorCode::PermissionDenied,
+                          std::format("key {} may not publish on '{}'", env->header.key_id,
+                                      message.topic.str()));
     }
 
     // Only authenticated messages may advance the replay window.
@@ -142,13 +234,15 @@ Result<Message> SecurityLayer::on_inbound(Message message) {
 
 // Encrypt:          ciphertext || tag  = AEAD(payload, aad)
 // AuthenticateOnly: payload    || tag, where tag = AEAD(empty, aad || payload)
+// Sign:             payload    || sig, where sig = Sign(private key, aad || payload)
 Result<Bytes> SecurityLayer::protect(PayloadProtection mode, const SecureBuffer& key,
                                      ByteView nonce, ByteView payload, Bytes aad) const {
     if (mode == PayloadProtection::Encrypt) {
         return deps_.cipher->seal(key, nonce, payload, aad);
     }
     aad.insert(aad.end(), payload.begin(), payload.end());
-    auto tag = deps_.cipher->seal(key, nonce, {}, aad);
+    auto tag = mode == PayloadProtection::Sign ? deps_.signer->sign(key, aad)
+                                               : deps_.cipher->seal(key, nonce, {}, aad);
     if (!tag) {
         return tag;
     }
@@ -160,19 +254,22 @@ Result<Bytes> SecurityLayer::protect(PayloadProtection mode, const SecureBuffer&
 }
 
 Result<Bytes> SecurityLayer::unprotect(PayloadProtection mode, const SecureBuffer& key,
-                                       ByteView nonce, ByteView protected_payload,
-                                       Bytes aad) const {
+                                       ByteView nonce, ByteView body, Bytes aad) const {
     if (mode == PayloadProtection::Encrypt) {
-        return deps_.cipher->open(key, nonce, protected_payload, aad);
+        return deps_.cipher->open(key, nonce, body, aad);
     }
-    const auto tag_size = deps_.cipher->tag_size();
-    if (protected_payload.size() < tag_size) {
+    const bool sign = mode == PayloadProtection::Sign;
+    const auto tag_size = sign ? deps_.signer->signature_size() : deps_.cipher->tag_size();
+    if (body.size() < tag_size) {
         return make_error(ErrorCode::AuthenticationFailed, "payload shorter than tag");
     }
-    const ByteView payload = protected_payload.first(protected_payload.size() - tag_size);
+    const ByteView payload = body.first(body.size() - tag_size);
+    const ByteView tag = body.last(tag_size);
     aad.insert(aad.end(), payload.begin(), payload.end());
-    if (auto ok = deps_.cipher->open(key, nonce, protected_payload.last(tag_size), aad); !ok) {
-        return std::unexpected{std::move(ok.error())};
+    const Status ok = sign ? deps_.signer->verify(key.view(), aad, tag)
+                           : deps_.cipher->open(key, nonce, tag, aad).transform([](auto&&) {});
+    if (!ok) {
+        return std::unexpected{ok.error()};
     }
     return Bytes(payload.begin(), payload.end());
 }

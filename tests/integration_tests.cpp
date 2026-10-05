@@ -93,8 +93,8 @@ TEST_F(EndToEnd, AttackerCannotReplayOrInject) {
     EXPECT_EQ(bytes_to_string(captured[0].payload).find("21.5"), std::string::npos);
 
     std::vector<ErrorCode> reasons;
-    gateway_->on_rejected([&](std::string_view topic, const Error& error) {
-        EXPECT_EQ(topic, "sensors/room1/temp");
+    gateway_->on_rejected([&](const mqtt::Endpoint::Rejected& rejected, const Error& error) {
+        EXPECT_EQ(rejected.topic, "sensors/room1/temp");
         reasons.push_back(error.code);
     });
 

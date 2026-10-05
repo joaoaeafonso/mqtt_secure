@@ -1,6 +1,10 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "base",
@@ -51,18 +55,71 @@
       "cacheVariables": {
         "MSEC_ENABLE_CLANG_TIDY": "ON"
       }
+    },
+    {
+      "name": "fuzz",
+      "displayName": "libFuzzer + ASan/UBSan (Clang)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "MSEC_ENABLE_SANITIZERS": "ON",
+        "MSEC_BUILD_FUZZERS": "ON",
+        "MSEC_BUILD_TESTS": "OFF",
+        "MSEC_BUILD_APPS": "OFF",
+        "MSEC_WITH_PAHO": "OFF",
+        "CMAKE_CXX_FLAGS": "-D__cpp_concepts=202002L -Wno-builtin-macro-redefined"
+      },
+      "description": "libstdc++ 13 only exposes std::expected when __cpp_concepts >= 202002L, which Clang 18 implements but does not advertise; the flag says so."
     }
   ],
   "buildPresets": [
-    { "name": "dev",     "configurePreset": "dev" },
-    { "name": "tsan",    "configurePreset": "tsan" },
-    { "name": "release", "configurePreset": "release" },
-    { "name": "bench",   "configurePreset": "bench" },
-    { "name": "ci",      "configurePreset": "ci" }
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "bench",
+      "configurePreset": "bench"
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci"
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz"
+    }
   ],
   "testPresets": [
-    { "name": "dev",  "configurePreset": "dev",  "output": { "outputOnFailure": true } },
-    { "name": "tsan", "configurePreset": "tsan", "output": { "outputOnFailure": true } },
-    { "name": "ci",   "configurePreset": "ci",   "output": { "outputOnFailure": true } }
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

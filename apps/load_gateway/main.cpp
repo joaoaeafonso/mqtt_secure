@@ -4,12 +4,17 @@
 //
 //   transport  plain | tls | mtls     (reconnects to the matching listener)
 //   username / password               (broker authentication)
-//   protection none | auth_only | encrypt
+//   protocol   3.1.1 | 5
+//   protection none | auth_only | encrypt | sign
 //   freshness  on | off
 //   replay     on | off
+//   key_binding on | off       (a key may only publish on its owner's topics)
+//   rate_limit msg/s per topic (0 = off)
 //   persistence none | plain | at-rest
+//   downlink   commands/s to the actuators (0 = off)
 //
-//   sensors ─▶ mosquitto ─▶ PahoClient ─▶ [persist-plain] ◀ [security] ◀ [persist-at-rest] ─▶ stats
+//   sensors ─▶ mosquitto ─▶ PahoClient ─▶ [rate limit] ▶ [persist-at-rest] ▶ [security] ▶ [persist-plain] ─▶ stats
+//   stats   ◀─ (gateway) ─ commands ─▶ [persist-plain] ▶ [security] ▶ … ─▶ mosquitto ─▶ actuators
 //
 // The pipeline is built once with every layer present, each wrapped in a
 // SwitchableLayer, so changing a feature never rebuilds or pauses it.
@@ -21,8 +26,14 @@
 // replays. Both are counted when the gateway accepts them, so the effect of
 // each switch on attacks is visible.
 //
+// Key file: "<key id> <kind> <hex> [owner]" per line, kind = aead | sign-private
+// | sign-public (a line with only "<id> <hex>" is an aead key). Key 0 is the
+// gateway's own (downlink); owners name devices for the key → topic policy.
+//
 // Control (with --control stdin), one command per line:
 //   set <key> <value>   any option below, without the leading "--"
+//   key add <id> <kind> <hex> [owner]   install a key (rotation)
+//   key revoke <id>     remove every key with that id (revocation)
 //   reconnect           apply transport/credential settings
 //   reset               start a new measurement window
 //   summary             print the window's summary as a JSON line
@@ -48,6 +59,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -63,10 +75,13 @@
 #include "msec/core/switchable_layer.hpp"
 #include "msec/data/in_memory_repository.hpp"
 #include "msec/data/persistence_layer.hpp"
+#include "msec/limits/rate_limit_layer.hpp"
 #include "msec/mqtt/endpoint.hpp"
 #include "msec/mqtt/paho/paho_client.hpp"
+#include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
 #include "msec/security/openssl/aes_gcm_cipher.hpp"
+#include "msec/security/openssl/ed25519_signer.hpp"
 #include "msec/security/openssl/random_source.hpp"
 #include "msec/security/security_layer.hpp"
 
@@ -112,14 +127,20 @@ void warn(std::string_view message) {
 // --------------------------------------------------------------- settings ---
 
 enum class Transport : std::uint8_t { Plain, Tls, MutualTls };
-enum class Protection : std::uint8_t { None, AuthOnly, Encrypt };
+enum class Protection : std::uint8_t { None, AuthOnly, Encrypt, Sign };
 enum class Persistence : std::uint8_t { None, Plaintext, AtRest };
 
 constexpr std::string_view to_string(Transport t) {
     return t == Transport::Plain ? "plain" : t == Transport::Tls ? "tls" : "mtls";
 }
 constexpr std::string_view to_string(Protection p) {
-    return p == Protection::None ? "none" : p == Protection::AuthOnly ? "auth_only" : "encrypt";
+    switch (p) {
+        case Protection::None:     return "none";
+        case Protection::AuthOnly: return "auth_only";
+        case Protection::Encrypt:  return "encrypt";
+        case Protection::Sign:     return "sign";
+    }
+    return "?";
 }
 constexpr std::string_view to_string(Persistence p) {
     return p == Persistence::None ? "none" : p == Persistence::Plaintext ? "plain" : "at-rest";
@@ -140,12 +161,20 @@ struct Settings {
     std::string password{};
     std::vector<std::string> subscriptions{};
     QoS qos{QoS::AtMostOnce};
+    msec::mqtt::ProtocolVersion protocol{msec::mqtt::ProtocolVersion::V3_1_1};
     // pipeline
     Protection protection{Protection::Encrypt};
     bool freshness{true};
     bool replay{true};
+    bool key_binding{true};
+    int sending_key{0};  // the gateway's own key id (downlink); changes on rotation
+    int rate_limit{0};  // msg/s per topic, 0 = off
     Persistence persistence{Persistence::None};
     std::string keys_file{};
+    std::vector<std::string> key_patterns{};
+    // downlink
+    int downlink{0};  // commands/s, 0 = off
+    std::string zone{"restricted"};
     // process
     std::chrono::milliseconds report{1000};
     std::chrono::seconds duration{0};  // 0: until SIGINT/SIGTERM/quit
@@ -166,14 +195,23 @@ transport (applied on connect / `reconnect`):
   --cert FILE --key FILE  client certificate and key (mtls)
   --client-id ID        (gateway)      --username NAME    (gateway)
   --password PW         or --credentials FILE ("user password" lines)
-  --subscribe FILTER    repeatable (default open/# and restricted/sensors/#)
-  --qos N               subscription QoS 0|1|2              (0)
+  --subscribe FILTER    repeatable (default open/sensors/# and restricted/sensors/#)
+  --qos N               subscription and downlink QoS 0|1|2 (0)
+  --protocol V          MQTT version 3.1.1 | 5              (3.1.1)
 pipeline (applied immediately):
-  --protection P        none | auth_only | encrypt          (encrypt)
+  --protection P        none | auth_only | encrypt | sign   (encrypt)
   --freshness on|off    (on)          --replay on|off       (on)
+  --key-binding on|off  a key may only publish on its owner's topics (on)
+  --key-pattern F       topic filter keys may publish on; %u owner, %k key id;
+                        repeatable                          (+/sensors/%u/#)
+  --rate-limit N        inbound msg/s per topic, 0 = off    (0)
+  --sending-key ID      key id the gateway sends with       (0)
   --persistence P       none | plain | at-rest              (none)
   --profile P           preset: none | auth_only | aead | aead_freshness | aead_replay | full
-  --keys FILE           key file ("<key id> <hex>" lines); required unless protection is none
+  --keys FILE           key file (see above); required unless protection is none
+downlink (applied immediately):
+  --downlink N          commands/s to <zone>/actuators/<owner>/cmd, 0 = off (0)
+  --zone Z              open | restricted                   (restricted)
 process:
   --report MS           stats interval                      (1000)
   --stats json|text     JSON lines on stdout or text on stderr (text)
@@ -284,7 +322,10 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
                                      std::pair{"mtls"sv, Transport::MutualTls}};
     constexpr std::array kProtections{std::pair{"none"sv, Protection::None},
                                       std::pair{"auth_only"sv, Protection::AuthOnly},
-                                      std::pair{"encrypt"sv, Protection::Encrypt}};
+                                      std::pair{"encrypt"sv, Protection::Encrypt},
+                                      std::pair{"sign"sv, Protection::Sign}};
+    constexpr std::array kProtocols{std::pair{"3.1.1"sv, msec::mqtt::ProtocolVersion::V3_1_1},
+                                    std::pair{"5"sv, msec::mqtt::ProtocolVersion::V5}};
     constexpr std::array kPersistence{std::pair{"none"sv, Persistence::None},
                                       std::pair{"plain"sv, Persistence::Plaintext},
                                       std::pair{"at-rest"sv, Persistence::AtRest}};
@@ -324,6 +365,23 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
         s.subscriptions.push_back(value);
     } else if (key == "qos") {
         return set_enum(s.qos, value, kQos);
+    } else if (key == "protocol") {
+        return set_enum(s.protocol, value, kProtocols);
+    } else if (key == "key_binding") {
+        return set_switch(s.key_binding, value);
+    } else if (key == "key_pattern") {
+        s.key_patterns.push_back(value);
+    } else if (key == "sending_key") {
+        return set_int(s.sending_key, value);
+    } else if (key == "rate_limit") {
+        return set_int(s.rate_limit, value);
+    } else if (key == "downlink") {
+        return set_int(s.downlink, value);
+    } else if (key == "zone") {
+        if (value != "open" && value != "restricted") {
+            return make_error(ErrorCode::InvalidArgument, "--zone expects open|restricted");
+        }
+        s.zone = value;
     } else if (key == "protection") {
         return set_enum(s.protection, value, kProtections);
     } else if (key == "freshness") {
@@ -370,7 +428,7 @@ bool is_transport_key(std::string_view key) {
     constexpr std::array kKeys{"host"sv,     "port"sv,     "tls_port"sv,    "mtls_port"sv,
                                "transport"sv, "ca"sv,      "cert"sv,        "key"sv,
                                "client_id"sv, "username"sv, "password"sv,   "credentials"sv,
-                               "subscribe"sv, "qos"sv};
+                               "subscribe"sv, "qos"sv,      "protocol"sv};
     return std::ranges::find(kKeys, key) != kKeys.end();
 }
 
@@ -397,7 +455,10 @@ Settings parse_command_line(int argc, char** argv) {
         }
     }
     if (settings.subscriptions.empty()) {
-        settings.subscriptions = {"open/#", "restricted/sensors/#"};
+        settings.subscriptions = {"open/sensors/#", "restricted/sensors/#"};
+    }
+    if (settings.key_patterns.empty()) {
+        settings.key_patterns = {"+/sensors/%u/#"};
     }
     return settings;
 }
@@ -409,7 +470,8 @@ msec::mqtt::ConnectionOptions connection_options(const Settings& s) {
     msec::mqtt::ConnectionOptions options{
         .broker_uri = std::format("{}://{}:{}", s.transport == Transport::Plain ? "tcp" : "ssl",
                                   s.host, port),
-        .client_id = s.client_id};
+        .client_id = s.client_id,
+        .protocol = s.protocol};
     if (s.transport != Transport::Plain) {
         msec::mqtt::TlsOptions tls{.ca_file = s.ca};
         if (s.transport == Transport::MutualTls) {
@@ -443,43 +505,126 @@ std::optional<std::byte> hex_nibble(char c) {
     return std::nullopt;
 }
 
-/// "<key id> <hex key>" per line; '#' starts a comment. Returns the number of keys.
-std::size_t load_keys(const std::string& path, msec::security::InMemoryKeyStore& store,
-                      std::size_t key_size) {
-    std::ifstream in{path};
-    if (!in) {
-        die(std::format("cannot open key file '{}'", path));
+/// Every key the gateway knows, plus who owns it. Changed only by the main
+/// thread (startup, `key` commands); the stores and the policy are themselves
+/// thread-safe for the pipeline that reads them.
+class KeyRing {
+public:
+    static constexpr std::size_t kKeySize = 32;  // AES-256 and Ed25519 alike
+
+    std::shared_ptr<msec::security::InMemoryKeyStore> aead =
+        std::make_shared<msec::security::InMemoryKeyStore>();
+    std::shared_ptr<msec::security::InMemoryKeyStore> sign_private =
+        std::make_shared<msec::security::InMemoryKeyStore>();
+    std::shared_ptr<msec::security::InMemoryKeyStore> sign_public =
+        std::make_shared<msec::security::InMemoryKeyStore>();
+    std::shared_ptr<msec::security::KeyTopicPolicy> policy =
+        std::make_shared<msec::security::KeyTopicPolicy>();
+
+    /// "<id> <kind> <hex> [owner]" (or the legacy "<id> <hex>").
+    Status add(std::string_view line) {
+        std::istringstream fields{std::string{line}};
+        std::vector<std::string> f;
+        for (std::string word; fields >> word;) {
+            f.push_back(word);
+        }
+        if (f.size() == 2) {
+            f.insert(f.begin() + 1, "aead");
+        }
+        if (f.size() < 3 || f.size() > 4) {
+            return make_error(ErrorCode::InvalidArgument, "expected <id> <kind> <hex> [owner]");
+        }
+        auto id = parse_int(f[0]);
+        if (!id) {
+            return std::unexpected{id.error()};
+        }
+        const auto key_id = static_cast<msec::security::KeyId>(*id);
+        auto raw = decode(f[2]);
+        if (!raw) {
+            return std::unexpected{raw.error()};
+        }
+        auto* store = f[1] == "aead"           ? aead.get()
+                      : f[1] == "sign-private" ? sign_private.get()
+                      : f[1] == "sign-public"  ? sign_public.get()
+                                               : nullptr;
+        if (store == nullptr) {
+            return make_error(ErrorCode::InvalidArgument, std::format("unknown key kind '{}'", f[1]));
+        }
+        auto added = store->add(key_id, msec::SecureBuffer{*raw});
+        msec::secure_zero(*raw);
+        if (!added) {
+            return added;
+        }
+        if (f.size() == 4) {
+            if (auto ok = policy->set_owner(key_id, f[3]); !ok) {
+                return ok;
+            }
+            owners_[key_id] = f[3];
+        }
+        return {};
     }
-    std::size_t count = 0;
-    std::string line;
-    for (int line_no = 1; std::getline(in, line); ++line_no) {
-        std::istringstream fields{line};
-        std::string id_text;
-        std::string hex;
-        if (!(fields >> id_text) || id_text.starts_with('#')) {
-            continue;
+
+    /// Removes every key with this id and forgets its owner.
+    Status revoke(msec::security::KeyId key_id, msec::security::SecurityLayer& security) {
+        bool found = false;
+        for (auto* store : {aead.get(), sign_private.get(), sign_public.get()}) {
+            found = store->revoke(key_id).has_value() || found;
         }
-        fields >> hex;
-        const auto where = std::format("{}:{}", path, line_no);
-        const auto id = static_cast<msec::security::KeyId>(require(parse_int(id_text), where));
-        if (hex.size() != key_size * 2) {
-            die(std::format("{}: key must be {} hex characters", where, key_size * 2));
+        policy->remove(key_id);
+        security.forget_key(key_id);
+        owners_.erase(key_id);
+        return found ? Status{} : make_error(ErrorCode::NotFound, std::format("no key {}", key_id));
+    }
+
+    std::size_t load(const std::string& path) {
+        std::ifstream in{path};
+        if (!in) {
+            die(std::format("cannot open key file '{}'", path));
         }
-        msec::Bytes raw(key_size);
-        for (std::size_t i = 0; i < key_size; ++i) {
+        std::size_t count = 0;
+        std::string line;
+        for (int line_no = 1; std::getline(in, line); ++line_no) {
+            const auto first = line.find_first_not_of(" \t");
+            if (first == std::string::npos || line[first] == '#') {
+                continue;
+            }
+            require(add(line), std::format("{}:{}", path, line_no));
+            ++count;
+        }
+        return count;
+    }
+
+    /// Devices that receive downlink commands: every owner except the gateway.
+    [[nodiscard]] std::vector<std::string> devices() const {
+        std::vector<std::string> out;
+        for (const auto& [id, owner] : owners_) {
+            if (owner != "gateway" && std::ranges::find(out, owner) == out.end()) {
+                out.push_back(owner);
+            }
+        }
+        return out;
+    }
+
+private:
+    static Result<msec::Bytes> decode(std::string_view hex) {
+        if (hex.size() != kKeySize * 2) {
+            return make_error(ErrorCode::InvalidArgument,
+                              std::format("key must be {} hex characters", kKeySize * 2));
+        }
+        msec::Bytes raw(kKeySize);
+        for (std::size_t i = 0; i < kKeySize; ++i) {
             const auto hi = hex_nibble(hex[2 * i]);
             const auto lo = hex_nibble(hex[2 * i + 1]);
             if (!hi || !lo) {
-                die(std::format("{}: invalid hex", where));
+                return make_error(ErrorCode::InvalidArgument, "invalid hex");
             }
             raw[i] = (*hi << 4U) | *lo;
         }
-        require(store.add(id, msec::SecureBuffer{raw}), where);
-        msec::secure_zero(raw);
-        ++count;
+        return raw;
     }
-    return count;
-}
+
+    std::map<msec::security::KeyId, std::string> owners_;
+};
 
 // ------------------------------------------------------------------ stats ---
 
@@ -519,6 +664,10 @@ public:
         std::uint64_t bytes{0};
         std::uint64_t forged_accepted{0};
         std::uint64_t replays_accepted{0};
+        std::uint64_t retained_received{0};
+        std::uint64_t duplicates_rejected{0};  ///< QoS redeliveries the pipeline refused
+        std::uint64_t commands_sent{0};
+        std::uint64_t commands_failed{0};
         std::array<std::uint64_t, kErrorCodes> rejected_by{};
     };
 
@@ -550,6 +699,9 @@ public:
         mark_activity(now);
         ++window_.delivered;
         window_.bytes += payload.size();
+        if (message.retain) {
+            ++window_.retained_received;
+        }
         if (forged) {
             ++window_.forged_accepted;
             return;
@@ -573,11 +725,19 @@ public:
         window_latencies_.push_back(latency_us);
     }
 
-    void rejected(const Error& error) {
+    void rejected(const msec::mqtt::Endpoint::Rejected& message, const Error& error) {
         const std::scoped_lock lock{mutex_};
         mark_activity(Clock::now());
         ++window_.rejected;
         ++window_.rejected_by.at(static_cast<std::size_t>(error.code));
+        if (message.duplicate) {
+            ++window_.duplicates_rejected;
+        }
+    }
+
+    void command(bool sent) {
+        const std::scoped_lock lock{mutex_};
+        ++(sent ? window_.commands_sent : window_.commands_failed);
     }
 
     /// Counters since the last reset, plus latency samples since the last call.
@@ -634,10 +794,20 @@ std::string rejected_by_json(const Stats::Counters& c) {
 
 std::string settings_json(const Settings& s) {
     return std::format(
-        R"("transport":"{}","username":"{}","protection":"{}","freshness":{},"replay":{},)"
-        R"("persistence":"{}")",
-        to_string(s.transport), s.username, to_string(s.protection), s.freshness, s.replay,
-        to_string(s.persistence));
+        R"("transport":"{}","protocol":"{}","username":"{}","protection":"{}","freshness":{},)"
+        R"("replay":{},"key_binding":{},"rate_limit":{},"persistence":"{}","downlink":{})",
+        to_string(s.transport), s.protocol == msec::mqtt::ProtocolVersion::V5 ? "5" : "3.1.1",
+        s.username, to_string(s.protection), s.freshness, s.replay, s.key_binding, s.rate_limit,
+        to_string(s.persistence), s.downlink);
+}
+
+/// Attack and protocol counters shared by the stats lines and the summary.
+std::string counters_json(const Stats::Counters& c) {
+    return std::format(
+        R"("forged_accepted":{},"replays_accepted":{},"retained_received":{},)"
+        R"("duplicates_rejected":{},"commands_sent":{},"commands_failed":{})",
+        c.forged_accepted, c.replays_accepted, c.retained_received, c.duplicates_rejected,
+        c.commands_sent, c.commands_failed);
 }
 
 std::string summary_json(const Settings& settings, Stats::Window w, double cpu_now) {
@@ -652,11 +822,11 @@ std::string summary_json(const Settings& settings, Stats::Window w, double cpu_n
     auto& lat = w.latencies_us;
     return std::format(
         R"({{"type":"summary",{},"received":{},"delivered":{},"rejected":{},"rejected_by":{},)"
-        R"("forged_accepted":{},"replays_accepted":{},"active_s":{:.3f},"msg_per_s":{:.1f},)"
+        R"({},"active_s":{:.3f},"msg_per_s":{:.1f},)"
         R"("latency_us":{{"p50":{:.1f},"p90":{:.1f},"p99":{:.1f},"p999":{:.1f},"max":{:.1f}}},)"
         R"("cpu_s":{:.3f},"cpu_pct":{:.1f},"cpu_us_per_msg":{:.2f}}})",
         settings_json(settings), c.delivered + c.rejected, c.delivered, c.rejected,
-        rejected_by_json(c), c.forged_accepted, c.replays_accepted, active_s, msg_per_s,
+        rejected_by_json(c), counters_json(c), active_s, msg_per_s,
         percentile(lat, 0.50), percentile(lat, 0.90), percentile(lat, 0.99),
         percentile(lat, 0.999), lat.empty() ? 0.0 : std::ranges::max(lat), cpu_used,
         active_s > 0 ? 100.0 * cpu_used / active_s : 0.0,
@@ -715,27 +885,35 @@ class Gateway {
 public:
     explicit Gateway(Settings settings) : settings_{std::move(settings)} {
         auto clock = std::make_shared<msec::SystemClock>();
-        auto cipher = std::make_shared<msec::security::openssl::AesGcmCipher>();
-        auto keys = std::make_shared<msec::security::InMemoryKeyStore>();
         auto repository = std::make_shared<msec::data::InMemoryMessageRepository>(10'000);
 
         std::size_t key_count = 0;
         if (!settings_.keys_file.empty()) {
-            key_count = load_keys(settings_.keys_file, *keys, cipher->key_size());
+            key_count = keys_.load(settings_.keys_file);
         } else if (settings_.protection != Protection::None || settings_.control_stdin) {
             die("--keys is required (unless --protection none and no --control)");
         }
+        for (const auto& pattern : settings_.key_patterns) {
+            require(keys_.policy->allow_pattern(pattern), "--key-pattern");
+        }
 
-        msec::security::SecurityConfig config{};
+        msec::security::SecurityConfig config{
+            .sending_key_id = static_cast<msec::security::KeyId>(settings_.sending_key)};
         config.max_tracked_senders = std::max(config.max_tracked_senders, key_count);
         auto security_layer = require(
             msec::security::SecurityLayer::create(
-                config, {.cipher = cipher,
-                         .key_store = keys,
+                config, {.cipher = std::make_shared<msec::security::openssl::AesGcmCipher>(),
+                         .key_store = keys_.aead,
                          .random = std::make_shared<msec::security::openssl::RandomSource>(),
-                         .clock = clock}),
+                         .clock = clock,
+                         .signer = std::make_shared<msec::security::openssl::Ed25519Signer>(),
+                         .signing_keys = keys_.sign_private,
+                         .verify_keys = keys_.sign_public,
+                         .authorization = keys_.policy}),
             "security");
         security_ = security_layer.get();
+        auto rate_layer = require(msec::limits::RateLimitLayer::create({}, clock), "rate limit");
+        rate_limit_ = rate_layer.get();
 
         // Every feature is in the pipeline from the start, switched off until applied.
         auto switchable = [](std::unique_ptr<msec::ILayer> layer, std::string name) {
@@ -755,30 +933,40 @@ public:
         msec::Pipeline::Builder builder;
         builder.add(std::move(persist_plain))
             .add(std::move(security))
-            .add(std::move(persist_at_rest));
+            .add(std::move(persist_at_rest))
+            .add(std::move(rate_layer));  // transport side: drops floods before any crypto
         client_ = std::make_shared<msec::mqtt::paho::PahoClient>();
         endpoint_.emplace(client_, require(builder.build(), "pipeline"),
                           std::make_shared<RejectionLogger>(settings_.verbose));
         endpoint_->on_message([this](const Message& m) { stats_.delivered(m); });
         endpoint_->on_rejected(
-            [this](std::string_view /*topic*/, const Error& e) { stats_.rejected(e); });
+            [this](const msec::mqtt::Endpoint::Rejected& m, const Error& e) { stats_.rejected(m, e); });
         apply_pipeline();
-        warn(std::format("{} sensor keys loaded", key_count));
+        warn(std::format("{} keys loaded, {} devices", key_count, keys_.devices().size()));
     }
 
     Settings& settings() { return settings_; }
     Stats& stats() { return stats_; }
+    KeyRing& keys() { return keys_; }
+    msec::security::SecurityLayer& security() { return *security_; }
     [[nodiscard]] bool connected() const { return client_->is_connected(); }
 
-    /// Pushes protection/freshness/replay/persistence into the live pipeline.
+    /// Pushes the pipeline settings into the live layers.
     void apply_pipeline() {
         using msec::security::PayloadProtection;
         security_switch_->set_enabled(settings_.protection != Protection::None);
-        security_->set_protection(settings_.protection == Protection::AuthOnly
-                                      ? PayloadProtection::AuthenticateOnly
-                                      : PayloadProtection::Encrypt);
+        const auto mode = settings_.protection == Protection::AuthOnly ? PayloadProtection::AuthenticateOnly
+                          : settings_.protection == Protection::Sign   ? PayloadProtection::Sign
+                                                                       : PayloadProtection::Encrypt;
+        if (auto ok = security_->set_protection(mode); !ok) {
+            warn(std::format("protection {}: {}", to_string(settings_.protection),
+                             ok.error().message));
+        }
         security_->set_enforce_freshness(settings_.freshness);
         security_->set_enforce_replay_protection(settings_.replay);
+        security_->set_enforce_key_binding(settings_.key_binding);
+        security_->set_sending_key(static_cast<msec::security::KeyId>(settings_.sending_key));
+        rate_limit_->set_rate(settings_.rate_limit);
         persist_plain_->set_enabled(settings_.persistence == Persistence::Plaintext);
         persist_at_rest_->set_enabled(settings_.persistence == Persistence::AtRest);
     }
@@ -799,15 +987,61 @@ public:
 
     void disconnect() { (void)endpoint_->stop(); }
 
+    /// Sends the commands that are due: round robin over the devices, through
+    /// the outbound pipeline (so they are protected like everything else).
+    /// Plaintext: send time (u64 ns) + command id (u64) + "CMD:" + device.
+    void send_commands(Clock::time_point now) {
+        if (settings_.downlink <= 0 || !connected()) {
+            next_command_ = now;
+            return;
+        }
+        const auto devices = keys_.devices();
+        if (devices.empty()) {
+            return;
+        }
+        const auto period = std::chrono::duration_cast<Clock::duration>(
+            std::chrono::duration<double>{1.0 / settings_.downlink});
+        // Never burst more than a second's worth after a pause.
+        next_command_ = std::max(next_command_, now - std::chrono::seconds{1});
+        while (next_command_ <= now) {
+            next_command_ += period;
+            const auto& device = devices[next_device_++ % devices.size()];
+            auto topic = msec::Topic::create(std::format("{}/actuators/{}/cmd", settings_.zone, device));
+            if (!topic) {
+                continue;
+            }
+            msec::Bytes payload;
+            auto append_u64 = [&](std::uint64_t v) {
+                for (int shift = 56; shift >= 0; shift -= 8) {
+                    payload.push_back(static_cast<std::byte>((v >> static_cast<unsigned>(shift)) & 0xFFU));
+                }
+            };
+            append_u64(static_cast<std::uint64_t>(unix_ns()));
+            append_u64(++command_id_);
+            const auto text = msec::to_bytes("CMD:" + device);
+            payload.insert(payload.end(), text.begin(), text.end());
+            stats_.command(endpoint_
+                               ->publish(Message{.topic = std::move(*topic),
+                                                 .payload = std::move(payload),
+                                                 .qos = settings_.qos})
+                               .has_value());
+        }
+    }
+
 private:
     Settings settings_;
     Stats stats_;
+    KeyRing keys_;
     std::shared_ptr<msec::mqtt::paho::PahoClient> client_;
     std::optional<msec::mqtt::Endpoint> endpoint_;
     msec::security::SecurityLayer* security_{nullptr};
+    msec::limits::RateLimitLayer* rate_limit_{nullptr};
     msec::SwitchableLayer* security_switch_{nullptr};
     msec::SwitchableLayer* persist_plain_{nullptr};
     msec::SwitchableLayer* persist_at_rest_{nullptr};
+    Clock::time_point next_command_{};
+    std::size_t next_device_{0};
+    std::uint64_t command_id_{static_cast<std::uint64_t>(unix_ns())};
 };
 
 void handle_command(Gateway& gateway, const std::string& line, Clock::time_point& last_connect) {
@@ -826,6 +1060,22 @@ void handle_command(Gateway& gateway, const std::string& line, Clock::time_point
             warn(std::format("set {}: {}", key, ok.error().message));
         } else if (!is_transport_key(key)) {
             gateway.apply_pipeline();
+        }
+    } else if (verb == "key") {
+        // key add <id> <kind> <hex> [owner]  |  key revoke <id>
+        Status ok;
+        if (key == "add") {
+            ok = gateway.keys().add(value);
+        } else if (key == "revoke") {
+            auto id = parse_int(value);
+            ok = id ? gateway.keys().revoke(static_cast<msec::security::KeyId>(*id),
+                                            gateway.security())
+                    : Status{std::unexpected{id.error()}};
+        } else {
+            ok = make_error(ErrorCode::InvalidArgument, "expected `key add` or `key revoke`");
+        }
+        if (!ok) {
+            warn(std::format("key {}: {}", key, ok.error().message));
         }
     } else if (verb == "reconnect") {
         last_connect = Clock::now();
@@ -879,6 +1129,7 @@ int main(int argc, char** argv) {
         for (const auto& line : commands.drain()) {
             handle_command(gateway, line, last_connect);
         }
+        gateway.send_commands(now);
 
         // Keep the session up: the broker drops us when credentials or ACLs
         // change under our feet; reconnect with whatever is configured now.
@@ -906,11 +1157,11 @@ int main(int argc, char** argv) {
         if (settings.stats_json) {
             emit(std::format(
                 R"({{"type":"stats","connected":{},{},"rx_per_s":{:.1f},"delivered":{},)"
-                R"("rejected":{},"rejected_by":{},"forged_accepted":{},"replays_accepted":{},)"
+                R"("rejected":{},"rejected_by":{},{},"devices":{},)"
                 R"("lat_p50_us":{:.1f},"lat_p99_us":{:.1f},"cpu_pct":{:.1f}}})",
                 gateway.connected(), settings_json(settings), rx_per_s, counters.delivered,
-                counters.rejected, rejected_by_json(counters), counters.forged_accepted,
-                counters.replays_accepted, p50, p99, cpu_pct));
+                counters.rejected, rejected_by_json(counters), counters_json(counters),
+                gateway.keys().devices().size(), p50, p99, cpu_pct));
         } else if (new_messages > 0) {
             std::fputs(std::format("rx {:>9.0f} msg/s  delivered {:>10}  rejected {:>6}  "
                                    "lat p50 {:>8.0f}us p99 {:>8.0f}us  cpu {:>5.1f}%\n",

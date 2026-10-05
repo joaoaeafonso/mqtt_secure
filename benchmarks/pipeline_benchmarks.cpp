@@ -45,8 +45,10 @@
 #include "msec/mqtt/access_control.hpp"
 #include "msec/mqtt/endpoint.hpp"
 #include "msec/mqtt/loopback_broker.hpp"
+#include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
 #include "msec/security/openssl/aes_gcm_cipher.hpp"
+#include "msec/security/openssl/ed25519_signer.hpp"
 #include "msec/security/openssl/random_source.hpp"
 #include "msec/security/security_layer.hpp"
 
@@ -85,6 +87,7 @@ struct Profile {
     std::string_view name;
     std::optional<security::SecurityConfig> security;  // nullopt: no security layer
     Persistence persistence{Persistence::None};
+    bool key_binding{false};  // a key → topic policy is installed
 };
 
 using security::PayloadProtection;
@@ -116,6 +119,8 @@ const std::array kProfiles{
     Profile{.name = "8_full_persist_at_rest",
             .security = SecurityConfig{},
             .persistence = Persistence::AtRest},
+    Profile{.name = "9_sign", .security = SecurityConfig{.protection = PayloadProtection::Sign}},
+    Profile{.name = "10_full_key_binding", .security = SecurityConfig{}, .key_binding = true},
 };
 
 constexpr std::array<std::int64_t, 4> kPayloadSizes{16, 256, 4 * 1024, 64 * 1024};
@@ -172,6 +177,11 @@ public:
         SecureBuffer key{cipher_->key_size()};
         unwrap(rng_->fill(key.mutable_view()));
         unwrap(keys_->add(kKeyId, std::move(key)));
+        SecureBuffer signing_key{signer_->private_key_size()};
+        unwrap(rng_->fill(signing_key.mutable_view()));
+        unwrap(verify_keys_->add(kKeyId, SecureBuffer{unwrap(signer_->public_key(signing_key))}));
+        unwrap(signing_keys_->add(kKeyId, std::move(signing_key)));
+        unwrap(policy_->allow(kKeyId, "+/sensors/room1/#"));
 
         sensor_.emplace(mqtt::LoopbackClient::create(broker_), make_pipeline(false), logger_);
         gateway_.emplace(mqtt::LoopbackClient::create(broker_), make_pipeline(true), logger_);
@@ -207,7 +217,14 @@ public:
             SecurityConfig config = *profile_.security;
             config.sending_key_id = kKeyId;
             builder.add(unwrap(security::SecurityLayer::create(
-                config, {.cipher = cipher_, .key_store = keys_, .random = rng_, .clock = clock_})));
+                config, {.cipher = cipher_,
+                         .key_store = keys_,
+                         .random = rng_,
+                         .clock = clock_,
+                         .signer = signer_,
+                         .signing_keys = signing_keys_,
+                         .verify_keys = verify_keys_,
+                         .authorization = profile_.key_binding ? policy_ : nullptr})));
         }
         if (persist && profile_.persistence == Persistence::AtRest) {
             builder.add(persistence());
@@ -234,6 +251,14 @@ private:
         std::make_shared<security::openssl::RandomSource>();
     std::shared_ptr<security::InMemoryKeyStore> keys_ =
         std::make_shared<security::InMemoryKeyStore>();
+    std::shared_ptr<security::openssl::Ed25519Signer> signer_ =
+        std::make_shared<security::openssl::Ed25519Signer>();
+    std::shared_ptr<security::InMemoryKeyStore> signing_keys_ =
+        std::make_shared<security::InMemoryKeyStore>();
+    std::shared_ptr<security::InMemoryKeyStore> verify_keys_ =
+        std::make_shared<security::InMemoryKeyStore>();
+    std::shared_ptr<security::KeyTopicPolicy> policy_ =
+        std::make_shared<security::KeyTopicPolicy>();
     std::shared_ptr<data::InMemoryMessageRepository> repository_ =
         std::make_shared<data::InMemoryMessageRepository>(1'000);
     std::shared_ptr<mqtt::LoopbackBroker> broker_;

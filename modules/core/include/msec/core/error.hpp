@@ -23,6 +23,8 @@ enum class ErrorCode : std::uint8_t {
     ReplayDetected,
     MessageExpired,
     MalformedMessage,
+    ProtectionNotAccepted,  ///< payload protection mode below/outside the receiver's policy
+    RateLimited,
     StorageFailure,
     Internal,
 };
@@ -41,6 +43,8 @@ enum class ErrorCode : std::uint8_t {
         case ErrorCode::ReplayDetected:       return "ReplayDetected";
         case ErrorCode::MessageExpired:       return "MessageExpired";
         case ErrorCode::MalformedMessage:     return "MalformedMessage";
+        case ErrorCode::ProtectionNotAccepted: return "ProtectionNotAccepted";
+        case ErrorCode::RateLimited:          return "RateLimited";
         case ErrorCode::StorageFailure:       return "StorageFailure";
         case ErrorCode::Internal:             return "Internal";
     }
