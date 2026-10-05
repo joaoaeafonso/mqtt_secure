@@ -65,6 +65,10 @@ public:
 
     LoopbackClient(PassKey /*key*/, std::shared_ptr<LoopbackBroker> broker);
     ~LoopbackClient() override;
+    LoopbackClient(const LoopbackClient&) = delete;
+    LoopbackClient& operator=(const LoopbackClient&) = delete;
+    LoopbackClient(LoopbackClient&&) = delete;
+    LoopbackClient& operator=(LoopbackClient&&) = delete;
 
     [[nodiscard]] Status connect(const ConnectionOptions& options) override;
     [[nodiscard]] Status disconnect() override;

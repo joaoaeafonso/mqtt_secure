@@ -16,12 +16,14 @@ constexpr std::size_t kSequenceOffset = 8;
 constexpr std::size_t kTimestampOffset = 16;
 constexpr std::size_t kNonceLenOffset = 24;
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): local helper, fixed call sites
 void write_be(Bytes& out, std::uint64_t value, std::size_t width) {
     for (std::size_t i = width; i-- > 0;) {
         out.push_back(static_cast<std::byte>((value >> (i * 8U)) & 0xFFU));
     }
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): local helper, fixed call sites
 std::uint64_t read_be(ByteView data, std::size_t offset, std::size_t width) {
     std::uint64_t value = 0;
     for (std::size_t i = 0; i < width; ++i) {

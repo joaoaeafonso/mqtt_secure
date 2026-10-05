@@ -55,8 +55,8 @@ private:
         std::chrono::system_clock::time_point last{};
     };
 
-    [[nodiscard]] bool take(Bucket& bucket, std::chrono::system_clock::time_point now,
-                            double rate, double burst) const noexcept;
+    [[nodiscard]] static bool take(Bucket& bucket, std::chrono::system_clock::time_point now,
+                                   double rate, double burst) noexcept;
     void evict_idle(std::chrono::system_clock::time_point now, double rate, double burst);
 
     RateLimitConfig config_;

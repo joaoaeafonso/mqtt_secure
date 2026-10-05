@@ -2,7 +2,7 @@
 
 import unittest
 
-from lab import DEFAULTS, merged, parse_revoked, validate
+from lab import DEFAULTS, PACKET_OVERHEAD, PRESETS, merged, parse_revoked, validate
 
 
 class Validate(unittest.TestCase):
@@ -34,6 +34,29 @@ class Validate(unittest.TestCase):
 
     def test_validate_flattens(self):
         self.assertEqual(validate({"downlink": {"rate": 5}}), [("downlink", "rate", 5)])
+
+
+class HardenedPreset(unittest.TestCase):
+    def test_turns_every_defence_on(self):
+        cfg = merged(DEFAULTS, PRESETS["hardened"](DEFAULTS))
+        t, p = cfg["transport"], cfg["payload"]
+        self.assertEqual((t["mode"], t["tls_version"], t["protocol"]), ("mtls", "1.3", "5"))
+        self.assertTrue(t["auth"] and t["acl"] and t["clientid_binding"])
+        self.assertFalse(t["sys_topics"])
+        self.assertEqual(p["protection"], "sign")
+        self.assertTrue(p["freshness"] and p["replay"] and p["key_binding"])
+        self.assertEqual(cfg["load"]["zone"], "restricted")
+
+    def test_limits_follow_the_load(self):
+        base = merged(DEFAULTS, {"load": {"sensors": 200, "rate": 50.0, "payload": 4096}})
+        cfg = merged(base, PRESETS["hardened"](base))
+        self.assertEqual(cfg["transport"]["max_connections"], 216)
+        self.assertEqual(cfg["transport"]["max_packet"], 4096 + PACKET_OVERHEAD)
+        self.assertGreaterEqual(cfg["payload"]["rate_limit"], 100)  # never below the real rate
+
+    def test_packet_limit_must_fit_the_payload(self):
+        with self.assertRaises(ValueError):
+            merged(DEFAULTS, {"transport": {"max_packet": 100}})
 
 
 if __name__ == "__main__":

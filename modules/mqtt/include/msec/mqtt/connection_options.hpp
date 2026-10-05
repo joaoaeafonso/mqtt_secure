@@ -20,7 +20,7 @@ struct TlsOptions {
 };
 
 enum class ProtocolVersion : std::uint8_t {
-    V3_1_1 = 4,
+    V311 = 4,
     V5 = 5,  ///< reason codes on every ack and disconnect, e.g. "session taken over"
 };
 
@@ -32,7 +32,7 @@ struct ConnectionOptions {
     std::optional<SecureBuffer> password{};
     std::chrono::seconds keep_alive{30};
     bool clean_session{true};  ///< MQTT 5: clean start
-    ProtocolVersion protocol{ProtocolVersion::V3_1_1};
+    ProtocolVersion protocol{ProtocolVersion::V311};
 };
 
 }  // namespace msec::mqtt

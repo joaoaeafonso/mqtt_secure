@@ -147,6 +147,11 @@
 </header>
 <main>
   <aside>
+    <section class="card" aria-labelledby="h-profile">
+      <h2 id="h-profile">Profile</h2>
+      <div class="row"><label>Every defence on<small>mTLS 1.3, MQTT 5, auth, ACL, client-id binding, limits; signatures, freshness, replay, key binding, rate limit</small></label>
+        <button type="button" class="action" id="preset-hardened">Harden</button></div>
+    </section>
     <section class="card" aria-labelledby="h-transport">
       <h2 id="h-transport">Transport · broker</h2>
       <div class="row"><label>Encryption<small>restarts broker, clients reconnect</small></label>
@@ -316,6 +321,16 @@ function initControls() {
       const v = Number(input.value);
       if (input.value !== "" && v >= 0) apply(input.dataset.key, input.step === "1" ? Math.round(v) : v);
     }));
+  document.getElementById("preset-hardened").addEventListener("click", async () => {
+    const res = await fetch("/api/preset", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "hardened" }),
+    });
+    const body = await res.json();
+    document.getElementById("error").textContent = res.ok ? "" : body.error;
+    if (body.config) { config = body.config; renderControls(); }
+    poll();
+  });
   document.getElementById("p-rotate").addEventListener("click", () =>
     apply("payload.key_epoch", config.payload.key_epoch + 1));
   document.getElementById("r-revoke").addEventListener("click", () => {

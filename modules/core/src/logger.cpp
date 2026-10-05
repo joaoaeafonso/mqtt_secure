@@ -33,9 +33,9 @@ void ConsoleLogger::log(LogLevel level, std::string_view component,
             std::format("{:%T} {} [{}] {}\n", now, level_name(level), component, message);
         const std::scoped_lock lock{mutex_};
         std::FILE* stream = level >= LogLevel::Warn ? stderr : stdout;
-        std::fwrite(line.data(), 1, line.size(), stream);
-        std::fflush(stream);
-    } catch (...) {
+        (void)std::fwrite(line.data(), 1, line.size(), stream);
+        (void)std::fflush(stream);
+    } catch (...) {  // NOLINT(bugprone-empty-catch)
         // A logger must never take the system down; drop the line.
     }
 }

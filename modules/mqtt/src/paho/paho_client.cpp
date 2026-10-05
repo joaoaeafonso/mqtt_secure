@@ -53,7 +53,7 @@ void PahoClient::close_locked() {
         if (client_->is_connected()) {
             (void)wait(client_->disconnect());
         }
-    } catch (const ::mqtt::exception&) {
+    } catch (const ::mqtt::exception&) {  // NOLINT(bugprone-empty-catch)
         // Closing anyway; nothing useful to report.
     }
     client_.reset();  // MQTTAsync_destroy: waits for Paho's callbacks to finish
@@ -70,7 +70,7 @@ Status PahoClient::connect(const ConnectionOptions& options) {
         const int version = static_cast<int>(options.protocol);
         client_ = std::make_unique<::mqtt::async_client>(
             options.broker_uri, options.client_id, ::mqtt::create_options{version});
-        client_->set_message_callback([this](::mqtt::const_message_ptr m) {
+        client_->set_message_callback([this](const ::mqtt::const_message_ptr& m) {
             const auto& payload = m->get_payload();
             on_message(m->get_topic(),
                        std::as_bytes(std::span{payload.data(), payload.size()}),

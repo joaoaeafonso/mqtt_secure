@@ -12,6 +12,7 @@ Configuration: lab.example.toml documents every setting. Pass a file with
 
 Examples
   loadgen.py live --set load.sensors=100 --set transport.mode=tls
+  loadgen.py live --preset hardened
   loadgen.py matrix --vary transport.mode=plain,tls,mtls --vary payload.protection=none,encrypt
 
 Multiple machines: on the controller (broker + gateway) set
@@ -33,7 +34,7 @@ import tomllib
 from pathlib import Path
 
 from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
-from lab import DEFAULTS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
+from lab import DEFAULTS, PRESETS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
@@ -68,14 +69,22 @@ def parse_assignment(text: str) -> tuple[str, str, str]:
 
 
 def load_config(args) -> dict:
-    """The full, validated configuration: defaults < --config file < --set."""
+    """The full, validated configuration: defaults < --config file < --preset < --set."""
     config: dict = {}
     if args.config:
         with open(args.config, "rb") as f:
             config = tomllib.load(f)
+    overrides: dict = {}
     for section, name, value in args.set or []:
-        config.setdefault(section, {})[name] = parse_value(value)
-    return merged(DEFAULTS, config)
+        overrides.setdefault(section, {})[name] = parse_value(value)
+    for section, values in overrides.items():
+        config.setdefault(section, {}).update(values)
+    full = merged(DEFAULTS, config)
+    if getattr(args, "preset", None):
+        # Derived from the load (sensors, rate, payload), so computed after it is known;
+        # explicit --set values still win.
+        full = merged(merged(full, PRESETS[args.preset](full)), overrides)
+    return full
 
 
 def control_server(args, config: dict) -> ControlServer | None:
@@ -254,6 +263,8 @@ def main() -> None:
         p.add_argument("--config", type=Path, help="TOML file (see lab.example.toml)")
         p.add_argument("--set", type=parse_assignment, action="append", metavar="SECTION.KEY=VALUE",
                        help="override one setting; repeatable")
+        p.add_argument("--preset", choices=sorted(PRESETS),
+                       help="start from a named profile (hardened: every defence on)")
         p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
         p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
         p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE,

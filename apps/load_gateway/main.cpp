@@ -161,7 +161,7 @@ struct Settings {
     std::string password{};
     std::vector<std::string> subscriptions{};
     QoS qos{QoS::AtMostOnce};
-    msec::mqtt::ProtocolVersion protocol{msec::mqtt::ProtocolVersion::V3_1_1};
+    msec::mqtt::ProtocolVersion protocol{msec::mqtt::ProtocolVersion::V311};
     // pipeline
     Protection protection{Protection::Encrypt};
     bool freshness{true};
@@ -324,7 +324,7 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
                                       std::pair{"auth_only"sv, Protection::AuthOnly},
                                       std::pair{"encrypt"sv, Protection::Encrypt},
                                       std::pair{"sign"sv, Protection::Sign}};
-    constexpr std::array kProtocols{std::pair{"3.1.1"sv, msec::mqtt::ProtocolVersion::V3_1_1},
+    constexpr std::array kProtocols{std::pair{"3.1.1"sv, msec::mqtt::ProtocolVersion::V311},
                                     std::pair{"5"sv, msec::mqtt::ProtocolVersion::V5}};
     constexpr std::array kPersistence{std::pair{"none"sv, Persistence::None},
                                       std::pair{"plain"sv, Persistence::Plaintext},

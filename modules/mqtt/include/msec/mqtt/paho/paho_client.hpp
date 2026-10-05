@@ -8,8 +8,8 @@
 #include "msec/mqtt/mqtt_client.hpp"
 
 namespace mqtt {  // Eclipse Paho C++, kept out of this header
-class async_client;
-class token;
+class async_client;  // NOLINT(readability-identifier-naming): Paho's name
+class token;         // NOLINT(readability-identifier-naming): Paho's name
 }
 
 namespace msec::mqtt::paho {
@@ -31,6 +31,10 @@ class PahoClient final : public IMqttClient {
 public:
     explicit PahoClient(std::chrono::milliseconds timeout = std::chrono::seconds{10});
     ~PahoClient() override;
+    PahoClient(const PahoClient&) = delete;
+    PahoClient& operator=(const PahoClient&) = delete;
+    PahoClient(PahoClient&&) = delete;
+    PahoClient& operator=(PahoClient&&) = delete;
 
     [[nodiscard]] Status connect(const ConnectionOptions& options) override;
     [[nodiscard]] Status disconnect() override;

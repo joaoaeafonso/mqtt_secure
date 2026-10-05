@@ -9,7 +9,7 @@ void secure_zero(MutableByteView data) noexcept {
     // Writes through a volatile pointer cannot be removed as dead stores.
     volatile std::byte* ptr = data.data();
     for (std::size_t i = 0; i < data.size(); ++i) {
-        ptr[i] = std::byte{0};
+        ptr[i] = std::byte{0};  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
     std::atomic_signal_fence(std::memory_order_seq_cst);
 }

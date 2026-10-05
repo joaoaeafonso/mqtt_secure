@@ -31,7 +31,7 @@ void RateLimitLayer::set_rate(double messages_per_second) noexcept {
 double RateLimitLayer::rate() const noexcept { return rate_.load(std::memory_order_relaxed); }
 
 bool RateLimitLayer::take(Bucket& bucket, std::chrono::system_clock::time_point now, double rate,
-                          double burst) const noexcept {
+                          double burst) noexcept {
     // Clamp: a clock stepping backwards must not mint or destroy tokens.
     const double elapsed =
         std::max(std::chrono::duration<double>(now - bucket.last).count(), 0.0);

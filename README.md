@@ -5,7 +5,8 @@ Layered security architecture for MQTT-based IoT communication, C++23.
 ## Quick start
 
 ```bash
-./run.sh            # builds what is missing, starts the live lab, opens the dashboard
+./run.sh                    # builds what is missing, starts the live lab, opens the dashboard
+./run.sh --preset hardened  # the same, with every defence on
 ```
 
 ## Build
@@ -190,8 +191,31 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --set load.sen
 | `flood-rate-limit` | flood one topic vs. 30 msg/s per topic | excess dropped before crypto |
 | `downlink-commands` | gateway → actuators, protected | every command verified |
 | `modern-transport` | TLS 1.3 + MQTT 5 | works |
+| `hardened` | eavesdrop + impersonate + inject + replay vs. the `hardened` preset | attacker gets nothing; all traffic, both ways, flows |
 | `key-rotation` | rotate every key while traffic flows | no rejections |
 | `revocation` | revoke sensor-1 | sensor-1 locked out, others continue |
+
+### The `hardened` preset
+
+`--preset hardened` (CLI, also `./run.sh`), the **Harden** button on the
+dashboard, or `POST /api/preset {"name": "hardened"}` switches every defence on:
+
+| Layer | Settings |
+|---|---|
+| Broker | mTLS, TLS 1.3, MQTT 5, passwords, ACL, client id = username, no `$SYS`, `max_packet` = payload + 512 B, `max_connections` = sensors + 16 |
+| Payload | Ed25519 signatures, freshness, replay window, key → topic binding |
+| Gateway | rate limit = 2 × the sensor rate per topic (min 10 msg/s) |
+| Topics | restricted zone |
+
+The limits are derived from the load, so legitimate traffic always fits;
+explicit `--set` values still win over the preset. Measured on the development
+machine with 20 sensors: no loss, every command verified, the attacker cannot
+even connect, and the gateway spends ~190 µs of CPU per message (signatures).
+
+What remains possible even then: a compromised device can send authentic but
+false data on its own topics (only revocation, after detection, stops it), and
+a large enough flood can still overload the broker or the network (Mosquitto
+2.0 has no per-client rate limit).
 
 `replay-freshness-only` is the instructive one: a freshness window alone lets
 every replay younger than 60 s through; only the sequence-number window stops them.

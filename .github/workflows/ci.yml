@@ -31,6 +31,22 @@ jobs:
           tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios \
             --set load.sensors=10 --set load.rate=10 --settle 3 --duration 5
 
+  clang-tidy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build g++ clang-tidy-18 \
+            libssl-dev libpaho-mqtt-dev libpaho-mqttpp-dev libgtest-dev
+          sudo ln -sf /usr/bin/clang-tidy-18 /usr/local/bin/clang-tidy
+      - name: Build with clang-tidy (CERT + C++ Core Guidelines, warnings are errors)
+        run: |
+          cmake --preset ci
+          cmake --build --preset ci
+          ctest --preset ci
+
   fuzz:
     runs-on: ubuntu-24.04
     steps:

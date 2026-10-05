@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from lab import DEFAULTS
+from lab import DEFAULTS, hardened
 
 # Live settings every scenario starts from. Sensors publish in the open zone
 # with no ACL, so the broker lets everything through and each scenario's
@@ -109,6 +109,19 @@ SCENARIOS: list[Scenario] = [
              lambda r: r["delivered_msg_s"] > 0 and r["loss_pct"] < 5,
              {"transport": {"mode": "tls", "tls_version": "1.3", "protocol": "5"}},
              ("delivered_msg_s", "loss_pct")),
+    Scenario("hardened", "eavesdrop, impersonate, inject and replay at once",
+             "every defence on (the `hardened` preset)",
+             "the attacker gets nothing and all legitimate traffic, both ways, still flows",
+             lambda r: (not r["attacker_connected"] and r["leak_pct"] == 0
+                        and r["forged_ok"] == 0 and r["replays_ok"] == 0
+                        and r["delivered_msg_s"] > 0 and r["loss_pct"] < 5 and r["rejected"] == 0
+                        and r["sensors_up"] == r["sensors_total"]
+                        and r["cmd_ok"] > 0 and r["cmd_rejected"] == 0),
+             lambda cfg: {**hardened(cfg), "downlink": {"rate": 20},
+                          "attacker": {"impersonate": True, "inject_rate": 20.0,
+                                       "replay_rate": 20.0}},
+             ("attacker", "leak_pct", "forged_ok", "replays_ok", "delivered_msg_s", "loss_pct",
+              "cmd_ok", "gw_cpu_us_per_msg")),
     # Irreversible: keep these last.
     Scenario("key-rotation", "keys captured earlier", "rotate every payload key",
              "traffic continues without rejections across the switch",

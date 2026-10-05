@@ -1,5 +1,6 @@
 #include "msec/security/key_policy.hpp"
 
+#include <algorithm>
 #include <format>
 #include <mutex>
 #include <utility>
@@ -66,26 +67,20 @@ void KeyTopicPolicy::remove(KeyId key_id) {
 
 bool KeyTopicPolicy::may_publish(KeyId key_id, std::string_view topic) const {
     const std::shared_lock lock{mutex_};
-    if (const auto it = rules_.find(key_id); it != rules_.end()) {
-        for (const auto& filter : it->second) {
-            if (topic_matches(filter, topic)) {
-                return true;
-            }
-        }
+    if (const auto it = rules_.find(key_id); it != rules_.end() &&
+        std::ranges::any_of(it->second, [&](const auto& f) { return topic_matches(f, topic); })) {
+        return true;
     }
     const auto owner = owners_.find(key_id);
     const std::string key = std::to_string(key_id);
-    for (const auto& pattern : patterns_) {
-        if (uses_owner(pattern) && owner == owners_.end()) {
-            continue;  // no owner, no match: never substitute an empty level
-        }
-        const auto filter =
-            substitute(pattern, key, owner == owners_.end() ? std::string_view{} : owner->second);
-        if (topic_matches(filter, topic)) {
-            return true;
-        }
-    }
-    return false;
+    const bool has_owner = owner != owners_.end();
+    return std::ranges::any_of(patterns_, [&](const std::string& pattern) {
+        // No owner, no match: never substitute an empty level.
+        return (has_owner || !uses_owner(pattern)) &&
+               topic_matches(substitute(pattern, key, has_owner ? std::string_view{owner->second}
+                                                                : std::string_view{}),
+                             topic);
+    });
 }
 
 }  // namespace msec::security

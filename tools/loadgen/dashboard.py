@@ -3,6 +3,7 @@
     GET  /                      the dashboard page
     GET  /api/state?since=T     config, metric points newer than T, change log
     POST /api/config            partial config as JSON, e.g. {"transport": {"mode": "tls"}}
+    POST /api/preset            {"name": "hardened"}: apply a named profile
 
 The same API works from the command line:
     curl -s localhost:8088/api/config -d '{"payload": {"replay": false}}'
@@ -47,13 +48,15 @@ def serve(lab: Lab, host: str, port: int) -> ThreadingHTTPServer:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
         def do_POST(self) -> None:  # noqa: N802
-            if urlparse(self.path).path != "/api/config":
+            path = urlparse(self.path).path
+            if path not in ("/api/config", "/api/preset"):
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
                 return
             try:
                 length = int(self.headers.get("Content-Length", 0))
-                patch = json.loads(self.rfile.read(length) or b"{}")
-                changes = lab.apply(patch)
+                body = json.loads(self.rfile.read(length) or b"{}")
+                changes = (lab.apply_preset(str(body.get("name", ""))) if path == "/api/preset"
+                           else lab.apply(body))
             except (ValueError, json.JSONDecodeError) as e:
                 self._json(HTTPStatus.BAD_REQUEST, {"error": str(e), "config": lab.config})
                 return

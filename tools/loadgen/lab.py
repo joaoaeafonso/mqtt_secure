@@ -91,6 +91,29 @@ STARTUP_ONLY = {("broker", "host"), ("broker", "port"), ("broker", "advertise"),
 BROKER_KEYS = ("mode", "tls_version", "auth", "acl", "clientid_binding", "sys_topics",
                "max_packet", "max_connections")
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
+# Room for the envelope (≤ 25 + 12 nonce + 64 signature bytes), the topic and
+# the MQTT headers on top of the plaintext.
+PACKET_OVERHEAD = 512
+
+
+def hardened(config: dict) -> dict:
+    """Every defence on at once. Limits are derived from the load, so legitimate
+    traffic fits: a connection per sensor plus room for the gateway, attackers
+    and reconnects; twice each sensor's rate per topic; the largest legitimate
+    packet. What remains possible with all of this on is listed in the README."""
+    load = config["load"]
+    return {
+        "transport": {"mode": "mtls", "tls_version": "1.3", "protocol": "5", "auth": True,
+                      "acl": True, "clientid_binding": True, "sys_topics": False,
+                      "max_packet": load["payload"] + PACKET_OVERHEAD,
+                      "max_connections": load["sensors"] + 16},
+        "payload": {"protection": "sign", "freshness": True, "replay": True,
+                    "key_binding": True, "rate_limit": max(10, int(load["rate"] * 2) + 1)},
+        "load": {"zone": "restricted"},
+    }
+
+
+PRESETS = {"hardened": hardened}
 
 
 def uses_agents(config: dict) -> bool:
@@ -157,6 +180,11 @@ def merged(base: dict, patch: dict) -> dict:
     out["response"]["revoked"] = ",".join(map(str, sorted(revoked)))
     if any(n > out["load"]["sensors"] for n in revoked):
         raise ValueError("response.revoked names a sensor that does not exist")
+    if out["transport"]["max_packet"] and (
+            out["load"]["payload"] + PACKET_OVERHEAD > out["transport"]["max_packet"]):
+        raise ValueError(f"transport.max_packet must leave room for the payload: at least "
+                         f"load.payload + {PACKET_OVERHEAD} = "
+                         f"{out['load']['payload'] + PACKET_OVERHEAD} bytes")
     if out["load"]["payload"] < 8:
         raise ValueError("load.payload must be at least 8 bytes (the timestamp)")
     if out["load"]["sensors"] < 1:
@@ -359,6 +387,11 @@ class Lab:
             for d in descriptions:
                 self._event(d)
             return descriptions
+
+    def apply_preset(self, name: str) -> list[str]:
+        if name not in PRESETS:
+            raise ValueError(f"unknown preset {name!r} (known: {', '.join(PRESETS)})")
+        return self.apply(PRESETS[name](self.config))
 
     def _active_sensors(self) -> list[int]:
         revoked = parse_revoked(self.config["response"]["revoked"])
