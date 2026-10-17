@@ -1,0 +1,30 @@
+\section*{Resumo}
+\addcontentsline{toc}{section}{Resumo}
+
+O protocolo MQTT tornou-se o padrão \emph{de facto} para a troca de mensagens na
+Internet das Coisas, mas a sua especificação deixa a segurança quase inteiramente
+ao critério de quem o implementa. Como todas as mensagens atravessam um
+\emph{broker}, a proteção do canal com TLS não basta: termina no próprio
+\emph{broker}, que passa a ver, guardar e reencaminhar todo o conteúdo, e não
+impede a repetição de mensagens, a injeção por clientes legítimos nem o abuso de
+uma chave comprometida. Este trabalho apresenta uma revisão sistemática da
+literatura sobre mecanismos de segurança para comunicações baseadas em MQTT,
+conduzida segundo um protocolo explícito: perguntas de investigação, critérios
+PICOC, \emph{strings} de pesquisa com grupos de sinónimos, critérios de inclusão,
+exclusão e qualidade, leitura em três passagens e formulário de extração de dados.
+Analisam-se 26 estudos primários publicados entre 2014 e 2026 e cinco revisões
+relacionadas, classificados numa taxonomia de oito categorias e comparados segundo
+as propriedades de segurança que garantem. A comparação mostra que a literatura
+trata sobretudo autenticação, controlo de acesso e confidencialidade, mas raramente
+reporta, em conjunto, a ligação criptográfica da mensagem ao tópico, a proteção
+contra repetição, a política do recetor contra a redução do nível de proteção e a
+restrição dos tópicos em que cada chave pode publicar. Com base nestas lacunas,
+propõe-se uma arquitetura de segurança em camadas, composta por camadas
+independentes e comutáveis entre a aplicação e o transporte, que combina defesa no
+transporte, um envelope fim-a-fim com AES-256-GCM ou Ed25519 e limitação de
+tráfego antes de qualquer operação criptográfica. A avaliação experimental da
+proposta é remetida para a segunda parte do projeto.
+
+\vspace{0.6cm}
+\noindent\textbf{Palavras-chave:} MQTT; Internet das Coisas; segurança fim-a-fim;
+cifra autenticada; revisão sistemática da literatura; defesa em profundidade.

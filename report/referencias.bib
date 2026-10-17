@@ -1,0 +1,529 @@
+% Referências do relatório. Todas as entradas foram verificadas (autores, título,
+% local de publicação, ano, páginas e DOI) no Crossref / nos sítios dos editores.
+% Estilo: IEEEtran.bst (numérico, IEEE).
+
+% ===================================================================
+% Normas e especificações
+% ===================================================================
+
+@techreport{oasis-mqtt311,
+  author      = {Andrew Banks and Rahul Gupta},
+  title       = {{MQTT} Version 3.1.1},
+  institution = {OASIS},
+  type        = {OASIS Standard},
+  year        = {2014},
+  month       = oct,
+  url         = {https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html}
+}
+
+@techreport{oasis-mqtt5,
+  author      = {Andrew Banks and Ed Briggs and Ken Borgendale and Rahul Gupta},
+  title       = {{MQTT} Version 5.0},
+  institution = {OASIS},
+  type        = {OASIS Standard},
+  year        = {2019},
+  month       = mar,
+  url         = {https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html}
+}
+
+@misc{rfc8446,
+  author       = {Eric Rescorla},
+  title        = {The Transport Layer Security ({TLS}) Protocol Version 1.3},
+  howpublished = {RFC 8446, IETF},
+  year         = {2018},
+  month        = aug,
+  doi          = {10.17487/RFC8446}
+}
+
+@misc{rfc5246,
+  author       = {Tim Dierks and Eric Rescorla},
+  title        = {The Transport Layer Security ({TLS}) Protocol Version 1.2},
+  howpublished = {RFC 5246, IETF},
+  year         = {2008},
+  month        = aug,
+  doi          = {10.17487/RFC5246}
+}
+
+@misc{rfc4303,
+  author       = {Stephen Kent},
+  title        = {{IP} Encapsulating Security Payload ({ESP})},
+  howpublished = {RFC 4303, IETF},
+  year         = {2005},
+  month        = dec,
+  doi          = {10.17487/RFC4303}
+}
+
+@misc{rfc8032,
+  author       = {Simon Josefsson and Ilari Liusvaara},
+  title        = {Edwards-Curve Digital Signature Algorithm ({EdDSA})},
+  howpublished = {RFC 8032, IETF},
+  year         = {2017},
+  month        = jan,
+  doi          = {10.17487/RFC8032}
+}
+
+@misc{rfc2104,
+  author       = {Hugo Krawczyk and Mihir Bellare and Ran Canetti},
+  title        = {{HMAC}: Keyed-Hashing for Message Authentication},
+  howpublished = {RFC 2104, IETF},
+  year         = {1997},
+  month        = feb,
+  doi          = {10.17487/RFC2104}
+}
+
+@misc{rfc8439,
+  author       = {Yoav Nir and Adam Langley},
+  title        = {{ChaCha20} and {Poly1305} for {IETF} Protocols},
+  howpublished = {RFC 8439, IETF},
+  year         = {2018},
+  month        = jun,
+  doi          = {10.17487/RFC8439}
+}
+
+@techreport{nist-sp800-38d,
+  author      = {Morris J. Dworkin},
+  title       = {Recommendation for Block Cipher Modes of Operation: {Galois/Counter Mode} ({GCM}) and {GMAC}},
+  institution = {National Institute of Standards and Technology},
+  type        = {NIST Special Publication},
+  number      = {800-38D},
+  year        = {2007},
+  doi         = {10.6028/NIST.SP.800-38D}
+}
+
+% ===================================================================
+% Metodologia de revisão sistemática
+% ===================================================================
+
+@techreport{kitchenham2007,
+  author      = {Barbara Kitchenham and Stuart Charters},
+  title       = {Guidelines for Performing Systematic Literature Reviews in Software Engineering},
+  institution = {Keele University and Durham University},
+  type        = {Technical Report},
+  number      = {EBSE-2007-01, version 2.3},
+  year        = {2007}
+}
+
+@article{keshav2007,
+  author  = {S. Keshav},
+  title   = {How to Read a Paper},
+  journal = {ACM SIGCOMM Computer Communication Review},
+  volume  = {37},
+  number  = {3},
+  pages   = {83--84},
+  year    = {2007},
+  doi     = {10.1145/1273445.1273458}
+}
+
+@article{page2021prisma,
+  author  = {Matthew J. Page and Joanne E. McKenzie and Patrick M. Bossuyt and Isabelle Boutron and Tammy C. Hoffmann and Cynthia D. Mulrow and Larissa Shamseer and Jennifer M. Tetzlaff and Elie A. Akl and Sue E. Brennan and others},
+  title   = {The {PRISMA} 2020 Statement: An Updated Guideline for Reporting Systematic Reviews},
+  journal = {BMJ},
+  volume  = {372},
+  pages   = {n71},
+  year    = {2021},
+  doi     = {10.1136/bmj.n71}
+}
+
+@article{cohen1960,
+  author  = {Jacob Cohen},
+  title   = {A Coefficient of Agreement for Nominal Scales},
+  journal = {Educational and Psychological Measurement},
+  volume  = {20},
+  number  = {1},
+  pages   = {37--46},
+  year    = {1960},
+  doi     = {10.1177/001316446002000104}
+}
+
+% ===================================================================
+% Fundamentos (criptografia, IoT, MQTT)
+% ===================================================================
+
+@article{bernstein2012ed25519,
+  author  = {Daniel J. Bernstein and Niels Duif and Tanja Lange and Peter Schwabe and Bo-Yin Yang},
+  title   = {High-Speed High-Security Signatures},
+  journal = {Journal of Cryptographic Engineering},
+  volume  = {2},
+  number  = {2},
+  pages   = {77--89},
+  year    = {2012},
+  doi     = {10.1007/s13389-012-0027-1}
+}
+
+@inproceedings{bock2016nonce,
+  author    = {Hanno B{\"o}ck and Aaron Zauner and Sean Devlin and Juraj Somorovsky and Philipp Jovanovic},
+  title     = {Nonce-Disrespecting Adversaries: Practical Forgery Attacks on {GCM} in {TLS}},
+  booktitle = {Proc. 10th USENIX Workshop on Offensive Technologies (WOOT 16)},
+  publisher = {USENIX Association},
+  address   = {Austin, TX, USA},
+  year      = {2016},
+  url       = {https://www.usenix.org/conference/woot16/workshop-program/presentation/bock}
+}
+
+@article{kolias2017mirai,
+  author  = {Constantinos Kolias and Georgios Kambourakis and Angelos Stavrou and Jeffrey Voas},
+  title   = {{DDoS} in the {IoT}: {Mirai} and Other Botnets},
+  journal = {Computer},
+  volume  = {50},
+  number  = {7},
+  pages   = {80--84},
+  year    = {2017},
+  doi     = {10.1109/MC.2017.201}
+}
+
+@article{light2017mosquitto,
+  author  = {Roger A. Light},
+  title   = {Mosquitto: Server and Client Implementation of the {MQTT} Protocol},
+  journal = {The Journal of Open Source Software},
+  volume  = {2},
+  number  = {13},
+  pages   = {265},
+  year    = {2017},
+  doi     = {10.21105/joss.00265}
+}
+
+@article{dizdarevic2019survey,
+  author  = {Jasenka Dizdarevi{\'c} and Francisco Carpio and Admela Jukan and Xavi Masip-Bruin},
+  title   = {A Survey of Communication Protocols for {Internet of Things} and Related Challenges of Fog and Cloud Computing Integration},
+  journal = {ACM Computing Surveys},
+  volume  = {51},
+  number  = {6},
+  pages   = {1--29},
+  year    = {2019},
+  doi     = {10.1145/3292674}
+}
+
+% ===================================================================
+% Estudos secundários (revisões e inquéritos relacionados)
+% ===================================================================
+
+@inproceedings{perrone2017mirai,
+  author    = {Giovanni Perrone and Massimo Vecchio and Riccardo Pecori and Raffaele Giaffreda},
+  title     = {The Day After {Mirai}: A Survey on {MQTT} Security Solutions After the Largest Cyber-attack Carried Out through an Army of {IoT} Devices},
+  booktitle = {Proc. 2nd Int. Conf. Internet of Things, Big Data and Security (IoTBDS)},
+  pages     = {246--253},
+  year      = {2017},
+  doi       = {10.5220/0006287302460253}
+}
+
+@article{nebbione2020security,
+  author  = {Giuseppe Nebbione and Maria Carla Calzarossa},
+  title   = {Security of {IoT} Application Layer Protocols: Challenges and Findings},
+  journal = {Future Internet},
+  volume  = {12},
+  number  = {3},
+  pages   = {55},
+  year    = {2020},
+  doi     = {10.3390/fi12030055}
+}
+
+@article{hintaw2023mqtt,
+  author  = {Ahmed J. Hintaw and Selvakumar Manickam and Mohammed Faiz Aboalmaaly and Shankar Karuppayah},
+  title   = {{MQTT} Vulnerabilities, Attack Vectors and Solutions in the {Internet of Things} ({IoT})},
+  journal = {IETE Journal of Research},
+  volume  = {69},
+  number  = {6},
+  pages   = {3368--3397},
+  year    = {2023},
+  doi     = {10.1080/03772063.2021.1912651}
+}
+
+@article{lakshminarayana2024securing,
+  author  = {Sujitha Lakshminarayana and Amit Praseed and P. Santhi Thilagam},
+  title   = {Securing the {IoT} Application Layer From an {MQTT} Protocol Perspective: Challenges and Research Prospects},
+  journal = {IEEE Communications Surveys \& Tutorials},
+  volume  = {26},
+  number  = {4},
+  pages   = {2510--2546},
+  year    = {2024},
+  doi     = {10.1109/COMST.2024.3372630}
+}
+
+@article{laghari2024securing,
+  author  = {Shams Ul Arfeen Laghari and Wenhao Li and Selvakumar Manickam and Priyadarsi Nanda and Ayman Khallel Al-Ani and Shankar Karuppayah},
+  title   = {Securing {MQTT} Ecosystem: Exploring Vulnerabilities, Mitigations, and Future Trajectories},
+  journal = {IEEE Access},
+  volume  = {12},
+  pages   = {139273--139289},
+  year    = {2024},
+  doi     = {10.1109/ACCESS.2024.3412030}
+}
+
+% ===================================================================
+% Estudos primários incluídos (E01--E27)
+% ===================================================================
+
+@inproceedings{neisse2014enforcement,
+  author    = {Ricardo Neisse and Gary Steri and Gianmarco Baldini},
+  title     = {Enforcement of Security Policy Rules for the {Internet of Things}},
+  booktitle = {Proc. IEEE 10th Int. Conf. Wireless and Mobile Computing, Networking and Communications (WiMob)},
+  pages     = {165--172},
+  year      = {2014},
+  doi       = {10.1109/WiMOB.2014.6962166}
+}
+
+@inproceedings{singh2015secure,
+  author    = {Meena Singh and M. A. Rajan and V. L. Shivraj and P. Balamuralidhar},
+  title     = {Secure {MQTT} for {Internet of Things} ({IoT})},
+  booktitle = {Proc. 5th Int. Conf. Communication Systems and Network Technologies (CSNT)},
+  pages     = {746--751},
+  year      = {2015},
+  doi       = {10.1109/CSNT.2015.16}
+}
+
+@inproceedings{niruntasukrat2016authorization,
+  author    = {Aimaschana Niruntasukrat and Chavee Issariyapat and Panita Pongpaibool and Koonlachat Meesublak and Pramrudee Aiumsupucgul and Anun Panya},
+  title     = {Authorization Mechanism for {MQTT}-Based {Internet of Things}},
+  booktitle = {Proc. IEEE Int. Conf. Communications Workshops (ICC)},
+  pages     = {290--295},
+  year      = {2016},
+  doi       = {10.1109/ICCW.2016.7503802}
+}
+
+@inproceedings{shin2016framework,
+  author    = {SeongHan Shin and Kazukuni Kobara and Chia-Chuan Chuang and Weicheng Huang},
+  title     = {A Security Framework for {MQTT}},
+  booktitle = {Proc. IEEE Conf. Communications and Network Security (CNS)},
+  pages     = {432--436},
+  year      = {2016},
+  doi       = {10.1109/CNS.2016.7860532}
+}
+
+@article{rizzardi2016aups,
+  author  = {Alessandra Rizzardi and Sabrina Sicari and Daniele Miorandi and Alberto Coen-Porisini},
+  title   = {{AUPS}: An Open Source {AUthenticated Publish/Subscribe} System for the {Internet of Things}},
+  journal = {Information Systems},
+  volume  = {62},
+  pages   = {29--41},
+  year    = {2016},
+  doi     = {10.1016/j.is.2016.05.004}
+}
+
+@inproceedings{mektoubi2016rsa,
+  author    = {Abdessamad Mektoubi and Hicham Lalaoui Hassani and Hicham Belhadaoui and Mounir Rifi and Abdelouahed Zakari},
+  title     = {New Approach for Securing Communication over {MQTT} Protocol: A Comparison between {RSA} and Elliptic Curve},
+  booktitle = {Proc. 3rd Int. Conf. Systems of Collaboration (SysCo)},
+  pages     = {1--6},
+  year      = {2016},
+  doi       = {10.1109/SYSCO.2016.7831326}
+}
+
+@inproceedings{andy2017attack,
+  author    = {Syaiful Andy and Budi Rahardjo and Bagus Hanindhito},
+  title     = {Attack Scenarios and Security Analysis of {MQTT} Communication Protocol in {IoT} System},
+  booktitle = {Proc. 4th Int. Conf. Electrical Engineering, Computer Science and Informatics (EECSI)},
+  pages     = {1--6},
+  year      = {2017},
+  doi       = {10.1109/EECSI.2017.8239179}
+}
+
+@inproceedings{firdous2017modelling,
+  author    = {Syed Naeem Firdous and Zubair Baig and Craig Valli and Ahmed Ibrahim},
+  title     = {Modelling and Evaluation of Malicious Attacks against the {IoT} {MQTT} Protocol},
+  booktitle = {Proc. IEEE Int. Conf. Internet of Things (iThings), GreenCom, CPSCom and SmartData},
+  pages     = {748--755},
+  year      = {2017},
+  doi       = {10.1109/iThings-GreenCom-CPSCom-SmartData.2017.115}
+}
+
+@inproceedings{bisne2017composite,
+  author    = {Lochan Bisne and Manish Parmar},
+  title     = {Composite Secure {MQTT} for {Internet of Things} Using {ABE} and Dynamic {S-box} {AES}},
+  booktitle = {Proc. Innovations in Power and Advanced Computing Technologies (i-PACT)},
+  pages     = {1--5},
+  year      = {2017},
+  doi       = {10.1109/IPACT.2017.8245126}
+}
+
+@inproceedings{harsha2018shodan,
+  author    = {M. S. Harsha and B. M. Bhavani and K. R. Kundhavai},
+  title     = {Analysis of Vulnerabilities in {MQTT} Security Using {Shodan} {API} and Implementation of its Countermeasures via Authentication and {ACLs}},
+  booktitle = {Proc. Int. Conf. Advances in Computing, Communications and Informatics (ICACCI)},
+  pages     = {2244--2250},
+  year      = {2018},
+  doi       = {10.1109/ICACCI.2018.8554472}
+}
+
+@inproceedings{calabretta2018token,
+  author    = {Marco Calabretta and Riccardo Pecori and Luca Veltri},
+  title     = {A Token-Based Protocol for Securing {MQTT} Communications},
+  booktitle = {Proc. 26th Int. Conf. Software, Telecommunications and Computer Networks (SoftCOM)},
+  pages     = {1--6},
+  year      = {2018},
+  doi       = {10.23919/SOFTCOM.2018.8555834}
+}
+
+@article{calabretta2018mqttauth,
+  author  = {Marco Calabretta and Riccardo Pecori and Massimo Vecchio and Luca Veltri},
+  title   = {{MQTT-Auth}: A Token-Based Solution to Endow {MQTT} with Authentication and Authorization Capabilities},
+  journal = {Journal of Communications Software and Systems},
+  volume  = {14},
+  number  = {4},
+  year    = {2018},
+  doi     = {10.24138/jcomss.v14i4.604}
+}
+
+@article{hernandez2018fuzzing,
+  author  = {Santiago Hern{\'a}ndez Ramos and M. Teresa Villalba and Raquel Lacuesta},
+  title   = {{MQTT} Security: A Novel Fuzzing Approach},
+  journal = {Wireless Communications and Mobile Computing},
+  volume  = {2018},
+  pages   = {8261746},
+  year    = {2018},
+  doi     = {10.1155/2018/8261746}
+}
+
+@article{dinculeana2019vulnerabilities,
+  author  = {Dan Dinculean{\u{a}} and Xiaochun Cheng},
+  title   = {Vulnerabilities and Limitations of {MQTT} Protocol Used between {IoT} Devices},
+  journal = {Applied Sciences},
+  volume  = {9},
+  number  = {5},
+  pages   = {848},
+  year    = {2019},
+  doi     = {10.3390/app9050848}
+}
+
+@article{lohachab2019ecc,
+  author  = {Ankur Lohachab and Karambir},
+  title   = {{ECC} Based Inter-Device Authentication and Authorization Scheme Using {MQTT} for {IoT} Networks},
+  journal = {Journal of Information Security and Applications},
+  volume  = {46},
+  pages   = {1--12},
+  year    = {2019},
+  doi     = {10.1016/j.jisa.2019.02.005}
+}
+
+@inproceedings{malina2019secure,
+  author    = {Lukas Malina and Gautam Srivastava and Petr Dzurenda and Jan Hajny and Radek Fujdiak},
+  title     = {A Secure Publish/Subscribe Protocol for {Internet of Things}},
+  booktitle = {Proc. 14th Int. Conf. Availability, Reliability and Security (ARES)},
+  publisher = {ACM},
+  pages     = {1--10},
+  year      = {2019},
+  doi       = {10.1145/3339252.3340503}
+}
+
+@inproceedings{sadio2019lightweight,
+  author    = {Ousmane Sadio and Ibrahima Ngom and Claude Lishou},
+  title     = {Lightweight Security Scheme for {MQTT/MQTT-SN} Protocol},
+  booktitle = {Proc. 6th Int. Conf. Internet of Things: Systems, Management and Security (IOTSMS)},
+  pages     = {119--123},
+  year      = {2019},
+  doi       = {10.1109/IOTSMS48152.2019.8939177}
+}
+
+@article{vaccari2020slowite,
+  author  = {Ivan Vaccari and Maurizio Aiello and Enrico Cambiaso},
+  title   = {{SlowITe}, a Novel Denial of Service Attack Affecting {MQTT}},
+  journal = {Sensors},
+  volume  = {20},
+  number  = {10},
+  pages   = {2932},
+  year    = {2020},
+  doi     = {10.3390/s20102932}
+}
+
+@article{vaccari2020mqttset,
+  author  = {Ivan Vaccari and Giovanni Chiola and Maurizio Aiello and Maurizio Mongelli and Enrico Cambiaso},
+  title   = {{MQTTset}, a New Dataset for Machine Learning Techniques on {MQTT}},
+  journal = {Sensors},
+  volume  = {20},
+  number  = {22},
+  pages   = {6578},
+  year    = {2020},
+  doi     = {10.3390/s20226578}
+}
+
+@inproceedings{segarra2020mqttz,
+  author    = {Carlos Segarra and Ricard Delgado-Gonzalo and Valerio Schiavoni},
+  title     = {{MQT-TZ}: Hardening {IoT} Brokers Using {ARM} {TrustZone} (Practical Experience Report)},
+  booktitle = {Proc. Int. Symp. Reliable Distributed Systems (SRDS)},
+  pages     = {256--265},
+  year      = {2020},
+  doi       = {10.1109/SRDS51746.2020.00033}
+}
+
+@inproceedings{dahlmanns2021entrust,
+  author    = {Markus Dahlmanns and Jan Pennekamp and Ina Berenice Fink and Bernd Schoolmann and Klaus Wehrle and Martin Henze},
+  title     = {Transparent End-to-End Security for Publish/Subscribe Communication in Cyber-Physical Systems},
+  booktitle = {Proc. ACM Workshop on Secure and Trustworthy Cyber-Physical Systems (SaT-CPS)},
+  pages     = {78--87},
+  year      = {2021},
+  doi       = {10.1145/3445969.3450423}
+}
+
+@inproceedings{spielvogel2021tls,
+  author    = {Korbinian Spielvogel and Henrich C. P{\"o}hls and Joachim Posegga},
+  title     = {{TLS} Beyond the Broker: Enforcing Fine-Grained Security and Trust in Publish/Subscribe Environments for {IoT}},
+  booktitle = {Security and Trust Management (STM 2021)},
+  series    = {Lecture Notes in Computer Science},
+  publisher = {Springer},
+  pages     = {145--162},
+  year      = {2021},
+  doi       = {10.1007/978-3-030-91859-0_8}
+}
+
+@inproceedings{prantl2021performance,
+  author    = {Thomas Prantl and Lukas Iffl{\"a}nder and Stefan Herrnleben and Simon Engel and Samuel Kounev and Christian Krupitzer},
+  title     = {Performance Impact Analysis of Securing {MQTT} Using {TLS}},
+  booktitle = {Proc. ACM/SPEC Int. Conf. Performance Engineering (ICPE)},
+  pages     = {241--248},
+  year      = {2021},
+  doi       = {10.1145/3427921.3450253}
+}
+
+@article{vanglabbeek2022flexible,
+  author  = {Roald {Van Glabbeek} and Diana Deac and Thomas Perale and Kris Steenhaut and An Braeken},
+  title   = {Flexible and Efficient Security Framework for Many-to-Many Communication in a Publish/Subscribe Architecture},
+  journal = {Sensors},
+  volume  = {22},
+  number  = {19},
+  pages   = {7391},
+  year    = {2022},
+  doi     = {10.3390/s22197391}
+}
+
+@article{buccafurri2023mqtta,
+  author  = {Francesco Buccafurri and Vincenzo {De Angelis} and Sara Lazzaro},
+  title   = {{MQTT-A}: A Broker-Bridging {P2P} Architecture to Achieve Anonymity in {MQTT}},
+  journal = {IEEE Internet of Things Journal},
+  volume  = {10},
+  number  = {17},
+  pages   = {15443--15463},
+  year    = {2023},
+  doi     = {10.1109/JIOT.2023.3264019}
+}
+
+@article{alotaibi2024secure,
+  author  = {Nouf Saeed Alotaibi and Hassan I. Sayed Ahmed and Samah Osama M. Kamel and Ghada Farouk ElKabbany},
+  title   = {Secure Enhancement for {MQTT} Protocol Using Distributed Machine Learning Framework},
+  journal = {Sensors},
+  volume  = {24},
+  number  = {5},
+  pages   = {1638},
+  year    = {2024},
+  doi     = {10.3390/s24051638}
+}
+
+@article{javadi2026cmap,
+  author  = {Alireza Javadi and Samad Rostampour and Ygal Bendavid and Peyman Pahlevani and Sadegh Sadeghi and Nasour Bagheri and Hosein Kangavar Nazari and Martin Reisslein and Frank H. P. Fitzek},
+  title   = {{CMAP}: Certificateless {MQTT}-Based Authentication Protocol for Medical {IoT}},
+  journal = {IEEE Access},
+  volume  = {14},
+  pages   = {60836--60852},
+  year    = {2026},
+  doi     = {10.1109/ACCESS.2026.3684371}
+}
+
+% ===================================================================
+% Artefacto do projeto
+% ===================================================================
+
+@misc{mqttsecure2026repo,
+  author       = {{Autores do projeto}},
+  title        = {mqtt-secure: Arquitetura de Seguran{\c{c}}a em Camadas para Comunica{\c{c}}{\~o}es {IoT} Baseadas em {MQTT}},
+  howpublished = {Reposit{\'o}rio GitHub},
+  year         = {2026},
+  url          = {https://github.com/joaoaeafonso/mqtt_secure}
+}

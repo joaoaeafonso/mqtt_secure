@@ -1,0 +1,74 @@
+\section{Discussão}
+\label{sec:discussao}
+
+\subsection{Lacunas do estado da arte}
+
+A comparação das Secções~\ref{sec:resultados} e~\ref{sec:proposta} evidencia cinco
+lacunas.
+
+\begin{enumerate}[label=\textbf{L\arabic*.}, leftmargin=*]
+  \item \textbf{A autenticidade raramente é acompanhada de frescura.} Nenhum dos
+    mecanismos analisados reporta proteção contra repetição ou frescura como
+    propriedade garantida. No MQTT, onde os duplicados legítimos do QoS~1 coexistem
+    com repetições maliciosas, a ausência destes mecanismos permite reinjetar
+    mensagens autênticas indefinidamente.
+  \item \textbf{A mensagem não é ligada ao seu contexto.} A ligação criptográfica ao
+    tópico, a proteção do modo contra a redução do nível de proteção e a restrição
+    dos tópicos em que cada chave pode publicar não aparecem nos estudos
+    analisados como mecanismos explícitos, apesar de corresponderem a ameaças
+    concretas (mudança de tópico, \emph{downgrade}, dispositivo comprometido).
+  \item \textbf{O \emph{broker} continua, em regra, a ser de confiança.} Só seis dos
+    22 mecanismos dispensam, total ou parcialmente, a confiança no \emph{broker}; a
+    maioria das soluções de autenticação e autorização reforça o \emph{broker} em
+    vez de o tornar irrelevante para a segurança do conteúdo.
+  \item \textbf{O não repúdio está ausente.} As soluções baseiam-se em segredos
+    partilhados (palavras-passe, chaves simétricas, ABE), o que não impede quem
+    detém o segredo --- incluindo o recetor --- de forjar mensagens em nome do
+    remetente.
+  \item \textbf{Custo e benefício não são medidos em conjunto.} As avaliações
+    medem o custo do mecanismo, mas raramente o relacionam, no mesmo ensaio, com os
+    ataques que o mecanismo impede; e os mecanismos não são comparáveis entre si
+    por usarem plataformas, cargas e métricas diferentes.
+\end{enumerate}
+
+A arquitetura proposta responde diretamente a L1, L2, L3 e L4, e o seu desenho em
+camadas comutáveis foi pensado para que a segunda parte do projeto responda a L5.
+
+\subsection{Ameaças à validade}
+
+Seguindo~\cite{kitchenham2007}, identificam-se as principais ameaças à validade
+desta revisão e as medidas de mitigação adotadas (Tabela~\ref{tab:validade}).
+
+\begin{table}[ht]
+  \centering
+  \caption{Ameaças à validade da revisão e mitigação.}
+  \label{tab:validade}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{2.6cm}YY@{}}
+    \toprule
+    \textbf{Tipo} & \textbf{Ameaça} & \textbf{Mitigação} \\
+    \midrule
+    Construção & A \emph{string} pode não captar estudos que usem outra
+      terminologia & Grupos de sinónimos; refinamento após a leitura das revisões;
+      inclusão de MQTT-SN e de termos de deteção \\
+    Seleção & Enviesamento na aplicação dos critérios & Dois revisores
+      independentes; kappa de Cohen (Eq.~\ref{eq:kappa}); resolução das
+      divergências por discussão \\
+    Extração & Subjetividade na classificação das propriedades; um estudo pode
+      garantir uma propriedade sem a descrever & Formulário fixo; símbolo
+      \enquote{não reportado} distinto de \enquote{ausente por desenho};
+      confirmação na leitura integral \\
+    Externa & Bases de dados e língua limitam a cobertura; enviesamento de
+      publicação & Cinco bases de dados; inglês e português; estudos de revista,
+      conferência e \emph{workshop} \\
+    Conclusão & Os números por propriedade dependem da granularidade das
+      categorias & Taxonomia e critérios publicados; dados de extração no
+      Anexo~\ref{anx:extracao} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+A ameaça mais relevante é a da extração: as conclusões L1, L2 e L4 assentam em
+propriedades \emph{não reportadas}, o que não equivale a propriedades
+\emph{ausentes}. Por isso, a Tabela~\ref{tab:comparacao} distingue explicitamente
+os dois casos e a discussão fala em propriedades \enquote{não reportadas}.

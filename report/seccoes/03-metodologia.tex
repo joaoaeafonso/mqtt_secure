@@ -1,0 +1,404 @@
+\section{Metodologia: protocolo da revisão sistemática}
+\label{sec:metodologia}
+
+A revisão segue as diretrizes de Kitchenham e Charters para revisões sistemáticas
+em engenharia de \emph{software}~\cite{kitchenham2007}, organizadas em três fases
+(planeamento, condução e relato), e relata a seleção de estudos com o diagrama de
+fluxo PRISMA 2020~\cite{page2021prisma}. A Figura~\ref{fig:processo} resume o
+processo; as subsecções seguintes descrevem cada passo.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      node distance=0.45cm,
+      passo/.style={draw=iscte, fill=fundotab, rounded corners=2pt, text width=2.3cm,
+                    minimum height=1.25cm, align=center, font=\scriptsize},
+      fase/.style={font=\scriptsize\bfseries, text=iscte},
+      seta/.style={-{Stealth[length=2mm]}, thick, iscte}]
+    \node[passo] (p1) {Problema e perguntas de investigação};
+    \node[passo, right=of p1] (p2) {PICOC e grupos de sinónimos};
+    \node[passo, right=of p2] (p3) {\emph{String} principal e secundária; teste nas bases};
+    \node[passo, right=of p3] (p4) {Exportação das citações para o Parsifal};
+    \node[passo, below=1.0cm of p4] (p5) {Triagem por título e resumo (CI/CE)};
+    \node[passo, left=of p5] (p6) {Leitura em três passagens e avaliação de qualidade};
+    \node[passo, left=of p6] (p7) {Extração de dados (formulário)};
+    \node[passo, left=of p7] (p8) {Síntese, comparação e lacunas};
+    \foreach \a/\b in {p1/p2, p2/p3, p3/p4, p4/p5, p5/p6, p6/p7, p7/p8} \draw[seta] (\a) -- (\b);
+    \draw[seta, dashed, acento] (p3.north) to[out=135, in=45]
+      node[above, font=\scriptsize, text=acento] {refinamento após ler revisões} (p1.north);
+    \begin{scope}[on background layer]
+      \node[fit=(p1)(p4), draw=cinza!50, dashed, inner sep=6pt, label={[fase]above left:Planeamento}] {};
+      \node[fit=(p5)(p8), draw=cinza!50, dashed, inner sep=6pt, label={[fase]below left:Condução e relato}] {};
+    \end{scope}
+  \end{tikzpicture}
+  \caption{Processo da revisão sistemática adotado.}
+  \label{fig:processo}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\subsection{Definição do problema}
+
+O problema que a revisão procura esclarecer foi enunciado na
+Secção~\ref{sec:introducao}: a especificação do MQTT deixa a proteção das
+mensagens à implementação, o TLS termina no \emph{broker}, e a autenticação
+isolada não impede a repetição, a mudança de tópico nem o abuso de uma chave
+comprometida. Pretende-se identificar as melhores soluções do estado da arte
+académico atual para este problema, as propriedades que garantem e as lacunas
+que deixam.
+
+% ---------------------------------------------------------------------------
+\subsection{Perguntas de investigação}
+\label{sec:perguntas}
+
+As perguntas organizam-se em três grupos (Tabela~\ref{tab:perguntas}): uma
+pergunta geral, que define \emph{o que} se investiga; perguntas focadas, que
+procuram \emph{como} os problemas são tratados; e perguntas estatísticas, que
+quantificam \emph{quanto} é feito.
+
+\begin{table}[ht]
+  \centering
+  \caption{Perguntas de investigação.}
+  \label{tab:perguntas}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{1.1cm}YL{4.3cm}@{}}
+    \toprule
+    \textbf{ID} & \textbf{Pergunta} & \textbf{Motivação} \\
+    \midrule
+    \rowcolor{fundotab}
+    QG  & Que mecanismos de segurança são propostos na literatura para proteger
+          comunicações IoT baseadas em MQTT e que propriedades de segurança garantem?
+        & Delimitar o estado da arte \\
+    QF1 & Que ameaças e vulnerabilidades do MQTT são identificadas e como são demonstradas?
+        & Modelo de ameaças de referência \\
+    QF2 & Que mecanismos são propostos e em que ponto da arquitetura atuam
+          (transporte, \emph{broker}, mensagem fim-a-fim, deteção)?
+        & Taxonomia das soluções \\
+    QF3 & Que propriedades garantem (confidencialidade, integridade, autenticação,
+          autorização, frescura e anti-repetição, não repúdio, disponibilidade,
+          privacidade) e assumem um \emph{broker} confiável?
+        & Base da comparação \\
+    QF4 & Como são avaliadas as soluções (protótipo, plataforma, métricas,
+          verificação formal, dispositivos restritos)?
+        & Maturidade da evidência \\
+    QF5 & Que limitações e desafios em aberto são reportados?
+        & Lacunas e trabalho futuro \\
+    \rowcolor{fundotab}
+    QE1 & Quantas publicações existem por ano?
+        & Evolução do interesse \\
+    \rowcolor{fundotab}
+    QE2 & Qual a distribuição por tipo de publicação (revista, conferência, \emph{workshop})?
+        & Maturidade da área \\
+    \rowcolor{fundotab}
+    QE3 & Quantos estudos abordam cada categoria e cada propriedade de segurança?
+        & Identificar áreas pouco exploradas \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Critérios PICOC}
+
+A Tabela~\ref{tab:picoc} delimita o âmbito da revisão segundo os critérios PICOC.
+
+\begin{table}[ht]
+  \centering
+  \caption{Âmbito da revisão segundo os critérios PICOC.}
+  \label{tab:picoc}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{3cm}Y@{}}
+    \toprule
+    \textbf{Critério} & \textbf{Definição nesta revisão} \\
+    \midrule
+    \emph{Population}   & Comunicações IoT baseadas em MQTT ou MQTT-SN: clientes
+                          (sensores, atuadores, \emph{gateways}) e \emph{brokers}. \\
+    \emph{Intervention} & Mecanismos de segurança: criptográficos (cifra, MAC,
+                          assinaturas, acordo de chaves), de autenticação e
+                          autorização, de proteção do \emph{broker}, de deteção de
+                          ataques e de privacidade. \\
+    \emph{Comparison}   & MQTT com a segurança nativa (palavra-passe, ACL) ou apenas
+                          com TLS; comparação entre os mecanismos propostos. \\
+    \emph{Outcome}      & Propriedades de segurança garantidas, ameaças mitigadas,
+                          custo (latência, memória, energia, débito) e tipo de
+                          avaliação. \\
+    \emph{Context}      & Investigação académica com revisão por pares, publicada
+                          entre 2014 (normalização do MQTT 3.1.1 pela OASIS) e 2026,
+                          em ambientes IoT residenciais, industriais e de saúde. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{\emph{String} de pesquisa}
+\label{sec:string}
+
+\paragraph{Grupos de ideias e sinónimos.} A partir das perguntas identificaram-se
+três grupos de ideias gerais, a cada um dos quais se associaram sinónimos
+(Tabela~\ref{tab:grupos}). Os termos de um grupo combinam-se com \texttt{OR} e os
+grupos entre si com \texttt{AND}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Grupos de ideias e sinónimos usados na \emph{string} de pesquisa.}
+  \label{tab:grupos}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{2.8cm}Y@{}}
+    \toprule
+    \textbf{Grupo} & \textbf{Termos (combinados com OR)} \\
+    \midrule
+    G1 --- Protocolo   & \texttt{"MQTT"}, \texttt{"MQTT-SN"}, \texttt{"MQ Telemetry Transport"},
+                         \texttt{"Message Queuing Telemetry Transport"},
+                         \texttt{"Message Queue Telemetry Transport"} \\
+    G2 --- Segurança   & \texttt{"security"}, \texttt{"secure"}, \texttt{"authentication"},
+                         \texttt{"authorization"}, \texttt{"access control"},
+                         \texttt{"encryption"}, \texttt{"confidentiality"},
+                         \texttt{"integrity"}, \texttt{"privacy"}, \texttt{"attack*"},
+                         \texttt{"vulnerabilit*"}, \texttt{"intrusion"} \\
+    G3 --- Domínio     & \texttt{"Internet of Things"}, \texttt{"IoT"}, \texttt{"IIoT"},
+                         \texttt{"publish/subscribe"}, \texttt{"publish-subscribe"},
+                         \texttt{"machine-to-machine"}, \texttt{"M2M"} \\
+    G4 --- Revisões \newline(só na secundária) & \texttt{"systematic literature"},
+                         \texttt{"systematic review"}, \texttt{"literature review"},
+                         \texttt{"survey"} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{\emph{String} principal.} A combinação dos grupos G1, G2 e G3, aplicada
+ao título, resumo e palavras-chave, é:
+
+\begin{center}
+\begin{minipage}{0.95\textwidth}
+\small\ttfamily
+("MQTT" OR "MQTT-SN" OR "MQ Telemetry Transport" OR "Message Queuing Telemetry
+Transport" OR "Message Queue Telemetry Transport")\\
+AND ("security" OR "secure" OR "authentication" OR "authorization" OR "access
+control" OR "encryption" OR "confidentiality" OR "integrity" OR "privacy" OR
+"attack*" OR "vulnerabilit*" OR "intrusion")\\
+AND ("Internet of Things" OR "IoT" OR "IIoT" OR "publish/subscribe" OR
+"publish-subscribe" OR "machine-to-machine" OR "M2M")
+\end{minipage}
+\end{center}
+
+\paragraph{\emph{String} secundária.} Acrescentando o grupo G4 com mais um
+\texttt{AND}, obtém-se a \emph{string} secundária, usada para encontrar revisões
+já publicadas sobre o tema. O termo \texttt{"survey"} foi acrescentado aos três
+propostos no protocolo base porque, nesta área, as revisões são publicadas
+maioritariamente com esse título (por exemplo,~\cite{perrone2017mirai,
+lakshminarayana2024securing}). A leitura das revisões assim encontradas
+(Secção~\ref{sec:relacionados}) levou a dois refinamentos: inclusão de
+\texttt{"MQTT-SN"} e de \texttt{"intrusion"} na \emph{string} principal, já que
+várias soluções visam a variante para redes de sensores~\cite{singh2015secure,
+sadio2019lightweight} e a deteção de intrusões é uma linha de investigação
+própria~\cite{vaccari2020mqttset, alotaibi2024secure}; e separação explícita das
+perguntas QF3 (propriedades) e QF4 (avaliação).
+
+\paragraph{Bases de dados.} Foram selecionadas as bases que indexam as principais
+revistas e conferências de segurança e redes: IEEE Xplore, Scopus, ACM Digital
+Library, Web of Science e ScienceDirect. A adaptação da \emph{string} à sintaxe de
+cada uma consta do Anexo~\ref{anx:strings}. O teste revelou limitações que
+obrigaram a adaptações: o ScienceDirect não suporta o carácter universal
+\texttt{*} e limita o número de operadores booleanos por campo, pelo que os
+termos truncados foram substituídos pelas formas singular e plural e a
+\emph{string} foi dividida em consultas parciais; o IEEE Xplore limita o número de
+termos por pesquisa, pelo que se pesquisou nos metadados (título, resumo e
+palavras-chave) com os grupos completos. A Tabela~\ref{tab:resultados-bases}
+regista o número de registos devolvidos por cada base, executadas as pesquisas em
+\dataPesquisa.
+
+\begin{table}[ht]
+  \centering
+  \caption{Registos devolvidos pela \emph{string} principal em cada base de dados.}
+  \label{tab:resultados-bases}
+  \small
+  \begin{tabular}{@{}lr@{}}
+    \toprule
+    \textbf{Base de dados} & \textbf{Registos} \\
+    \midrule
+    IEEE Xplore          & \nIEEE \\
+    Scopus               & \nScopus \\
+    ACM Digital Library  & \nACM \\
+    Web of Science       & \nWoS \\
+    ScienceDirect        & \nScienceDirect \\
+    \midrule
+    \textbf{Total}       & \textbf{\nTotalIdentificados} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Processo de pesquisa e ferramenta de apoio}
+
+As citações de todos os registos foram exportadas de cada base (formato BibTeX ou
+RIS) e importadas na ferramenta Parsifal, que remove duplicados e suporta a
+triagem, a avaliação de qualidade e a extração de dados por formulário, exportando
+no fim os dados extraídos em CSV.
+
+% ---------------------------------------------------------------------------
+\subsection{Critérios de inclusão e exclusão}
+\label{sec:criterios}
+
+Um estudo é incluído se satisfizer \emph{todos} os critérios de inclusão e
+\emph{nenhum} dos de exclusão (Tabela~\ref{tab:criterios}).
+
+\begin{table}[ht]
+  \centering
+  \caption{Critérios de inclusão (CI) e de exclusão (CE).}
+  \label{tab:criterios}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{1cm}Y@{}}
+    \toprule
+    \textbf{ID} & \textbf{Critério} \\
+    \midrule
+    \rowcolor{fundotab}
+    CI1 & Propõe, implementa ou avalia um mecanismo de segurança para MQTT ou
+          MQTT-SN, ou analisa ameaças e vulnerabilidades específicas do MQTT. \\
+    \rowcolor{fundotab}
+    CI2 & É um estudo primário publicado em revista, conferência ou \emph{workshop}
+          com revisão por pares. \\
+    \rowcolor{fundotab}
+    CI3 & Foi publicado entre 2014 e 2026. \\
+    \rowcolor{fundotab}
+    CI4 & O texto integral está acessível e escrito em inglês ou português. \\
+    CE1 & O MQTT é apenas mencionado ou usado como transporte, sem contributo de
+          segurança. \\
+    CE2 & É uma versão preliminar de outro estudo incluído com o mesmo contributo
+          (mantém-se a versão mais completa). \\
+    CE3 & É literatura cinzenta: tese, relatório técnico, patente, apresentação ou
+          artigo sem revisão por pares. \\
+    CE4 & É uma revisão ou inquérito (analisado à parte como estudo secundário,
+          Secção~\ref{sec:relacionados}). \\
+    CE5 & Tem menos de quatro páginas ou não descreve o mecanismo com detalhe
+          suficiente para ser avaliado. \\
+    CE6 & Trata exclusivamente de outro protocolo (CoAP, AMQP, DDS) sem resultados
+          para o MQTT. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Por aplicação do CE2, a versão em conferência do protocolo baseado em
+AugPAKE~\cite{calabretta2018token} foi excluída em favor da sua versão alargada em
+revista, o MQTT-Auth~\cite{calabretta2018mqttauth}.
+
+% ---------------------------------------------------------------------------
+\subsection{Seleção dos estudos e avaliação da qualidade}
+\label{sec:selecao}
+
+\paragraph{Primeira fase: título e resumo.} Removidos os duplicados, cada registo
+foi classificado por dois revisores de forma independente, lendo apenas o título e
+o resumo, segundo os critérios da Tabela~\ref{tab:criterios}. A concordância entre
+revisores foi medida com o coeficiente kappa de Cohen~\cite{cohen1960},
+\begin{equation}
+  \kappa = \frac{p_o - p_e}{1 - p_e}, \qquad
+  p_e = \sum_{c \in \{\text{inc}, \text{exc}\}} \frac{n_{1c}}{N}\cdot\frac{n_{2c}}{N},
+  \label{eq:kappa}
+\end{equation}
+onde $p_o$ é a proporção de decisões coincidentes, $p_e$ a concordância esperada
+por acaso, $N$ o número de registos e $n_{rc}$ o número de registos que o revisor
+$r$ classificou na classe $c$. Obteve-se $\kappa = \kappaTriagem$; as divergências
+foram resolvidas por discussão.
+
+\paragraph{Segunda fase: leitura em três passagens.} Os estudos que passaram a
+primeira fase foram lidos segundo o método de Keshav~\cite{keshav2007}: a primeira
+passagem (título, resumo, introdução, títulos das secções e conclusões) confirma a
+categoria e a relevância; a segunda (texto completo, figuras e tabelas, ignorando
+demonstrações) permite reaplicar os critérios e avaliar a qualidade; a terceira,
+reservada aos estudos incluídos, reconstrói mentalmente o trabalho e alimenta a
+extração de dados.
+
+\paragraph{Avaliação da qualidade.} Cada estudo foi pontuado nos cinco critérios
+da Tabela~\ref{tab:qualidade}, com $q_{ij} \in \{0;\ 0{,}5;\ 1\}$ (não, em parte,
+sim). A pontuação do estudo $i$ é
+\begin{equation}
+  Q_i = \sum_{j=1}^{5} q_{ij}, \qquad 0 \le Q_i \le 5,
+  \label{eq:qualidade}
+\end{equation}
+e foram excluídos os estudos com $Q_i < 2{,}5$.
+
+\begin{table}[ht]
+  \centering
+  \caption{Critérios de avaliação da qualidade.}
+  \label{tab:qualidade}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{1.1cm}Y@{}}
+    \toprule
+    \textbf{ID} & \textbf{Pergunta} \\
+    \midrule
+    QA1 & O objetivo e o contributo estão claramente definidos? \\
+    QA2 & O modelo de ameaças ou as propriedades de segurança pretendidas são explícitos? \\
+    QA3 & O mecanismo (ou a análise) está descrito com detalhe suficiente para ser reproduzido? \\
+    QA4 & Há avaliação experimental, analítica ou formal dos resultados? \\
+    QA5 & As limitações e os custos são discutidos? \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Fluxo de seleção.} A Figura~\ref{fig:prisma} apresenta o diagrama
+PRISMA~2020 do processo.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      caixa/.style={draw=iscte, fill=fundotab, rounded corners=2pt, text width=7.4cm,
+                    minimum height=1.0cm, align=center, font=\small},
+      lado/.style={draw=cinza, fill=white, rounded corners=2pt, text width=5.2cm,
+                   minimum height=1.0cm, align=center, font=\small},
+      fase/.style={draw=iscte, fill=iscte, text=white, font=\tiny\bfseries,
+                   rotate=90, minimum width=1.5cm, minimum height=0.5cm},
+      seta/.style={-{Stealth[length=2mm]}, thick, iscte}]
+    \node[caixa] (id) {Registos identificados nas bases de dados\\
+      ($n = \nTotalIdentificados$)\\[-1pt]
+      {\scriptsize IEEE \nIEEE; Scopus \nScopus; ACM \nACM; WoS \nWoS; SD \nScienceDirect}};
+    \node[lado, right=0.6cm of id] (dup) {Duplicados removidos\\($n = \nDuplicados$)};
+    \node[caixa, below=0.9cm of id] (tri) {Registos triados por título e resumo\\($n = \nTriados$)};
+    \node[lado, right=0.6cm of tri] (exta) {Excluídos (CI/CE)\\($n = \nExcluidosTA$)};
+    \node[caixa, below=0.9cm of tri] (ti) {Estudos avaliados em texto integral\\
+      (três passagens e qualidade)\\($n = \nTextoIntegral$)};
+    \node[lado, right=0.6cm of ti] (exti) {Excluídos: CE1--CE6 ou $Q_i < 2{,}5$\\($n = \nExcluidosTI$)};
+    \node[caixa, below=0.9cm of ti, fill=iscte!15] (inc) {\textbf{Estudos primários incluídos}\\($n = \nIncluidos$)};
+    \node[lado, right=0.6cm of inc] (sec) {Revisões relacionadas (\emph{string} secundária)\\($n = \nSecundarios$)};
+    \draw[seta] (id) -- (tri);
+    \draw[seta] (tri) -- (ti);
+    \draw[seta] (ti) -- (inc);
+    \draw[seta] (id) -- (dup);
+    \draw[seta] (tri) -- (exta);
+    \draw[seta] (ti) -- (exti);
+    \node[fase, left=0.25cm of id] {Identificação};
+    \node[fase, left=0.25cm of tri] {Triagem};
+    \node[fase, left=0.25cm of ti] {Elegibilidade};
+    \node[fase, left=0.25cm of inc] {Inclusão};
+  \end{tikzpicture}
+  \caption{Diagrama de fluxo PRISMA 2020 da seleção dos estudos.}
+  \label{fig:prisma}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\subsection{Extração de dados}
+\label{sec:extracao}
+
+Para responder às perguntas de investigação definiu-se o formulário de extração da
+Tabela~\ref{tab:formulario}, preenchido no Parsifal para cada estudo incluído
+durante a terceira passagem de leitura. O resumo da extração consta do
+Anexo~\ref{anx:extracao}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Formulário de extração de dados e pergunta a que cada campo responde.}
+  \label{tab:formulario}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{4.2cm}YL{1.8cm}@{}}
+    \toprule
+    \textbf{Campo} & \textbf{Valores} & \textbf{Pergunta} \\
+    \midrule
+    Ano; tipo de publicação & ano; revista / conferência / \emph{workshop} & QE1, QE2 \\
+    Tipo de contributo & análise de ameaças / mecanismo / avaliação / conjunto de dados & QF1, QF2 \\
+    Categoria & uma das oito categorias da taxonomia (Secção~\ref{sec:taxonomia}) & QF2, QE3 \\
+    Ponto de atuação & transporte / \emph{broker} / mensagem fim-a-fim / deteção & QF2 \\
+    Primitivas & AES, ChaCha20-Poly1305, HMAC, ABE, ECC, RSA, PAKE, TEE, ML\dots & QF2 \\
+    Propriedades & C, I, Au, Az, F/R, NR, D, P (ver Tabela~\ref{tab:comparacao}) & QF3, QE3 \\
+    Confiança no \emph{broker} & total / parcial / nenhuma & QF3 \\
+    Avaliação & protótipo, plataforma, métricas, verificação formal & QF4 \\
+    Dispositivos restritos & sim / não & QF4 \\
+    Limitações declaradas & texto livre & QF5 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

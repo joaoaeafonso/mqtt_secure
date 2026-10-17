@@ -1,0 +1,100 @@
+% ===========================================================================
+% Relatório teórico — Projeto, Parte 1
+% Segurança em Redes e Sistemas de Informação (SRSI)
+%
+% Compilar:   make            (pdflatex + bibtex + pdflatex x2)
+%       ou:   latexmk -pdf main.tex
+% Overleaf:   carregar a pasta report/ inteira; compilador pdfLaTeX.
+%
+% Antes de entregar: preencher os campos marcados a vermelho
+% (capa abaixo e dados-revisao.tex).
+% ===========================================================================
+\documentclass[11pt, a4paper]{article}
+
+% ----------------------------------------------------- dados da capa -------
+\newcommand{\Mestrado}{\textcolor{red}{$\langle$Nome do Mestrado$\rangle$}}
+\newcommand{\UnidadeCurricular}{Segurança em Redes e Sistemas de Informação}
+\newcommand{\Autores}{%
+  \textcolor{red}{Nome 1}, N.º \textcolor{red}{xxxxx}\\
+  \textcolor{red}{Nome 2}, N.º \textcolor{red}{yyyyy}}
+\newcommand{\Data}{17-10-26}
+\newcommand{\Docente}{\textcolor{red}{$\langle$Nome do Docente$\rangle$}}
+\newcommand{\Titulo}{Segurança em Camadas para Comunicações IoT Baseadas em MQTT:
+  Revisão Sistemática da Literatura e Proposta de Arquitetura}
+\newcommand{\TituloCurto}{Segurança em camadas para MQTT}
+\newcommand{\Repositorio}{https://github.com/joaoaeafonso/mqtt_secure}
+
+\input{preambulo}
+\input{dados-revisao}
+
+\hypersetup{pdftitle={\Titulo}, pdfsubject={SRSI -- Projeto, Parte 1}}
+
+\begin{document}
+
+% ------------------------------------------------------------- capa -------
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \IfFileExists{figuras/iscte-logo.png}%
+    {\includegraphics[width=0.42\textwidth]{figuras/iscte-logo.png}}%
+    {\begin{tikzpicture}
+       \node[draw=iscte, line width=1pt, minimum width=6cm, minimum height=2.2cm,
+             text=iscte, font=\Large\bfseries] {iscte};
+     \end{tikzpicture}}
+  \par\vspace{2.2cm}
+
+  {\Large Mestrado em \Mestrado\par}
+  \vspace{0.6cm}
+  {\LARGE\bfseries\color{iscte} \UnidadeCurricular\par}
+  \vspace{2.4cm}
+
+  \begin{flushleft}
+    \large
+    \textbf{Autores:}\\[0.2cm]
+    \Autores\\[0.8cm]
+    \textbf{Data:} \Data\\[0.8cm]
+    \textbf{Título do trabalho:}\\[0.2cm]
+    \Titulo\\[0.8cm]
+    \textbf{Docente:} \Docente\\[0.8cm]
+    \textbf{Repositório:} \url{\Repositorio}
+  \end{flushleft}
+  \vfill
+\end{titlepage}
+
+% ---------------------------------------------------- pré-textuais --------
+\pagenumbering{roman}
+\input{seccoes/00-resumo}
+
+\clearpage
+\tableofcontents
+\clearpage
+\listoffigures
+\listoftables
+\clearpage
+\input{seccoes/00-glossario}
+\clearpage
+
+% --------------------------------------------------------- texto ----------
+\pagenumbering{arabic}
+\input{seccoes/01-introducao}
+\input{seccoes/02-enquadramento}
+\input{seccoes/03-metodologia}
+\input{seccoes/04-trabalhos-relacionados}
+\input{seccoes/05-resultados}
+\input{seccoes/06-proposta}
+\input{seccoes/07-discussao}
+\input{seccoes/08-conclusoes}
+
+% ---------------------------------------------------- referências ---------
+\clearpage
+\bibliographystyle{IEEEtran}
+\bibliography{referencias}
+
+% -------------------------------------------------------- anexos ----------
+\clearpage
+\appendix
+\renewcommand{\thesection}{\Alph{section}}
+\input{seccoes/anexo-a-strings}
+\input{seccoes/anexo-b-extracao}
+
+\end{document}

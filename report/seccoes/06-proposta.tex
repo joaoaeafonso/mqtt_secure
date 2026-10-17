@@ -1,0 +1,403 @@
+\section{Proposta: arquitetura de segurança em camadas}
+\label{sec:proposta}
+
+Esta secção propõe uma arquitetura que responde às lacunas identificadas na
+Secção~\ref{sec:resultados}. A proposta é apresentada ao nível do desenho e da sua
+formalização; a avaliação experimental (custo de cada camada e ataques que cada uma
+impede) é objeto da segunda parte do projeto. Uma implementação de referência em
+C++23, com documentação técnica completa, está disponível no repositório do
+projeto~\cite{mqttsecure2026repo}.
+
+% ---------------------------------------------------------------------------
+\subsection{Princípios de desenho}
+
+\begin{enumerate}[label=\textbf{D\arabic*.}, leftmargin=*]
+  \item \textbf{Defesa em profundidade}~(Eq.~\ref{eq:profundidade}): proteção no
+    transporte, na mensagem e na disponibilidade, de forma independente.
+  \item \textbf{O \emph{broker} não é de confiança para o conteúdo}: a
+    confidencialidade, a integridade, a autenticidade e a frescura das mensagens
+    não podem depender dele.
+  \item \textbf{Camadas independentes e comutáveis}: cada mecanismo é uma camada
+    que pode ser ativada ou desativada sem alterar as restantes, o que permite medir
+    isoladamente o custo e o benefício de cada um.
+  \item \textbf{Verificações baratas primeiro, estado só depois da autenticação}:
+    rejeitar cedo o que é barato rejeitar e nunca deixar entrada não autenticada
+    alterar estado.
+  \item \textbf{Estado limitado}: toda a estrutura que um atacante consiga fazer
+    crescer tem um limite superior.
+\end{enumerate}
+
+% ---------------------------------------------------------------------------
+\subsection{Arquitetura em camadas}
+\label{sec:arquitetura}
+
+A comunicação de cada extremo (sensor, \emph{gateway}) passa por uma sequência
+ordenada de camadas entre a aplicação e o transporte MQTT
+(Figura~\ref{fig:camadas}). Seja $\mathcal{M}$ o conjunto das mensagens e
+$\bot$ a rejeição. Cada camada $\ell_i$ define duas funções
+$\ell_i^{\uparrow}, \ell_i^{\downarrow} : \mathcal{M} \to \mathcal{M} \cup \{\bot\}$,
+com $\ell(\bot) = \bot$. Para camadas ordenadas do lado da aplicação ($\ell_1$)
+para o lado do transporte ($\ell_n$):
+\begin{align}
+  \operatorname{Saída}(m)  &= \ell_n^{\downarrow} \circ \cdots \circ \ell_1^{\downarrow}(m), \label{eq:saida}\\
+  \operatorname{Entrada}(m) &= \ell_1^{\uparrow} \circ \cdots \circ \ell_n^{\uparrow}(m). \label{eq:entrada}
+\end{align}
+A primeira rejeição interrompe o processamento: uma mensagem recebida que alguma
+camada rejeite nunca chega à aplicação. A \emph{ordem} das camadas tem significado:
+com a persistência acima da segurança guarda-se texto em claro; abaixo dela,
+guardam-se envelopes (cifra em repouso); a limitação de tráfego fica junto ao
+transporte para descartar inundações antes de qualquer operação criptográfica.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      camada/.style={draw=iscte, fill=fundotab, rounded corners=2pt, minimum width=3.2cm,
+                     minimum height=0.75cm, font=\small, align=center},
+      ext/.style={draw=cinza, fill=white, rounded corners=2pt, minimum width=3.2cm,
+                  minimum height=0.75cm, font=\small, align=center},
+      seta/.style={-{Stealth[length=2mm]}, thick, iscte},
+      nota/.style={font=\scriptsize, text=cinza, align=left, text width=7.4cm}]
+    \node[ext] (app) {Aplicação};
+    \node[camada, below=0.35cm of app] (pers) {Persistência (opcional)};
+    \node[camada, below=0.35cm of pers] (sec) {\textbf{Segurança da mensagem}};
+    \node[camada, below=0.6cm of sec] (lim) {Limitação de tráfego};
+    \node[ext, below=0.35cm of lim] (mqtt) {Transporte MQTT\\\scriptsize TLS / mTLS};
+    \node[ext, below=0.6cm of mqtt, fill=iscte!10] (brk) {\emph{Broker}\\\scriptsize autenticação, ACL, limites};
+    \foreach \a/\b in {app/pers, pers/sec, sec/lim, lim/mqtt}
+      \draw[seta] ([xshift=-0.6cm]\a.south) -- ([xshift=-0.6cm]\b.north);
+    \foreach \a/\b in {pers/app, sec/pers, lim/sec, mqtt/lim}
+      \draw[seta, acento] ([xshift=0.6cm]\a.north) -- ([xshift=0.6cm]\b.south);
+    \draw[seta, <->] (mqtt) -- (brk);
+    \node[font=\scriptsize, text=iscte, left=0.1cm of pers.west, anchor=east] {saída $\downarrow$};
+    \node[font=\scriptsize, text=acento, right=0.1cm of pers.east, anchor=west] {$\uparrow$ entrada};
+    \node[nota, right=0.9cm of sec] (n1) {Envelope fim-a-fim: AES-256-GCM, GMAC ou
+      Ed25519; tópico nos dados associados; frescura; janela anti-repetição;
+      política de modos; restrição chave--tópico.};
+    \node[nota, right=0.9cm of lim] (n2) {\emph{Token bucket} por tópico,
+      antes de qualquer operação criptográfica; estado limitado.};
+    \node[nota, right=0.9cm of brk] (n3) {Camada 1: TLS 1.3, mTLS com identidade no
+      certificado, palavras-passe, ACL por utilizador, identificador de cliente
+      ligado ao utilizador, limites de pacote e de ligações.};
+    \draw[cinza, densely dotted] (sec.east) -- (n1.west);
+    \draw[cinza, densely dotted] (lim.east) -- (n2.west);
+    \draw[cinza, densely dotted] (brk.east) -- (n3.west);
+  \end{tikzpicture}
+  \caption{Arquitetura proposta: camadas entre a aplicação e o transporte, cada uma
+    comutável de forma independente. A saída percorre as camadas de cima para
+    baixo e a entrada de baixo para cima.}
+  \label{fig:camadas}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\subsection{Camada de transporte e \emph{broker}}
+
+A primeira camada usa o que os \emph{brokers} já oferecem
+(Tabela~\ref{tab:seguranca-nativa}), configurado de forma restritiva: só a porta
+TLS aberta (TLS~1.3); autenticação mútua por certificado, com o nome comum do
+certificado como identidade MQTT; palavras-passe; ACL de negação por omissão com
+regras parametrizadas pelo utilizador autenticado (por exemplo,
+\texttt{restricted/sensors/\%u/\#} só para escrita); identificador de cliente
+igual ao nome de utilizador, o que impede um cliente de tomar a sessão de outro;
+desativação de \texttt{\$SYS}; e limites de tamanho de pacote e de número de
+ligações. Esta camada protege a rede e restringe quem fala com o \emph{broker},
+mas, por si só, deixa intactos os problemas P1 a P3.
+
+% ---------------------------------------------------------------------------
+\subsection{Envelope fim-a-fim}
+\label{sec:envelope}
+
+A camada de segurança substitui o conteúdo de cada mensagem por um
+\emph{envelope} (Figura~\ref{fig:envelope}), com cabeçalho fixo de 25 octetos.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      campo/.style={draw=iscte, minimum height=0.85cm, font=\scriptsize, align=center,
+                    fill=fundotab},
+      corpo/.style={draw=iscte, minimum height=0.85cm, font=\scriptsize, align=center,
+                    fill=acento!20}]
+    \node[campo, minimum width=0.9cm] (m)  {\texttt{"MS"}\\2};
+    \node[campo, minimum width=0.8cm, right=0pt of m] (v) {ver.\\1};
+    \node[campo, minimum width=0.9cm, right=0pt of v] (md) {modo\\1};
+    \node[campo, minimum width=1.4cm, right=0pt of md] (k) {id. chave\\4};
+    \node[campo, minimum width=1.8cm, right=0pt of k] (s) {sequência\\8};
+    \node[campo, minimum width=1.8cm, right=0pt of s] (t) {instante (ms)\\8};
+    \node[campo, minimum width=0.7cm, right=0pt of t] (n) {$|N|$\\1};
+    \node[campo, minimum width=1.3cm, right=0pt of n] (nn) {\emph{nonce}\\$|N|$};
+    \node[corpo, minimum width=3.6cm, right=0pt of nn] (b) {corpo\\variável};
+    \draw[decorate, decoration={brace, amplitude=5pt}, thick, bom]
+      ([yshift=2pt]m.north west) -- ([yshift=2pt]nn.north east)
+      node[midway, above=6pt, font=\scriptsize, text=bom]
+      {autenticado como dados associados, juntamente com o tópico MQTT};
+    \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, iscte]
+      ([yshift=-2pt]m.south west) -- ([yshift=-2pt]n.south east)
+      node[midway, below=6pt, font=\scriptsize, text=iscte] {cabeçalho fixo: 25 octetos};
+  \end{tikzpicture}
+  \caption{Formato do envelope (inteiros em \emph{big-endian}); o número sob cada
+    campo é o seu tamanho em octetos.}
+  \label{fig:envelope}
+\end{figure}
+
+\paragraph{Dados associados e ligação ao tópico.} Sendo $\mathit{cab}$ o cabeçalho,
+$N$ o \emph{nonce} e $\tau$ o tópico MQTT, os dados associados são
+\begin{equation}
+  A = \mathit{cab} \,\|\, N \,\|\, \operatorname{u16}(|\tau|) \,\|\, \tau .
+  \label{eq:aad}
+\end{equation}
+Como o tópico entra na autenticação mas não no envelope, uma mensagem válida
+republicada noutro tópico falha a verificação sem qualquer custo de transmissão; e
+como todo o cabeçalho (incluindo o modo, o identificador da chave, a sequência e o
+instante) é autenticado, nenhum desses campos pode ser alterado.
+
+\paragraph{Modos de proteção.} O remetente escolhe um de três modos, indicado no
+cabeçalho:
+\begin{align}
+  \textbf{cifra:}\quad & \mathit{corpo} = C \,\|\, T, & (C, T) &= \operatorname{AES\text{-}GCM.Enc}(K, N, P, A); \label{eq:modo-cifra}\\
+  \textbf{autenticação:}\quad & \mathit{corpo} = P \,\|\, T, & T &= \operatorname{AES\text{-}GCM.Enc}(K, N, \varnothing, A \,\|\, P); \label{eq:modo-auth}\\
+  \textbf{assinatura:}\quad & \mathit{corpo} = P \,\|\, \sigma, & \sigma &= \operatorname{Ed25519.Sign}(\mathit{sk}, A \,\|\, P),\ N = \varnothing. \label{eq:modo-sign}
+\end{align}
+O modo de cifra garante confidencialidade e integridade; o de autenticação (GMAC)
+garante integridade com o conteúdo legível; o de assinatura garante integridade e
+\emph{prova de origem}: o recetor guarda apenas chaves públicas e, por isso, consegue
+verificar, mas não forjar, mensagens dos dispositivos. O custo fixo por mensagem é
+\begin{equation}
+  \omega(\text{modo}) = 25 + |N| + |T| =
+  \begin{cases}
+    25 + 12 + 16 = 53 \text{ octetos} & \text{(cifra, autenticação)},\\
+    25 + 0 + 64 = 89 \text{ octetos} & \text{(assinatura)}.
+  \end{cases}
+  \label{eq:overhead}
+\end{equation}
+
+\paragraph{Política do recetor contra a redução do nível de proteção.} Cada recetor
+mantém o conjunto $\mathcal{A} \subseteq \{\text{cifra}, \text{autenticação},
+\text{assinatura}\}$ dos modos que aceita e rejeita qualquer envelope cujo modo
+$\mu \notin \mathcal{A}$. Como $\mu$ faz parte de $A$, um atacante não consegue
+rotular uma mensagem cifrada como \enquote{apenas autenticada} sem invalidar a
+etiqueta, e um detentor de chave não consegue baixar o nível de proteção abaixo do
+que o recetor exige.
+
+% ---------------------------------------------------------------------------
+\subsection{Ordem de verificação no recetor}
+\label{sec:ordem}
+
+A Tabela~\ref{tab:ordem} define a sequência de verificações de um envelope
+recebido. A ordem decorre do princípio D4.
+
+\begin{table}[ht]
+  \centering
+  \caption{Sequência de verificações de um envelope recebido.}
+  \label{tab:ordem}
+  \small
+  \begin{tabularx}{\textwidth}{@{}cL{3.5cm}YL{3.2cm}@{}}
+    \toprule
+    \textbf{\#} & \textbf{Verificação} & \textbf{Justificação da posição} & \textbf{Rejeição} \\
+    \midrule
+    1 & Formato do envelope & Descarta conteúdo não protegido (por exemplo, injeções em claro) & mensagem malformada \\
+    2 & Modo $\mu \in \mathcal{A}$ & Barato; o modo está em $A$, pelo que mentir sobre ele só pode falhar & modo não aceite \\
+    3 & Frescura, Eq.~\eqref{eq:frescura} & Barato; o instante está em $A$, pelo que alterá-lo invalida a etiqueta & mensagem expirada \\
+    4 & Chave conhecida e verificação criptográfica & A partir daqui a mensagem é autêntica; a falha é sempre a mesma, sem revelar a causa (sem oráculo) & falha de autenticação \\
+    5 & Restrição chave--tópico, Eq.~\eqref{eq:ligacao} & Só depois da autenticação: entrada não autenticada não pode sondar a política & permissão negada \\
+    6 & Janela anti-repetição, Eq.~\eqref{eq:janela} & Só depois da autenticação (números forjados não avançam a janela) e da restrição (uma mensagem recusada não consome o seu número) & repetição detetada \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Frescura e anti-repetição}
+
+A frescura usa a Eq.~\eqref{eq:frescura} com $\Delta_a = 60$~s e
+$\Delta_s = 5$~s, e a anti-repetição a janela da Eq.~\eqref{eq:janela} com
+$w = 64$, mantida por identificador de chave. Os dois mecanismos são
+complementares: a frescura sozinha deixa passar todas as repetições com menos de
+$\Delta_a$; a janela sozinha não protege contra a perda do seu estado (por exemplo,
+reinício do recetor), situação em que a frescura limita a exposição a $\Delta_a$.
+Para cumprir o princípio D5, o número de janelas é limitado e um identificador de
+chave novo é recusado quando o limite é atingido. Os limites do GCM
+(Eq.~\eqref{eq:aniversario}) e do espaço de sequências ($2^{64}$) impõem a rotação
+das chaves.
+
+% ---------------------------------------------------------------------------
+\subsection{Restrição chave--tópico}
+\label{sec:ligacao}
+
+Autenticar uma mensagem prova apenas que foi produzida com a chave $k$. Para que um
+dispositivo comprometido não publique, com a sua chave válida, nos tópicos dos
+outros (problema P3), cada chave tem um dono $\operatorname{dono}(k)$ e o recetor
+aplica regras de negação por omissão. Sendo $F_k$ as regras específicas da chave,
+$F_\ast$ os padrões gerais e $\sigma_k$ a substituição
+$\{\texttt{\%u} \mapsto \operatorname{dono}(k),\ \texttt{\%k} \mapsto k\}$:
+\begin{equation}
+  \operatorname{autorizada}(k, \tau) \iff
+  \exists f \in F_k \cup \sigma_k(F_\ast) :\ \operatorname{corr}(f, \tau),
+  \label{eq:ligacao}
+\end{equation}
+com $\operatorname{corr}$ definida na Eq.~\eqref{eq:corr}. Por exemplo, com o padrão
+\texttt{+/sensors/\%u/\#}, a chave de \texttt{sensor-7} só pode publicar em
+\texttt{open/sensors/sensor-7/\dots} e \texttt{restricted/sensors/sensor-7/\dots}.
+O dono tem de ser um único nível de tópico sem carateres especiais, para que a
+substituição não alargue o filtro.
+
+% ---------------------------------------------------------------------------
+\subsection{Gestão de chaves}
+
+Cada dispositivo $d$ tem, por época $e$, uma chave AES, um par de chaves Ed25519 e o
+identificador $\operatorname{id}(d, e) = e \cdot 10^{6} + d$ (o \emph{gateway} é
+$d = 0$). Identificadores nunca são reutilizados: um identificador reutilizado teria
+uma janela anti-repetição nova, na qual mensagens antigas voltariam a ser aceites. A
+Tabela~\ref{tab:chaves} mostra que chaves cada papel detém.
+
+\begin{table}[ht]
+  \centering
+  \caption{Distribuição de chaves por papel.}
+  \label{tab:chaves}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{2.4cm}YYY@{}}
+    \toprule
+    \textbf{Papel} & \textbf{Chaves AES} & \textbf{Chaves privadas Ed25519} & \textbf{Chaves públicas Ed25519} \\
+    \midrule
+    \emph{Gateway}  & de todos os dispositivos e a sua & \textbf{apenas a sua} & de todos os dispositivos e a sua \\
+    Dispositivo $d$ & a sua e a do \emph{gateway} (ordens) & a sua & a do \emph{gateway} \\
+    Atacante        & --- & --- & --- (apenas o certificado da CA) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+A \textbf{rotação} instala as chaves da época $e+1$ ao lado das da época $e$,
+muda os remetentes para as novas e revoga as antigas após um período de graça. A
+\textbf{revogação} de um dispositivo remove as suas chaves de mensagem, a sua
+palavra-passe no \emph{broker} e coloca o seu certificado na CRL, atuando nas
+duas camadas de defesa.
+
+% ---------------------------------------------------------------------------
+\subsection{Limitação de tráfego antes da criptografia}
+
+Junto ao transporte, uma camada aplica a Eq.~\eqref{eq:token-bucket} por tópico,
+rejeitando o excesso antes de qualquer verificação criptográfica. O número de baldes
+é limitado; quando o limite é atingido, os baldes inativos (que voltariam a estar
+cheios) são descartados e, se não houver nenhum, os tópicos novos partilham um único
+balde, pelo que um atacante não consegue criar orçamento inventando tópicos.
+
+% ---------------------------------------------------------------------------
+\subsection{Mapeamento entre ameaças e mecanismos}
+
+A Tabela~\ref{tab:ameacas-mecanismos} relaciona as ameaças da
+Tabela~\ref{tab:stride} com os mecanismos da proposta.
+
+\begin{table}[ht]
+  \centering
+  \caption{Ameaças e mecanismos da arquitetura proposta.}
+  \label{tab:ameacas-mecanismos}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{5.0cm}YL{2.6cm}@{}}
+    \toprule
+    \textbf{Ameaça} & \textbf{Mecanismo} & \textbf{Camada} \\
+    \midrule
+    Escuta na rede               & TLS 1.3 & transporte \\
+    Escuta pelo \emph{broker} ou por subscritores de \texttt{\#} & Modo de cifra; ACL & mensagem; \emph{broker} \\
+    Adulteração do conteúdo ou do cabeçalho & Etiqueta GCM ou assinatura sobre $A \,\|\, P$ & mensagem \\
+    Republicação noutro tópico   & Tópico em $A$, Eq.~\eqref{eq:aad} & mensagem \\
+    Repetição                    & Janela anti-repetição & mensagem \\
+    Mensagens antigas            & Frescura & mensagem \\
+    Injeção de mensagens em claro & Formato do envelope e autenticação & mensagem \\
+    Redução do nível de proteção & Modo em $A$ e política $\mathcal{A}$ & mensagem \\
+    Usurpação de identidade no \emph{broker} & Palavras-passe, mTLS, identificador ligado ao utilizador & transporte \\
+    Dispositivo comprometido a publicar por outros & Restrição chave--tópico, Eq.~\eqref{eq:ligacao}; ACL com \texttt{\%u} & mensagem; \emph{broker} \\
+    Recetor a forjar dados de dispositivos & Modo de assinatura (recetor só com chaves públicas) & mensagem \\
+    Chaves roubadas              & Rotação por épocas; revogação & gestão \\
+    Inundação de um tópico       & \emph{Token bucket} antes da criptografia; limites no \emph{broker} & disponibilidade \\
+    Esgotamento de memória       & Estado limitado (janelas, baldes, repositório) & todas \\
+    Oráculo de verificação       & Falha uniforme; estado só depois da autenticação & mensagem \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ---------------------------------------------------------------------------
+\subsection{Comparação com os trabalhos relacionados}
+\label{sec:comparacao-proposta}
+
+A Tabela~\ref{tab:proposta-vs} compara a proposta com os mecanismos fim-a-fim e de
+autenticação mais próximos, acrescentando às propriedades da
+Tabela~\ref{tab:comparacao} três mecanismos específicos desta proposta: ligação ao
+tópico (LT), política contra a redução do nível de proteção (RN) e restrição
+chave--tópico (CT).
+
+\begin{table}[ht]
+  \centering
+  \caption{Posicionamento da proposta face aos trabalhos relacionados mais próximos.
+    Siglas e símbolos como na Tabela~\ref{tab:comparacao}; LT ligação ao tópico;
+    RN política contra a redução do nível de proteção; CT restrição chave--tópico;
+    Com.: camadas comutáveis em tempo de execução.}
+  \label{tab:proposta-vs}
+  \scriptsize
+  \setlength{\tabcolsep}{2.8pt}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{@{}lL{2.8cm}ccccccccc|cccc@{}}
+    \toprule
+    \textbf{ID} & \textbf{Trabalho}
+      & \textbf{C} & \textbf{I} & \textbf{Au} & \textbf{Az} & \textbf{F/R} & \textbf{NR}
+      & \textbf{D} & \textbf{P} & \textbf{BnC} & \textbf{LT} & \textbf{RN} & \textbf{CT} & \textbf{Com.} \\
+    \midrule
+    \E{02} & Singh et al.~\cite{singh2015secure}
+      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
+    \E{11} & Calabretta et al.~\cite{calabretta2018mqttauth}
+      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \E{13} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
+      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{15} & Malina et al.~\cite{malina2019secure}
+      & \Parc & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \E{16} & Sadio et al.~\cite{sadio2019lightweight}
+      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{19} & Segarra et al.~\cite{segarra2020mqttz}
+      & \Sim & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
+    \E{20} & Dahlmanns et al.~\cite{dahlmanns2021entrust}
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{26} & Javadi et al.~\cite{javadi2026cmap}
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \midrule
+    \rowcolor{fundotab}
+    --- & \textbf{Proposta}
+      & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Parc & \Nao & \Sim & \Sim & \Sim & \Sim & \Sim \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A proposta não supera os trabalhos relacionados em todas as dimensões: não oferece
+anonimato~\cite{buccafurri2023mqtta}, não protege o próprio \emph{broker} com um
+TEE~\cite{segarra2020mqttz}, não oferece confidencialidade de grupo por atributos
+\cite{singh2015secure} e não tem verificação formal~\cite{javadi2026cmap}. O seu
+contributo está na \emph{combinação}, numa só camada fim-a-fim, de propriedades
+que a literatura analisada trata separadamente ou não reporta (ligação ao tópico,
+frescura com anti-repetição, política contra a redução do nível de proteção,
+restrição chave--tópico e não repúdio opcional) e na organização em camadas
+comutáveis, que permite medir o custo e o benefício de cada mecanismo isoladamente.
+
+% ---------------------------------------------------------------------------
+\subsection{Limitações conhecidas}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Chaves pré-partilhadas}: a distribuição inicial das chaves assume um
+    canal seguro; um acordo de chaves por dispositivo (por exemplo, ECDH) eliminaria
+    os segredos pré-partilhados.
+  \item \textbf{Chave de grupo nas ordens}: nos modos AES todos os atuadores detêm a
+    chave do \emph{gateway}, pelo que um atuador comprometido pode forjar ordens para
+    os outros; o modo de assinatura resolve-o, a um custo computacional superior.
+  \item \textbf{Limitação por tópico}: o tópico é escolhido por quem publica, pelo
+    que um atacante que inunde o tópico de uma vítima consome também o orçamento da
+    vítima; limites por cliente pertencem ao \emph{broker}.
+  \item \textbf{Estado da janela não persistente}: o reinício do recetor apaga as
+    janelas anti-repetição, ficando a proteção limitada à frescura ($\Delta_a$).
+  \item \textbf{Dados falsos mas autênticos}: um dispositivo comprometido continua a
+    poder publicar dados falsos nos seus próprios tópicos; só a deteção e a
+    revogação o travam.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\subsection{Plano de avaliação (segunda parte do projeto)}
+
+A avaliação experimental medirá, para cada combinação de camadas: (i)~o custo, em
+latência fim-a-fim, tempo de processador por mensagem, débito e octetos
+acrescentados (Eq.~\ref{eq:overhead}); e (ii)~o benefício, como a fração de
+ataques bem-sucedidos (escuta, injeção, repetição, mudança de tópico, usurpação de
+identidade, inundação) com cada defesa ativa ou inativa. Esta medição conjunta de
+custo e benefício responde diretamente à lacuna identificada na QF4.

@@ -1,0 +1,333 @@
+\section{Enquadramento teórico}
+\label{sec:enquadramento}
+
+Esta secção reúne os conceitos necessários para ler a revisão e a proposta: o
+funcionamento do MQTT, os mecanismos de segurança que o protocolo e os seus
+\emph{brokers} oferecem nativamente, as primitivas criptográficas usadas pelas
+soluções analisadas e o modelo de ameaças que serve de referência à comparação.
+
+% ---------------------------------------------------------------------------
+\subsection{O protocolo MQTT}
+\label{sec:mqtt}
+
+O MQTT é um protocolo cliente--servidor de publicação/subscrição que funciona
+sobre um transporte ordenado e fiável, normalmente TCP (porta 1883) ou TLS
+(porta 8883)~\cite{oasis-mqtt311}. A Figura~\ref{fig:mqtt-arquitetura} ilustra os
+papéis envolvidos. Os clientes não se conhecem entre si: o desacoplamento no
+espaço, no tempo e na sincronização é precisamente o que torna o protocolo
+escalável, mas também o que concentra a confiança no \emph{broker}.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      node distance=1.2cm and 2.2cm,
+      cli/.style={draw=iscte, fill=fundotab, rounded corners=2pt, minimum width=2.6cm,
+                  minimum height=0.8cm, font=\small, align=center},
+      brk/.style={draw=iscte, fill=iscte!15, rounded corners=3pt, minimum width=2.8cm,
+                  minimum height=2.8cm, font=\small, align=center},
+      seta/.style={-{Stealth[length=2.2mm]}, thick, iscte}]
+    \node[brk] (b) {\textbf{\emph{Broker}}\\[2pt]{\footnotesize filtros, ACL,}\\
+                     {\footnotesize mensagens retidas}};
+    \node[cli, left=of b, yshift=0.9cm] (s1) {Sensor 1\\\footnotesize\emph{publisher}};
+    \node[cli, left=of b, yshift=-0.9cm] (s2) {Sensor $n$\\\footnotesize\emph{publisher}};
+    \node[cli, right=of b, yshift=0.9cm] (g) {\emph{Gateway}\\\footnotesize\emph{subscriber}};
+    \node[cli, right=of b, yshift=-0.9cm] (a) {Atuador\\\footnotesize\emph{subscriber}};
+    \draw[seta] (s1) -- node[above, font=\scriptsize, sloped] {PUBLISH \texttt{t}} (b);
+    \draw[seta] (s2) -- (b);
+    \draw[seta] (b) -- node[above, font=\scriptsize, sloped] {entrega} (g);
+    \draw[seta] (b) -- (a);
+    \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, acento]
+      ([yshift=-0.35cm]s2.south west) -- ([yshift=-0.35cm]b.south -| b.west)
+      node[midway, below=6pt, font=\scriptsize, text=acento] {TLS (salto 1)};
+    \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, acento]
+      ([yshift=-0.35cm]b.south -| b.east) -- ([yshift=-0.35cm]a.south east)
+      node[midway, below=6pt, font=\scriptsize, text=acento] {TLS (salto 2)};
+    \draw[decorate, decoration={brace, amplitude=6pt}, thick, bom]
+      ([yshift=0.35cm]s1.north west) -- ([yshift=0.35cm]g.north east)
+      node[midway, above=7pt, font=\scriptsize, text=bom]
+      {proteção fim-a-fim: só esta não depende da confiança no \emph{broker}};
+  \end{tikzpicture}
+  \caption{Arquitetura de publicação/subscrição do MQTT. O TLS protege cada salto
+    em separado e termina no \emph{broker}; só a proteção fim-a-fim da mensagem
+    sobrevive a um \emph{broker} não confiável.}
+  \label{fig:mqtt-arquitetura}
+\end{figure}
+
+\paragraph{Pacotes.} O protocolo define catorze tipos de pacote na versão 3.1.1
+(CONNECT, CONNACK, PUBLISH, PUBACK, PUBREC, PUBREL, PUBCOMP, SUBSCRIBE, SUBACK,
+UNSUBSCRIBE, UNSUBACK, PINGREQ, PINGRESP e DISCONNECT), a que a versão 5.0
+acrescenta AUTH~\cite{oasis-mqtt5}. Cada pacote tem um cabeçalho fixo de dois a
+cinco octetos, o que explica a eficiência do protocolo em ligações limitadas.
+
+\paragraph{Tópicos e filtros.} Os tópicos são cadeias UTF-8 hierárquicas
+separadas por \texttt{/}. As subscrições usam \emph{filtros} com dois carateres
+especiais: \texttt{+} corresponde a exatamente um nível e \texttt{\#} a qualquer
+número de níveis, apenas no fim do filtro. Tópicos começados por \texttt{\$}
+(como \texttt{\$SYS/\dots}, com estatísticas do \emph{broker}) não são abrangidos
+por filtros que comecem por um destes carateres. Formalmente, sendo um tópico
+$\tau = (\tau_1, \dots, \tau_m)$ e um filtro $f = (f_1, \dots, f_k)$ sequências
+de níveis, define-se a correspondência por
+\begin{equation}
+  \operatorname{corr}(f, \tau) \iff
+  \begin{cases}
+    \exists j \le \min(k, m+1):\ f_j = \texttt{\#}\ \wedge\
+      \forall i < j:\ f_i \in \{\tau_i, \texttt{+}\}, \\
+    k = m\ \wedge\ \forall i \le k:\ f_i \in \{\tau_i, \texttt{+}\},
+  \end{cases}
+  \label{eq:corr}
+\end{equation}
+com a restrição adicional de que, se $\tau_1$ começa por \texttt{\$}, então
+$f_1 \notin \{\texttt{+}, \texttt{\#}\}$. Esta relação é usada pelas listas de
+controlo de acessos e, na proposta, pela restrição chave--tópico
+(Secção~\ref{sec:proposta}).
+
+\paragraph{Qualidade de serviço.} O MQTT oferece três níveis de entrega: QoS~0
+(no máximo uma vez), QoS~1 (pelo menos uma vez, com possíveis duplicados marcados
+pela \emph{flag} DUP) e QoS~2 (exatamente uma vez, com um protocolo de quatro
+passos). Note-se que os duplicados legítimos do QoS~1 são indistinguíveis, para um
+mecanismo anti-repetição, de uma repetição maliciosa --- uma tensão que a
+proposta tem de resolver.
+
+\paragraph{Mensagens retidas e sessões.} O \emph{broker} pode reter a última
+mensagem de cada tópico e entregá-la a novos subscritores, e pode manter sessões
+persistentes entre ligações. Ambos os mecanismos implicam que o \emph{broker}
+armazena conteúdo, o que agrava o problema P1.
+
+% ---------------------------------------------------------------------------
+\subsection{Segurança nativa do MQTT e dos \emph{brokers}}
+\label{sec:seguranca-nativa}
+
+A Tabela~\ref{tab:seguranca-nativa} resume o que o protocolo e os \emph{brokers}
+comuns oferecem sem extensões.
+
+\begin{table}[ht]
+  \centering
+  \caption{Mecanismos de segurança nativos do MQTT e dos \emph{brokers} e respetivas limitações.}
+  \label{tab:seguranca-nativa}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{3.1cm}L{4.5cm}Y@{}}
+    \toprule
+    \textbf{Mecanismo} & \textbf{O que oferece} & \textbf{Limitação} \\
+    \midrule
+    Utilizador e palavra-passe (CONNECT)
+      & Autenticação do cliente pelo \emph{broker}
+      & Em claro sem TLS; não autentica mensagens individuais nem o \emph{broker} \\
+    \addlinespace
+    TLS 1.2/1.3~\cite{rfc5246, rfc8446}
+      & Confidencialidade e integridade de cada salto; autenticação do servidor
+      & Termina no \emph{broker}; custo de estabelecimento em dispositivos
+        restritos~\cite{prantl2021performance}; um cliente só controla o seu
+        próprio salto~\cite{spielvogel2021tls} \\
+    \addlinespace
+    TLS mútuo (certificado de cliente)
+      & Autenticação forte do cliente; identidade = nome comum do certificado
+      & Exige infraestrutura de chave pública e revogação (CRL) \\
+    \addlinespace
+    Listas de controlo de acessos
+      & Autorização por tópico (leitura/escrita) no \emph{broker}
+      & Baseiam-se na identidade declarada se não houver autenticação; não
+        protegem contra o próprio \emph{broker} \\
+    \addlinespace
+    Autenticação estendida (AUTH, MQTT 5)
+      & Métodos de desafio--resposta definidos pela aplicação
+      & Só autenticação da ligação; não protege o conteúdo \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Nenhum destes mecanismos protege a \emph{mensagem} de ponta a ponta. É neste
+espaço que se situa a maior parte das propostas da literatura e a arquitetura
+proposta neste trabalho.
+
+% ---------------------------------------------------------------------------
+\subsection{Primitivas criptográficas}
+\label{sec:primitivas}
+
+\subsubsection{Cifra autenticada com dados associados}
+
+Uma cifra AEAD é um par de algoritmos que garante, numa só operação,
+confidencialidade do texto em claro e integridade e autenticidade tanto do texto
+como de dados associados que seguem em claro:
+\begin{align}
+  (C, T) &= \operatorname{AEAD.Enc}(K, N, P, A), \label{eq:aead-enc}\\
+  \operatorname{AEAD.Dec}(K, N, C, T, A) &=
+    \begin{cases}
+      P & \text{se } T \text{ é válido para } (N, C, A), \\
+      \bot & \text{caso contrário,}
+    \end{cases} \label{eq:aead-dec}
+\end{align}
+onde $K$ é a chave, $N$ o \emph{nonce}, $P$ o texto em claro, $A$ os dados
+associados (AAD), $C$ o criptograma e $T$ a etiqueta de autenticação. O facto de
+$A$ ser autenticado sem ser cifrado é o que permite ligar criptograficamente a
+uma mensagem metadados que têm de permanecer legíveis, como o cabeçalho ou o
+tópico MQTT.
+
+\paragraph{AES-GCM.} No modo GCM~\cite{nist-sp800-38d}, com chave $K$ e
+\emph{nonce} de 96 bits, calcula-se a subchave $H = E_K(0^{128})$ e o bloco
+inicial $J_0 = N \,\|\, 0^{31} \,\|\, 1$. O texto é cifrado em modo contador a
+partir de $J_0 + 1$ e a etiqueta é
+\begin{equation}
+  T = \operatorname{MSB}_t\!\left(
+        \operatorname{GHASH}_H\!\left(A \,\|\, 0^{v} \,\|\, C \,\|\, 0^{u}
+        \,\|\, [\operatorname{len}(A)]_{64} \,\|\, [\operatorname{len}(C)]_{64}\right)
+        \oplus E_K(J_0)\right),
+  \label{eq:gcm}
+\end{equation}
+onde $\operatorname{GHASH}_H$ é uma função polinomial em $\mathrm{GF}(2^{128})$ e
+$u, v$ completam blocos de 128 bits. Com $P$ vazio obtém-se o GMAC, um código de
+autenticação de mensagem: $T = \operatorname{AEAD.Enc}(K, N, \varnothing, A)$.
+
+\paragraph{Limite dos \emph{nonces} aleatórios.} A segurança do GCM colapsa se o
+mesmo par $(K, N)$ for usado duas vezes: o XOR dos dois criptogramas revela o XOR
+dos textos e a subchave $H$ pode ser recuperada, permitindo falsificar
+etiquetas~\cite{bock2016nonce}. Com \emph{nonces} aleatórios de $b = 96$ bits e
+$q$ mensagens por chave, a probabilidade de colisão é limitada pelo paradoxo do
+aniversário:
+\begin{equation}
+  \Pr[\text{colisão}] \;\le\; \frac{q(q-1)}{2^{b+1}} \;\approx\; \frac{q^{2}}{2^{97}}.
+  \label{eq:aniversario}
+\end{equation}
+Para $q = 2^{32}$ a probabilidade é da ordem de $2^{-33}$, razão pela qual o NIST
+limita a $2^{32}$ o número de invocações por chave com \emph{nonces}
+aleatórios~\cite{nist-sp800-38d}. Esquemas de longa duração precisam, por isso,
+de rotação de chaves.
+
+\paragraph{ChaCha20-Poly1305.} Alternativa sem dependência de instruções AES em
+\emph{hardware}, com chave de 256 bits, \emph{nonce} de 96 bits e etiqueta de 128
+bits~\cite{rfc8439}; é a escolha de~\cite{sadio2019lightweight} para nós
+restritos.
+
+\subsubsection{Códigos de autenticação de mensagem}
+
+O HMAC~\cite{rfc2104} constrói um MAC a partir de uma função de \emph{hash} $\mathcal{H}$:
+\begin{equation}
+  \operatorname{HMAC}(K, m) =
+    \mathcal{H}\big((K' \oplus \mathit{opad}) \,\|\,
+    \mathcal{H}((K' \oplus \mathit{ipad}) \,\|\, m)\big),
+  \label{eq:hmac}
+\end{equation}
+onde $K'$ é a chave ajustada ao tamanho do bloco. Um MAC dá integridade e
+autenticidade face a quem não conhece $K$, mas \emph{não} prova a origem perante
+terceiros: qualquer detentor de $K$ (incluindo o recetor) pode produzir a mesma
+etiqueta.
+
+\subsubsection{Assinaturas digitais Ed25519}
+
+O Ed25519~\cite{bernstein2012ed25519, rfc8032} é um esquema de assinatura sobre a
+curva de Edwards equivalente à Curve25519, com ponto base $B$ de ordem prima
+$\ell$. A partir da chave privada (32 octetos) derivam-se o escalar $s$ e a chave
+pública $A = [s]B$. Para assinar $M$:
+\begin{equation}
+  r = \mathcal{H}(\mathit{prefixo} \,\|\, M) \bmod \ell,\quad
+  R = [r]B,\quad
+  k = \mathcal{H}(R \,\|\, A \,\|\, M) \bmod \ell,\quad
+  S = (r + k\,s) \bmod \ell,
+  \label{eq:ed25519-sign}
+\end{equation}
+e a assinatura é $(R, S)$, com 64 octetos. A verificação aceita sse
+\begin{equation}
+  [8][S]B = [8]R + [8][k]A.
+  \label{eq:ed25519-verify}
+\end{equation}
+Como $r$ é derivado deterministicamente da chave e da mensagem, o esquema elimina
+a dependência de um gerador aleatório no momento da assinatura. Ao contrário de um
+MAC, só o detentor de $s$ consegue assinar, enquanto qualquer detentor de $A$
+consegue verificar: a assinatura dá \emph{prova de origem} (não repúdio).
+
+% ---------------------------------------------------------------------------
+\subsection{Frescura e proteção contra repetição}
+\label{sec:frescura}
+
+\paragraph{Janela temporal.} Dada uma mensagem com carimbo temporal $t_m$,
+recebida no instante $t$, um recetor com tolerância de idade $\Delta_a$ e de
+desvio de relógio $\Delta_s$ aceita-a sse
+\begin{equation}
+  t - \Delta_a \;\le\; t_m \;\le\; t + \Delta_s .
+  \label{eq:frescura}
+\end{equation}
+A frescura limita o tempo durante o qual uma mensagem capturada é útil, mas
+\emph{não} impede a repetição dentro da janela $\Delta_a$.
+
+\paragraph{Janela deslizante de números de sequência.} O mecanismo anti-repetição
+do IPsec ESP~\cite{rfc4303} mantém, por remetente, o maior número de sequência
+aceite $h$ e um mapa de bits $W \in \{0,1\}^{w}$ (com $w = 64$ o valor
+recomendado), em que $W_i = 1$ significa que $h - i$ já foi recebido. Para uma
+mensagem autêntica com número $s > 0$:
+\begin{equation}
+  \operatorname{aceita}(s) \iff
+  \begin{cases}
+    s > h, & \text{e então } W \leftarrow (W \ll (s - h)) \mid 1,\ \ h \leftarrow s; \\
+    0 \le h - s < w \ \wedge\ W_{h-s} = 0, & \text{e então } W_{h-s} \leftarrow 1; \\
+    \text{falso}, & \text{se } h - s \ge w \text{ ou } W_{h-s} = 1.
+  \end{cases}
+  \label{eq:janela}
+\end{equation}
+O mecanismo tolera reordenação até $w$ posições e rejeita duplicados e mensagens
+antigas. Duas condições são essenciais: o estado só pode ser atualizado
+\emph{depois} de verificada a autenticidade (caso contrário um atacante avança a
+janela com números forjados), e cada chave deve pertencer a um único remetente.
+
+% ---------------------------------------------------------------------------
+\subsection{Limitação de tráfego}
+\label{sec:token-bucket}
+
+O balde de testemunhos (\emph{token bucket}) limita a taxa média a $\rho$
+mensagens por segundo, com rajadas até $\beta$. O número de testemunhos
+disponível no instante $t$, dado o estado no último acesso $t_0$, é
+\begin{equation}
+  b(t) = \min\!\big(\beta,\ b(t_0) + \rho\,(t - t_0)\big),
+  \label{eq:token-bucket}
+\end{equation}
+e uma mensagem é aceite sse $b(t) \ge 1$, caso em que $b \leftarrow b(t) - 1$. Num
+intervalo de duração $\Delta$, o número de mensagens aceites é limitado por
+$\beta + \rho\,\Delta$, independentemente da taxa oferecida.
+
+% ---------------------------------------------------------------------------
+\subsection{Modelo de ameaças}
+\label{sec:ameacas}
+
+Considera-se um adversário que pode (i)~observar e alterar o tráfego na rede,
+(ii)~ligar-se ao \emph{broker} como cliente, subscrever, publicar e repetir
+mensagens, (iii)~reivindicar a identidade de outro cliente, (iv)~comprometer o
+próprio \emph{broker} ou (v)~comprometer um dispositivo legítimo, obtendo as suas
+chaves. A Tabela~\ref{tab:stride} organiza as ameaças segundo as categorias STRIDE,
+que correspondem às classes de problemas identificadas para o MQTT
+em~\cite{hintaw2023mqtt}.
+
+\begin{table}[ht]
+  \centering
+  \caption{Ameaças ao MQTT segundo a classificação STRIDE e mecanismos que as mitigam.}
+  \label{tab:stride}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{2.4cm}L{5.2cm}Y@{}}
+    \toprule
+    \textbf{Categoria} & \textbf{Ameaça no MQTT} & \textbf{Mitigação típica} \\
+    \midrule
+    \emph{Spoofing}    & Cliente reivindica a identidade de outro; mensagens injetadas em tópicos alheios
+                       & Autenticação (palavras-passe, mTLS); autenticação da mensagem; restrição chave--tópico \\
+    \emph{Tampering}   & Alteração do conteúdo, do cabeçalho ou do tópico em trânsito ou no \emph{broker}
+                       & TLS (por salto); AEAD/MAC/assinatura com tópico nos dados associados (fim-a-fim) \\
+    \emph{Repudiation} & Remetente nega ter enviado; recetor fabrica mensagens em nome do remetente
+                       & Assinaturas digitais (um MAC partilhado não basta) \\
+    \emph{Information disclosure} & Subscrição de \texttt{\#}; \emph{broker} curioso; tópicos \texttt{\$SYS}
+                       & ACL; cifra fim-a-fim; TEE no \emph{broker}~\cite{segarra2020mqttz} \\
+    \emph{Denial of service} & Inundação de mensagens; ligações lentas~\cite{vaccari2020slowite}; esgotamento de estado
+                       & Limitação de tráfego; limites de pacotes e ligações; estado limitado; IDS~\cite{vaccari2020mqttset} \\
+    \emph{Elevation of privilege} & Abuso de ACL baseadas em identidade não verificada; chave de um dispositivo usada para outros
+                       & ACL com identidade autenticada; restrição chave--tópico; revogação \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Defesa em profundidade.} Se um ataque tiver de ultrapassar $n$ camadas
+de defesa independentes, cada uma contornável com probabilidade $p_i$, a
+probabilidade de sucesso é
+\begin{equation}
+  P_{\text{sucesso}} = \prod_{i=1}^{n} p_i ,
+  \label{eq:profundidade}
+\end{equation}
+estritamente menor do que a de qualquer camada isolada sempre que $p_i < 1$. A
+hipótese de independência raramente se verifica por inteiro (por exemplo, o roubo
+de uma chave de dispositivo pode afetar várias camadas), mas o modelo justifica a
+combinação de mecanismos em camadas distintas: transporte, mensagem e
+disponibilidade.

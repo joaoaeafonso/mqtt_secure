@@ -1,0 +1,37 @@
+% ===========================================================================
+% Números do processo de revisão sistemática.
+%
+% Estes valores só existem depois de EXECUTAR as pesquisas nas bases de dados
+% e a triagem no Parsifal (ver secção 3). Enquanto não forem preenchidos,
+% aparecem no PDF a vermelho, entre parênteses retos, para não passarem
+% despercebidos. Substitua \preencher{...} pelo número real, por exemplo:
+%     \newcommand{\nIEEE}{412}
+% ===========================================================================
+
+\newcommand{\preencher}[1]{\textcolor{red}{\textbf{[#1]}}}
+
+% Data em que as pesquisas foram executadas
+\newcommand{\dataPesquisa}{\preencher{dd-mm-aaaa}}
+
+% Registos devolvidos pela string principal, por base de dados
+\newcommand{\nIEEE}{\preencher{n}}
+\newcommand{\nScopus}{\preencher{n}}
+\newcommand{\nACM}{\preencher{n}}
+\newcommand{\nWoS}{\preencher{n}}
+\newcommand{\nScienceDirect}{\preencher{n}}
+\newcommand{\nTotalIdentificados}{\preencher{n}}
+
+% Registos devolvidos pela string secundária (revisões), total
+\newcommand{\nSecundariaTotal}{\preencher{n}}
+
+% Triagem (diagrama PRISMA)
+\newcommand{\nDuplicados}{\preencher{n}}
+\newcommand{\nTriados}{\preencher{n}}            % títulos e resumos lidos
+\newcommand{\nExcluidosTA}{\preencher{n}}        % excluídos por título/resumo
+\newcommand{\nTextoIntegral}{\preencher{n}}      % avaliados em texto integral
+\newcommand{\nExcluidosTI}{\preencher{n}}        % excluídos no texto integral / qualidade
+\newcommand{\nIncluidos}{26}                     % estudos primários incluídos (Tabela 11)
+\newcommand{\nSecundarios}{5}                    % revisões relacionadas analisadas (Secção 4)
+
+% Concordância entre revisores na triagem (coeficiente kappa de Cohen)
+\newcommand{\kappaTriagem}{\preencher{0,00}}
