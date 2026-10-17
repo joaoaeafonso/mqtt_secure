@@ -28,6 +28,7 @@ import threading
 import time
 from pathlib import Path
 
+import keylog
 import pki as pki_module
 from attacker import Attacker
 from cluster import DEFAULT_CONTROL_PORT, PROTOCOL_VERSION, Channel, fingerprint
@@ -131,7 +132,7 @@ def connect(controller: str, expected_fingerprint: str) -> Channel:
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
-    tls = context.wrap_socket(raw)
+    tls = keylog.enable(context).wrap_socket(raw)
     presented = fingerprint(tls.getpeercert(binary_form=True))
     if not hmac.compare_digest(presented, expected_fingerprint.lower().removeprefix("sha256:")):
         tls.close()

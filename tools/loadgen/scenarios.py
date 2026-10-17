@@ -146,6 +146,7 @@ def run(lab, settle: float, duration: float, only: set[str] | None = None, log=p
         for section, values in patch.items():
             combined.setdefault(section, {}).update(values)
         log(f"[{n}/{len(selected)}] {sc.name}: {sc.attack} vs {sc.defence}")
+        lab.mark(f"scenario {sc.name}: {sc.attack} vs {sc.defence}")
         lab.apply(combined)
         result = lab.measure(settle, duration)
         result["sensors_total"] = lab.config["load"]["sensors"]

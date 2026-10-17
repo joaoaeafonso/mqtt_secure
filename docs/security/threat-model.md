@@ -82,6 +82,7 @@ flowchart LR
 | T20 | I | Verification oracle (learn why a message failed) | A3 | uniform `AuthenticationFailed`; replay state only moves after auth; policy checked only after auth | timing differences between pre-crypto checks are observable (by design: they reveal nothing secret) |
 | T21 | I | Secrets left in memory | local | `SecureBuffer` zeroing; plaintext wiped after sealing and on rejection | copies made by third-party libraries (OpenSSL, Paho) |
 | T22 | S | Malicious lab controller / agent | lab | pinned fingerprint before sending anything; token (constant-time); CSR enrolment (sensor private keys never leave agents); 0700 temp dirs | dashboard has no authentication (local bind only) |
+| T23 | I | Leaked TLS key log / capture with embedded secrets | lab | key logging only on request (`--capture`, `--keylog`); files 0600 | anyone with the file decrypts the recorded sessions, including MQTT passwords and agent provisioning |
 
 ## 5. Security properties per configuration
 

@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 
 import paho.mqtt.client as mqtt
 
+import keylog
 from msec_envelope import (GATEWAY_OWNER, NONE, SENDER_PROTECTION_MODES, KeySet, Protector,
                            Rejected, Verifier, add_line, read_keys)
 
@@ -54,9 +55,13 @@ def make_client(client_id: str, transport: dict, username: str | None = None,
     if username:
         client.username_pw_set(username, password)
     if transport["mode"] in ("tls", "mtls"):
-        certfile, keyfile = cert if (cert and transport["mode"] == "mtls") else (None, None)
-        client.tls_set(ca_certs=transport["ca"], certfile=certfile, keyfile=keyfile,
-                       cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
+        # Same as tls_set(ca, cert, key, CERT_REQUIRED, PROTOCOL_TLS_CLIENT), but
+        # with our own context so its secrets can go to $SSLKEYLOGFILE (Wireshark).
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)  # verifies chain + hostname
+        context.load_verify_locations(transport["ca"])
+        if cert and transport["mode"] == "mtls":
+            context.load_cert_chain(*cert)
+        client.tls_set_context(keylog.enable(context))
     return client
 
 

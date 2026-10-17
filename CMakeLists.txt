@@ -61,6 +61,7 @@ add_subdirectory(modules/limits)
 if(MSEC_BUILD_APPS)
     add_subdirectory(apps/gateway)
     add_subdirectory(apps/load_gateway)
+    add_subdirectory(tools/wireshark)   # TLS key-log shim for the load lab's captures
 endif()
 
 if(MSEC_BUILD_BENCHMARKS)

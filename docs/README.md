@@ -14,6 +14,7 @@ measures what each one costs and what it stops.
 |---|---|
 | understand the whole system in one document | **[SDD.md](SDD.md)** — Software Design Document / technical description |
 | build, test and run it | [getting-started.md](getting-started.md) |
+| see it on the wire (Wireshark, TLS decryption, captures for a report) | [network-analysis.md](network-analysis.md) |
 | know what is protected against whom | [security/threat-model.md](security/threat-model.md) |
 | implement the wire format elsewhere | [protocol/envelope-format.md](protocol/envelope-format.md) |
 | add a layer, transport or crypto back-end | [extending.md](extending.md) |
@@ -29,6 +30,7 @@ docs/
 ├── getting-started.md             prerequisites, build, demo, lab, first experiments, library use
 ├── build-system.md                CMake options, presets, flags, msec_add_module, clang-tidy, CI
 ├── testing.md                     unit/integration/vector/Python tests, fuzzing, sanitizers, scenarios
+├── network-analysis.md            Wireshark: dissector, TLS key logging, lab captures, experiments, filters
 ├── benchmarks.md                  end-to-end cost matrix: zones × profiles × payload sizes, attack probes
 ├── extending.md                   adding layers, MQTT adapters, crypto back-ends, lab settings
 ├── coding-standards.md            engineering practices and conventions

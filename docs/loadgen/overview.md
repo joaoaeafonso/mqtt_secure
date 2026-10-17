@@ -22,6 +22,7 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway (C++) �
 | [scenarios.md](scenarios.md) | the 16 attack-vs-defence experiments |
 | [dashboard-and-api.md](dashboard-and-api.md) | the web dashboard, the HTTP API, metric definitions, matrix columns |
 | [distributed-agents.md](distributed-agents.md) | running sensors/attackers on other machines: trust bootstrap, protocol, clock correction |
+| [../network-analysis.md](../network-analysis.md) | recording runs for Wireshark (`--capture`), TLS decryption, the dissector |
 
 ## Requirements
 
@@ -62,6 +63,9 @@ Common options (`live`, `matrix`, `scenarios`):
 | `--verbose` | gateway logs every rejection |
 | `--state-dir DIR` | controller CA/cert/token (default `build/loadtest/controller`) |
 | `--new-token` | rotate the agent join token |
+| `--capture [FILE.pcapng]` | record the run with dumpcap; TLS secrets and a comment per lab event are embedded ([guide](../network-analysis.md#4-recording-a-lab-run)) |
+| `--capture-iface IFACE` | default `lo`, or `any` with agents |
+| `--keylog FILE` | every TLS endpoint writes its secrets here (default with `--capture`: `<capture>.keys`) |
 
 Command-specific:
 

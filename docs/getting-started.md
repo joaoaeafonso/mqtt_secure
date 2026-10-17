@@ -14,6 +14,7 @@
 | Python (load lab) | ≥ 3.11 | `python3-venv` |
 | Clang + libFuzzer (fuzzing) | 18 | `clang-18 libclang-rt-18-dev` |
 | clang-tidy (CI preset) | 18 | `clang-tidy-18` |
+| Wireshark / tshark (captures, optional) | ≥ 3.6 | `wireshark tshark` — see [network-analysis.md](network-analysis.md) |
 
 ```bash
 sudo apt-get install -y cmake ninja-build g++ libssl-dev libpaho-mqtt-dev \
@@ -42,7 +43,7 @@ Other presets: `tsan`, `release`, `bench`, `ci`, `fuzz` — see
 
 `run.sh` checks for `cmake`, `ninja`, `python3`, `mosquitto`,
 `mosquitto_passwd`; configures the `bench` preset if needed; builds
-`msec_load_gateway`; creates `tools/loadgen/.venv` and installs
+`msec_load_gateway` and the TLS key-log shim; creates `tools/loadgen/.venv` and installs
 `requirements.txt` if needed; then runs `loadgen.py live` with
 `lab.example.toml`, 100 sensors and `--open`. Ctrl-C stops broker, gateway,
 sensors and attacker.
@@ -64,7 +65,9 @@ sensors and attacker.
 7. **Rotate** keys; **Revoke** a sensor.
 8. **Harden**: everything on at once.
 
-Every change is marked on the charts and listed under "Changes".
+Every change is marked on the charts and listed under "Changes". Add
+`--capture` to also record everything for Wireshark, decryptable and
+annotated with the same changes ([network-analysis.md](network-analysis.md)).
 
 ## 5. Run the experiments non-interactively
 

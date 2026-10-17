@@ -55,6 +55,7 @@ communication**. The repository contains:
 | Unit, integration, cross-language and fuzz tests | `tests/`, `fuzz/` | GoogleTest, libFuzzer |
 | End-to-end CPU-cost benchmarks per security level | `benchmarks/` | Google Benchmark |
 | The **load lab**: a Python harness that runs Mosquitto, the load gateway, simulated sensors/actuators and an attacker, with a live dashboard, measurement matrices, PASS/FAIL attack scenarios and multi-machine agents | `tools/loadgen/` | Python |
+| Wireshark tooling: envelope dissector, TLS key-log shim for mosquitto and the gateway, lab packet capture with embedded secrets and event annotations | `tools/wireshark/`, `tools/loadgen/{capture,keylog,pcapgen}.py` | Lua, C++, Python |
 | Build system, presets, CI | `CMakeLists.txt`, `cmake/`, `CMakePresets.json`, `.github/` | CMake, GitHub Actions |
 
 Out of scope: a production key-provisioning service, persistent storage
@@ -712,6 +713,9 @@ Full CLI, protocol and schemas: [`apps/load-gateway.md`](apps/load-gateway.md).
 | `agent.py` | agent main loop: pinned-fingerprint TLS, hello/token, CSR enrolment, provisioning into a 0700 temp dir, NTP-style clock offset estimation |
 | `scenarios.py` | 16 named attack-vs-defence experiments with PASS/FAIL predicates |
 | `dashboard.py` / `.html` | stdlib HTTP server + single-page dashboard (canvas charts, controls, event markers) |
+| `keylog.py` | `SSLKEYLOGFILE` handling: Python TLS contexts log their secrets; `LD_PRELOAD` environment for mosquitto and the gateway |
+| `capture.py` | `--capture`: dumpcap recording, then editcap embeds TLS secrets and a packet comment per lab event |
+| `pcapgen.py` | synthetic captures (sample traffic, recorded real TLS sessions) for the dissector and its tests |
 
 **Applying a change** (`Lab.apply`): validate → compute changed keys → reject
 startup-only, decreasing `key_epoch`, shrinking `revoked` → then:
@@ -945,6 +949,10 @@ Full threat model and residual risks: [`security/threat-model.md`](security/thre
 - **Metrics**: load gateway stats lines (1 Hz), summary JSON, lab sampler
   points (1 Hz), dashboard charts with configuration-change markers, matrix CSV,
   scenario Markdown/CSV.
+- **Packet level**: `--capture` records every run with TLS secrets embedded and
+  one packet comment per configuration change; the `msec.lua` dissector
+  decodes envelopes and flags replays, forgeries and unprotected payloads
+  ([network-analysis.md](network-analysis.md)).
 
 Appendix A lists every `ErrorCode` and where it originates.
 
@@ -984,7 +992,7 @@ Verification: the `tsan` preset (ThreadSanitizer; with GCC 13 run under
 | **Scalability (lab)** | sensors in worker processes driving sockets by hand; distributed agents; Mosquitto `max_queued_messages 100000`, `set_tcp_nodelay true` | matrix runs |
 | **Reliability** | gateway auto-reconnect; sensors reconnect every 1 s; agents reconnect; legitimate clients always present credentials so auth toggles don't interrupt them | scenarios `hardened`, `key-rotation` |
 | **Maintainability** | strict module boundaries; one composition root per app; `msec_add_module`; consistent naming (clang-tidy) | CI clang-tidy job |
-| **Testability** | all effects injected; loopback broker; FakeClock; FixedRandom | 69 C++ tests, 23 Python tests |
+| **Testability** | all effects injected; loopback broker; FakeClock; FixedRandom | 69 C++ tests, 31 Python tests |
 | **Portability** | standard C++23; OpenSSL/Paho optional via options; Linux-specific only in lab (`/proc`, `getrusage`) | presets |
 | **Memory safety** | RAII, `_GLIBCXX_ASSERTIONS`, ASan/UBSan, fuzzing | `dev`, `fuzz` presets |
 
@@ -1008,6 +1016,7 @@ third-party code. See [`build-system.md`](build-system.md).
 | Integration | sensor → loopback broker → gateway with persistence; attacker replays/injects | `tests/integration_tests.cpp` |
 | Known-answer | RFC 8032 test vector 1; shared envelope vectors C++ ⇄ Python | `security_tests.cpp`, `tests/vectors/` |
 | Python unit | envelope/Verifier, lab config validation, PKI views, broker config | `tools/loadgen/tests/` |
+| Wireshark | dissector on generated captures; real TLS 1.2/1.3 sessions to the lab broker decrypted with the shim's secrets; capture post-processing | `tools/loadgen/tests/test_wireshark.py` |
 | Fuzz | `envelope::parse` round-trip; topic validation/matching; whole inbound `SecurityLayer` must accept nothing | `fuzz/` |
 | Static | clang-tidy (bugprone, CERT, Core Guidelines, …) as errors | `ci` preset |
 | Dynamic | ASan + UBSan, TSan | `dev`, `tsan` presets |
@@ -1017,8 +1026,8 @@ third-party code. See [`build-system.md`](build-system.md).
 ### 12.3 Continuous integration
 
 `.github/workflows/ci.yml` on push to `master`/`develop` and on PRs, Ubuntu
-24.04: (1) `build-and-test`: dev preset + ctest, Python unit tests, bench
-build + scenarios with 10 sensors; (2) `clang-tidy`: `ci` preset with
+24.04: (1) `build-and-test`: dev preset + ctest, bench build (gateway + key-log
+shim), Python and Wireshark tests (tshark installed), scenarios with 10 sensors; (2) `clang-tidy`: `ci` preset with
 clang-tidy 18; (3) `fuzz`: three fuzzers × 60 s.
 
 See [`testing.md`](testing.md) and [`benchmarks.md`](benchmarks.md).
@@ -1043,6 +1052,8 @@ See [`testing.md`](testing.md) and [`benchmarks.md`](benchmarks.md).
 | L10 | Mosquitto 2.0 has no per-client rate limit | large floods can overload broker/network | network-level controls |
 | L11 | Lab dashboard has no authentication | anyone reaching :8088 controls the lab | binds to 127.0.0.1 by default; use an SSH tunnel |
 | L12 | Lab credentials stored unencrypted (0600) | test use only | — |
+| L13 | Key logging (`--capture`, `--keylog`) writes TLS secrets; captures with embedded secrets decrypt everything | test use only; never enable in a deployment | files 0600 |
+| L14 | Mosquitto's `tls_version` and Paho's `sslVersion` are only **minimums** | before the fix, a "TLS 1.2" lab negotiated TLS 1.3 | the lab broker caps the maximum via `OPENSSL_CONF` (`MaxProtocol`); verified with the key-log shim (`test_tls12_is_really_tls12`) |
 
 ### 13.2 Technical debt observed in the code
 
@@ -1146,7 +1157,8 @@ The Python `Verifier` raises `Rejected(reason)` using the same names.
 ├── tests/                        GoogleTest suites, test_support.hpp, vectors/
 ├── fuzz/                         libFuzzer targets + seed corpora
 ├── benchmarks/                   Google Benchmark end-to-end cost matrix
-├── tools/loadgen/                Python load lab (+ tests/)
+├── tools/loadgen/                Python load lab (+ tests/), capture + key logging
+├── tools/wireshark/              msec.lua dissector, libmsec_sslkeylog.so shim
 ├── run.sh                        one-command lab start
 └── .github/workflows/ci.yml      CI
 ```

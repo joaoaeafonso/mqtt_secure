@@ -9,6 +9,7 @@ import subprocess
 import threading
 from pathlib import Path
 
+import keylog
 from pki import Pki
 
 
@@ -40,7 +41,8 @@ class GatewayProcess:
         if verbose:
             cmd.append("--verbose")
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE, text=True, bufsize=1)
+                                     stderr=subprocess.PIPE, text=True, bufsize=1,
+                                     env=keylog.preload_env(keylog.library_for(binary)))
         self.latest: dict = {}
         self.log: collections.deque[str] = collections.deque(maxlen=5000)
         self._summaries: queue.Queue = queue.Queue()

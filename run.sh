@@ -4,6 +4,7 @@
 #   ./run.sh                              # 100 sensors, dashboard at http://127.0.0.1:8088/
 #   ./run.sh --set load.sensors=500       # extra arguments go to `loadgen.py live`
 #   ./run.sh --set payload.protection=encrypt --set transport.mode=tls
+#   ./run.sh --capture                    # also record a Wireshark capture (build/loadtest/)
 #
 # Ctrl-C stops everything (broker, gateway, sensors, attacker).
 set -euo pipefail
@@ -26,7 +27,7 @@ if [[ ! -f build/bench/CMakeCache.txt ]]; then
     cmake --preset bench
 fi
 echo "· building"
-cmake --build --preset bench --target msec_load_gateway
+cmake --build --preset bench --target msec_load_gateway msec_sslkeylog
 [[ -x $gateway ]] || { echo "build did not produce $gateway" >&2; exit 1; }
 
 if [[ ! -x $venv/bin/python ]]; then

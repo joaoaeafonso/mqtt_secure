@@ -16,6 +16,11 @@
                                            with mtls, their certificates go on the CRL
                                            (restart, so established sessions end too)
 
+TLS version: Mosquitto's `tls_version` is only a MINIMUM, so with "1.2" every
+modern client (Python, Paho C) still negotiated TLS 1.3. The broker therefore
+also caps the maximum, through an OpenSSL configuration file (OPENSSL_CONF,
+MaxProtocol = TLSv1.2), so the lab's setting is the version on the wire.
+
 Which changes need a restart was measured with Mosquitto 2.0.18: listener
 options, use_username_as_clientid and max_packet_size are not re-read on
 SIGHUP. Only the active transport's listener exists, as in a real deployment:
@@ -32,6 +37,7 @@ import subprocess
 import time
 from pathlib import Path
 
+import keylog
 from pki import Pki
 
 # open/        every client may read and write
@@ -47,6 +53,17 @@ pattern read restricted/actuators/%u/#
 user gateway
 topic read restricted/sensors/#
 topic write restricted/actuators/#
+"""
+
+# Caps the broker at TLS 1.2 (see the module docstring); loaded by libssl.
+OPENSSL_TLS12 = """\
+openssl_conf = msec_lab
+[msec_lab]
+ssl_conf = msec_ssl
+[msec_ssl]
+system_default = msec_tls
+[msec_tls]
+MaxProtocol = TLSv1.2
 """
 
 RESTART_KEYS = ("mode", "tls_version", "clientid_binding", "max_packet", "max_connections")
@@ -65,7 +82,8 @@ def port_open(host: str, port: int) -> bool:
 
 
 class Broker:
-    def __init__(self, workdir: Path, pki: Pki, host: str, port: int) -> None:
+    def __init__(self, workdir: Path, pki: Pki, host: str, port: int,
+                 keylog_library: Path | None = None) -> None:
         self.workdir = workdir / "broker"
         self.workdir.mkdir(parents=True, exist_ok=True)
         self.pki = pki
@@ -73,6 +91,7 @@ class Broker:
         self.port = port
         self.settings = dict(DEFAULT_SETTINGS)
         self.proc: subprocess.Popen | None = None
+        self.keylog_library = keylog_library
         self._log = open(self.workdir / "mosquitto.log", "ab")  # noqa: SIM115
 
     @property
@@ -126,6 +145,19 @@ class Broker:
             lines += ["require_certificate true", "use_identity_as_username true",
                       f"crlfile {self.pki.crl}"]
         self.conf.write_text("\n".join(lines) + "\n")
+        self.openssl_conf.write_text(OPENSSL_TLS12)
+
+    @property
+    def openssl_conf(self) -> Path:
+        return self.workdir / "openssl-tls12.cnf"
+
+    def _env(self) -> dict[str, str]:
+        """mosquitto's environment: TLS 1.2 cap, and the key-log shim when logging."""
+        env = keylog.preload_env(self.keylog_library) or dict(os.environ)
+        env.pop("OPENSSL_CONF", None)
+        if self.settings["mode"] in ("tls", "mtls") and str(self.settings["tls_version"]) == "1.2":
+            env["OPENSSL_CONF"] = str(self.openssl_conf)
+        return env
 
     @property
     def probe_host(self) -> str:
@@ -136,7 +168,7 @@ class Broker:
             raise RuntimeError(f"{self.host}:{self.port} is already in use; pick another port")
         self.settings.update(settings)
         self._write()
-        self.proc = subprocess.Popen(["mosquitto", "-c", str(self.conf)],
+        self.proc = subprocess.Popen(["mosquitto", "-c", str(self.conf)], env=self._env(),
                                      stdout=self._log, stderr=self._log)
         deadline = time.monotonic() + 5
         while not port_open(self.probe_host, self.port):

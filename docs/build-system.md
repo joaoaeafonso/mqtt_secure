@@ -13,6 +13,7 @@ CMake ≥ 3.25 with Ninja, driven by presets. In-source builds are refused.
 | `CMakePresets.json` | configure/build/test presets |
 | `modules/*/CMakeLists.txt` | one `msec_add_module` call each |
 | `apps/*/CMakeLists.txt` | executables (skip themselves if a back-end is disabled) |
+| `tools/wireshark/CMakeLists.txt` | `libmsec_sslkeylog.so` (MODULE, Linux + OpenSSL, with the apps): TLS key-log `LD_PRELOAD` shim; no sanitizers, since it is loaded into mosquitto |
 | `tests/`, `benchmarks/`, `fuzz/` `CMakeLists.txt` | GoogleTest, Google Benchmark, libFuzzer targets |
 
 ## Options
@@ -133,7 +134,7 @@ requests, Ubuntu 24.04:
 
 | Job | Steps |
 |---|---|
-| `build-and-test` | apt deps (cmake, ninja, g++, libssl, paho, gtest, mosquitto, python3-venv) → `dev` build + ctest → venv + Python unit tests → `bench` build + `loadgen.py scenarios --set load.sensors=10 --set load.rate=10 --settle 3 --duration 5` |
+| `build-and-test` | apt deps (cmake, ninja, g++, libssl, paho, gtest, mosquitto, python3-venv, tshark) → `dev` build + ctest → `bench` build (gateway + key-log shim) → venv + Python and Wireshark tests → `loadgen.py scenarios --set load.sensors=10 --set load.rate=10 --settle 3 --duration 5` |
 | `clang-tidy` | `ci` preset build + ctest with clang-tidy 18 |
 | `fuzz` | `fuzz` preset with clang++-18 → `fuzz_envelope` and `fuzz_security_inbound` on `fuzz/corpus/envelope`, `fuzz_topic` on `fuzz/corpus/topic`, 60 s each |
 
@@ -144,5 +145,6 @@ requests, Ubuntu 24.04:
 | `build/dev/apps/gateway/msec_gateway_demo` | demo |
 | `build/bench/apps/load_gateway/msec_load_gateway` | load-lab gateway (what `run.sh` and `loadgen.py` use) |
 | `build/bench/benchmarks/msec_pipeline_benchmarks` | benchmarks |
+| `build/bench/tools/wireshark/libmsec_sslkeylog.so` | TLS key-log shim (`--capture`, `--keylog`) |
 | `build/fuzz/fuzz/fuzz_*` | fuzzers |
 | `build/loadtest/` | matrix/scenario results, controller state |

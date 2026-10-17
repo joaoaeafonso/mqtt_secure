@@ -33,6 +33,8 @@ import time
 import tomllib
 from pathlib import Path
 
+import keylog
+from capture import Capture
 from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
 from lab import DEFAULTS, PRESETS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
 
@@ -97,14 +99,40 @@ def control_server(args, config: dict) -> ControlServer | None:
     return server
 
 
+def start_capture(args, config: dict, default: Path) -> Capture | None:
+    """--keylog / --capture. Runs before the lab and the control server start, so
+    every TLS endpoint inherits SSLKEYLOGFILE."""
+    if args.keylog:
+        keylog.activate(args.keylog)
+    if not args.capture:
+        return None
+    path = default if args.capture == "auto" else Path(args.capture)
+    ports = [config["broker"]["port"]]
+    if uses_agents(config):
+        ports.append(config["cluster"]["port"])
+    cap = Capture(path, args.capture_iface or Capture.interface_for(config), ports, log,
+                  keys=args.keylog)
+    cap.start()
+    return cap
+
+
+def stop_capture(cap: Capture | None) -> None:
+    if cap is not None:
+        cap.stop()
+
+
 # --------------------------------------------------------------------- live ---
 
 def cmd_live(args) -> None:
     from dashboard import serve
 
     config = load_config(args)
+    cap = start_capture(args, config, REPO / "build" / "loadtest" /
+                        f"live-{time.strftime('%Y%m%d-%H%M%S')}.pcapng")
     cluster = control_server(args, config)
     lab = Lab(config, args.gateway, args.workdir, args.verbose, log, cluster)
+    if cap:
+        lab.listeners.append(cap.mark)
     server = serve(lab, args.http_host, args.http_port)  # bind early: fail before starting
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
@@ -126,6 +154,7 @@ def cmd_live(args) -> None:
         log("stopping...")
         server.shutdown()
         lab.stop()
+        stop_capture(cap)
         if cluster:
             cluster.stop()
 
@@ -163,6 +192,7 @@ def cmd_matrix(args) -> None:
                f"matrix-{time.strftime('%Y%m%d-%H%M%S')}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    cap = start_capture(args, base, out.with_suffix(".pcapng"))
     # One control plane for the whole matrix: agents stay connected between labs.
     cluster = control_server(args, base)
     rows, n = [], 0
@@ -170,18 +200,23 @@ def cmd_matrix(args) -> None:
         config = merged(base, startup_patch)
         lab = Lab(config, args.gateway, None, args.verbose,
                   log if cluster else (lambda m: None), cluster)
+        if cap:
+            lab.listeners.append(cap.mark)
         try:
             lab.start()
             for patch in inner:
                 n += 1
                 lab.apply(patch)
                 settings = {**label(startup_patch), **label(patch)}
-                log(f"[{n}/{total}] " + "  ".join(f"{k}={v}" for k, v in settings.items()))
+                cell = "  ".join(f"{k}={v}" for k, v in settings.items())
+                lab.mark(f"matrix cell {n}/{total}: {cell}")
+                log(f"[{n}/{total}] {cell}")
                 result = lab.measure(args.settle, args.duration)
                 log("      " + "  ".join(f"{k}={v}" for k, v in result.items()))
                 rows.append({**settings, **result})
         finally:
             lab.stop()
+    stop_capture(cap)
     if cluster:
         cluster.stop()
 
@@ -214,14 +249,18 @@ def cmd_scenarios(args) -> None:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out = Path(args.out or REPO / "build" / "loadtest" / f"scenarios-{stamp}")
     out.parent.mkdir(parents=True, exist_ok=True)
+    cap = start_capture(args, config, out.with_suffix(".pcapng"))
     cluster = control_server(args, config)
     lab = Lab(config, args.gateway, None, args.verbose,
               log if cluster else (lambda m: None), cluster)
+    if cap:
+        lab.listeners.append(cap.mark)
     try:
         lab.start()
         rows = sc.run(lab, args.settle, args.duration, only, log)
     finally:
         lab.stop()
+        stop_capture(cap)
         if cluster:
             cluster.stop()
 
@@ -270,6 +309,14 @@ def main() -> None:
         p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE,
                        help="controller CA, certificate and agent token (kept between runs)")
         p.add_argument("--new-token", action="store_true", help="rotate the agent join token")
+        p.add_argument("--capture", nargs="?", const="auto", metavar="FILE.pcapng",
+                       help="record the run with dumpcap (default name: next to the results "
+                            "in build/loadtest/); TLS secrets and event comments are embedded")
+        p.add_argument("--capture-iface", metavar="IFACE",
+                       help="capture interface (default: lo, or any when agents are used)")
+        p.add_argument("--keylog", type=Path, metavar="FILE",
+                       help="write every TLS secret here (NSS key log) for Wireshark; "
+                            "default with --capture: <capture>.keys")
 
     p = sub.add_parser("live", help="run the lab with a live dashboard")
     common(p)

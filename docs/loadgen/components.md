@@ -114,7 +114,8 @@ passwords, and the certificate CN with mtls.
 
 | Method | Behaviour |
 |---|---|
-| `start(**settings)` | refuse if the port is in use; write config; spawn; wait ≤ 5 s for the port |
+| `start(**settings)` | refuse if the port is in use; write config; spawn (environment from `_env()`); wait ≤ 5 s for the port |
+| `_env()` | with tls/mtls and `tls_version = 1.2`: `OPENSSL_CONF` → `openssl-tls12.cnf` (`MaxProtocol = TLSv1.2`), because Mosquitto's `tls_version` is only a minimum; with key logging on: `LD_PRELOAD` of the key-log shim |
 | `apply(**change)` | `""` if nothing changed; **restart** if any of `mode, tls_version, clientid_binding, max_packet, max_connections` changed, or `revoked` changed under mtls; else rewrite and `SIGHUP` (**reload**) |
 | `restart()`, `stop()` | terminate (5 s) then kill |
 | `cpu_seconds()` | utime + stime from `/proc/<pid>/stat` |
@@ -244,6 +245,19 @@ Python implementation of the envelope, byte-compatible with the C++ one
 | `Protector(protection, key_id, key, signing_key, clock_ns=, random=, sequence=)` | seals for one sender; sequence starts at current µs unless injected; `set_protection` (sequence keeps counting), `rekey` (rotation), `protect(topic, payload)`; `none` returns the payload unchanged |
 | `Verifier(keys, accept, freshness=, replay=, allowed_senders=, max_age_ms=60000, max_skew_ms=5000, clock_ns=)` | opens with the same checks and order as `SecurityLayer`; raises `Rejected(reason)` with C++ `ErrorCode` names; `forget(key_id)` |
 
+## `keylog.py`, `capture.py`, `pcapgen.py`
+
+| Module | Role |
+|---|---|
+| `keylog.py` | `activate(path)` sets `SSLKEYLOGFILE` (file 0600) for this process and its children; `enable(ctx)` makes a Python `SSLContext` log to it (used by `sensors.make_client`, the agent and the control server); `library_for(gateway)` locates `libmsec_sslkeylog.so`; `preload_env(lib)` builds the `LD_PRELOAD` environment for mosquitto and the gateway |
+| `capture.py` | `Capture(path, iface, ports)`: starts `dumpcap`, collects lab events (`Lab.listeners`), and on `stop()` writes `<name>.events.tsv` and runs `editcap --inject-secrets tls,<keys> -a <frame>:<comment> …`; `frame_times()` is a minimal pcapng timestamp reader used to place the comments |
+| `pcapgen.py` | `Capture`/`TcpConnection` write valid Ethernet/IPv4/TCP frames; MQTT 3.1.1 encoders; `Recorder` relays a real TCP connection and records its bytes; `sample()` builds the demonstration capture |
+
+`Lab.listeners` receive the text of every lab event; `Lab.mark(text)` records
+events that are not configuration changes (scenario starts, matrix cells).
+
+See [network-analysis.md](../network-analysis.md).
+
 ## `cluster.py`, `agent.py`
 
 See [distributed-agents.md](distributed-agents.md).
@@ -266,6 +280,7 @@ tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t to
 |---|---|
 | `test_envelope.py` | shared vectors reproduced; round trip in every mode; tampering, topic rebinding, unknown keys; mode policy and plaintext; replay window and reordering; freshness; allowed senders; key-file round trip |
 | `test_lab_config.py` | defaults valid; choices as text or numbers; bad values rejected; revoked list parsing and bounds; flattening; hardened preset turns everything on; limits follow the load; packet limit must fit the payload |
-| `test_pki.py` | gateway never holds sensor private keys; device views; epochs never reuse ids; CRL and passwd generation (needs `mosquitto_passwd`); listener options follow `listener`; ACL off ⇒ no `acl_file`; `apply` chooses reload vs restart |
+| `test_pki.py` | gateway never holds sensor private keys; device views; epochs never reuse ids; CRL and passwd generation (needs `mosquitto_passwd`); listener options follow `listener`; ACL off ⇒ no `acl_file`; `apply` chooses reload vs restart; TLS 1.2 is capped via `OPENSSL_CONF` |
+| `test_wireshark.py` | dissector on a generated capture (modes, overhead, replay, deliveries, forgery, malformed); real TLS 1.2 / 1.3 sessions to `broker.Broker` decrypted with the shim's secrets; capture post-processing (timestamps, embedded secrets, comments) — needs tshark |
 
 No broker is needed (the passwd test is skipped without `mosquitto_passwd`).

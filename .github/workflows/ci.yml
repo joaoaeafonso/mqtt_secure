@@ -13,21 +13,23 @@ jobs:
       - name: Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cmake ninja-build g++ libssl-dev \
-            libpaho-mqtt-dev libpaho-mqttpp-dev libgtest-dev mosquitto python3-venv
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            cmake ninja-build g++ libssl-dev libpaho-mqtt-dev libpaho-mqttpp-dev libgtest-dev \
+            mosquitto python3-venv tshark
       - name: Build and test (ASan + UBSan)
         run: |
           cmake --preset dev
           cmake --build --preset dev
           ctest --preset dev
-      - name: Load-lab unit tests (Python)
+      - name: Build the load-lab gateway and the TLS key-log shim
+        run: cmake --preset bench && cmake --build --preset bench
+      - name: Load-lab and Wireshark tooling tests (Python, tshark, real TLS to mosquitto)
         run: |
           python3 -m venv tools/loadgen/.venv
           tools/loadgen/.venv/bin/pip install -q -r tools/loadgen/requirements.txt
-          tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
+          tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen -v
       - name: Scenarios (end to end against a real Mosquitto)
         run: |
-          cmake --preset bench && cmake --build --preset bench
           tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios \
             --set load.sensors=10 --set load.rate=10 --settle 3 --duration 5
 

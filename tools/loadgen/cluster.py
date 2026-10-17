@@ -41,6 +41,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import keylog
 import pki as pki_module
 from sensors import summarize
 
@@ -177,6 +178,7 @@ class ControlServer:
         self._context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self._context.minimum_version = ssl.TLSVersion.TLSv1_2
         self._context.load_cert_chain(identity.cert_path, identity.key_path)
+        keylog.enable(self._context)
         self._server = socket.create_server((listen, port), reuse_port=False)
 
     def start(self) -> None:

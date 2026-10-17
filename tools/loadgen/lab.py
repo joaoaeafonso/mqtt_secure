@@ -37,6 +37,7 @@ import threading
 import time
 from pathlib import Path
 
+import keylog
 import pki as pki_module
 from attacker import Attacker
 from broker import Broker
@@ -217,6 +218,7 @@ class Lab:
         self.lock = threading.RLock()
         self.history: collections.deque = collections.deque(maxlen=900)
         self.events: collections.deque = collections.deque(maxlen=200)
+        self.listeners: list = []  # called with the text of every event (e.g. Capture.mark)
         self._stop = threading.Event()
         self.broker = self.gateway = self.fleet = self.attacker = None
 
@@ -256,7 +258,8 @@ class Lab:
         self.pki, self.keys = pki_module.generate(self.workdir, self.ca, self.sensor_ids,
                                                   local_ids, server_names=[self.advertise])
         self.passwords = pki_module.read_credentials(self.pki.credentials)
-        self.broker = Broker(self.workdir, self.pki, c["broker"]["host"], c["broker"]["port"])
+        self.broker = Broker(self.workdir, self.pki, c["broker"]["host"], c["broker"]["port"],
+                             keylog.library_for(self.gateway_binary))
         self.broker.start(**self.broker_settings())
         self.gateway = GatewayProcess(self.gateway_binary, self.pki, self.advertise,
                                       c["broker"]["port"], c, self.verbose)
@@ -431,7 +434,13 @@ class Lab:
 
     def _event(self, text: str) -> None:
         self.events.append({"t": time.time(), "text": text})
+        for listener in self.listeners:
+            listener(text)
         self.log(f"· {text}")
+
+    def mark(self, text: str) -> None:
+        """Records an event that is not a configuration change (e.g. a scenario start)."""
+        self._event(text)
 
     # --------------------------------------------------------------- metrics ---
 

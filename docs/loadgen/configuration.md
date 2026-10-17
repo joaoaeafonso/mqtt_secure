@@ -22,7 +22,7 @@ object. Every key is optional; missing keys take the defaults below
 | Key | Default | Values | Meaning |
 |---|---|---|---|
 | `mode` | `"plain"` | `plain` · `tls` · `mtls` | the broker has only this listener; `mtls` requires client certificates and uses the CN as username |
-| `tls_version` | `"1.2"` | `1.2` · `1.3` | tls and mtls |
+| `tls_version` | `"1.2"` | `1.2` · `1.3` | tls and mtls; **exactly** this version: Mosquitto's `tls_version` sets the minimum and the broker caps the maximum through `OPENSSL_CONF` |
 | `protocol` | `"3.1.1"` | `3.1.1` · `5` | MQTT version of every client |
 | `auth` | `false` | bool | username/password required (`allow_anonymous false` + `password_file`) |
 | `acl` | `true` | bool | `open/` for everyone, `restricted/` per client; **off = no ACL at all** (`$SYS` included) |
@@ -116,7 +116,7 @@ An invalid patch changes nothing (validation happens before any action).
 | Setting | Broker | Gateway | Sensors / actuators | Attacker |
 |---|---|---|---|---|
 | `transport.mode` | **restart** (only that listener) | `set transport` + `reconnect` | reconnect with new transport | reconnect |
-| `transport.tls_version` | **restart** | `reconnect` (after restart) | reconnect themselves (connection lost) | reconnects (paho loop) |
+| `transport.tls_version` | **restart** (minimum in `mosquitto.conf`, maximum via `OPENSSL_CONF`) | `reconnect` (after restart) | reconnect themselves (connection lost) | reconnects (paho loop) |
 | `transport.protocol` | — | `set protocol` + `reconnect` | reconnect | reconnect |
 | `transport.auth` | **reload** (`SIGHUP`): clients without valid credentials are dropped | always presents credentials | always present credentials | dropped (has no password) |
 | `transport.acl` | **reload**, effective on the next message | — | — | — |

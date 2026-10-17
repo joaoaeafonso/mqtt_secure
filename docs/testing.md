@@ -5,6 +5,7 @@
 | C++ unit + integration | GoogleTest | `tests/` | `ctest --preset dev` |
 | Cross-language vectors | GoogleTest + unittest | `tests/vectors/envelope_vectors.txt` | both suites |
 | Python unit | unittest | `tools/loadgen/tests/` | see below |
+| Wireshark tooling | unittest + tshark (+ mosquitto) | `tools/loadgen/tests/test_wireshark.py` | see below |
 | Fuzzing | libFuzzer + ASan/UBSan | `fuzz/` | `fuzz` preset |
 | Static analysis | clang-tidy | `.clang-tidy` | `ci` preset |
 | Memory / UB | ASan + UBSan | | `dev` preset |
@@ -50,9 +51,14 @@ expected envelope; the Python test reproduces every envelope with
 tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
 ```
 
-23 tests across `test_envelope.py`, `test_lab_config.py`, `test_pki.py`
-(details in [loadgen/components.md](loadgen/components.md#tests-toolsloadgentests)).
-No broker needed; the passwd/CRL test is skipped without `mosquitto_passwd`.
+31 tests across `test_envelope.py`, `test_lab_config.py`, `test_pki.py` and
+`test_wireshark.py` (details in
+[loadgen/components.md](loadgen/components.md#tests-toolsloadgentests)). The
+first three need no broker (the passwd/CRL test is skipped without
+`mosquitto_passwd`). `test_wireshark.py` needs `tshark` (or `TSHARK=/path`);
+its TLS tests also need mosquitto and the bench build's
+`libmsec_sslkeylog.so`. Missing tools mean skipped tests, not failures. See
+[network-analysis.md §10](network-analysis.md#10-verification).
 
 ## Fuzzing
 

@@ -45,6 +45,23 @@ ThreadSanitizer with GCC 13 fails on kernels with high mmap randomisation
 ("unexpected memory mapping"); run the `tsan` preset under `setarch $(uname -m) -R`.
 GoogleTest is used from the system if present, otherwise fetched (hash-pinned).
 
+## Wireshark
+
+`tools/wireshark/msec.lua` decodes the envelope (mode, key id, sequence,
+timestamp, nonce, ciphertext or payload, tag or signature) and flags replays,
+forgeries and unprotected payloads. Add `--capture` to any lab command to
+record the run: every TLS endpoint (mosquitto and the gateway through an
+`LD_PRELOAD` key-log shim, the Python clients natively) logs its secrets,
+which are embedded in the pcapng together with one packet comment per
+configuration change, so the file opens decrypted and annotated.
+
+```bash
+ln -sf "$PWD/tools/wireshark/msec.lua" ~/.local/lib/wireshark/plugins/msec.lua
+./run.sh --set load.sensors=3 --set load.rate=1 --capture
+```
+
+Guide, filter cookbook and report experiments: [`docs/network-analysis.md`](docs/network-analysis.md).
+
 ## Benchmarks
 
 Cost of each security level, end to end (publish → pipelines → loopback broker → app):
@@ -113,7 +130,7 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway ─▶ m
 | Setting | Values | Applied live by |
 |---|---|---|
 | `transport.mode` | `plain` · `tls` · `mtls` | broker restart with only that listener; all clients reconnect |
-| `transport.tls_version` | `1.2` · `1.3` | broker restart |
+| `transport.tls_version` | `1.2` · `1.3` (exactly: minimum in Mosquitto, maximum capped via `OPENSSL_CONF`) | broker restart |
 | `transport.protocol` | `3.1.1` · `5` (MQTT version) | every client reconnects |
 | `transport.auth` | on/off (username + password) | broker reload (`SIGHUP`); clients without valid credentials are dropped |
 | `transport.acl` | on/off (`open/#` for all, `restricted/` per client; off = no ACL at all, `$SYS` included) | broker reload, effective on the next message |

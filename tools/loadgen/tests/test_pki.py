@@ -79,6 +79,17 @@ class BrokerConfig(unittest.TestCase):
         self.assertFalse(any(l.startswith("acl_file") for l in self.conf(acl=False)))
         self.assertTrue(any(l.startswith("acl_file") for l in self.conf(acl=True)))
 
+    def test_tls12_is_capped_by_openssl_config(self):
+        # Mosquitto's tls_version is only a minimum; the broker caps the maximum.
+        self.conf(mode="tls", tls_version="1.2")
+        env = self.broker._env()
+        self.assertEqual(env["OPENSSL_CONF"], str(self.broker.openssl_conf))
+        self.assertIn("MaxProtocol = TLSv1.2", self.broker.openssl_conf.read_text())
+        self.conf(tls_version="1.3")
+        self.assertNotIn("OPENSSL_CONF", self.broker._env())
+        self.conf(mode="plain", tls_version="1.2")
+        self.assertNotIn("OPENSSL_CONF", self.broker._env())
+
     def test_apply_reloads_or_restarts(self):
         self.broker.proc = mock.Mock(pid=os.getpid())
         with mock.patch.object(Broker, "restart") as restart, mock.patch("os.kill") as kill:
