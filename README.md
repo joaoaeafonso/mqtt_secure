@@ -2,6 +2,8 @@
 
 Layered security architecture for MQTT-based IoT communication, C++23.
 
+Full documentation, including the Software Design Document, is in [`docs/`](docs/README.md).
+
 ## Quick start
 
 ```bash
