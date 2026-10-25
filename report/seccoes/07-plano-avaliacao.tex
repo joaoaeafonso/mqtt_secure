@@ -1,0 +1,267 @@
+\section{Objetivo e plano da segunda parte do projeto}
+\label{sec:plano}
+
+A primeira parte identificou as lacunas do estado da arte e propôs uma arquitetura
+para as tratar. A segunda parte tem um objetivo concreto: \textbf{implementar a
+arquitetura e medir, num dispositivo restrito (Raspberry Pi), quanto custa cada
+camada em desempenho e quanto protege, isoladamente e em combinação, para
+identificar a configuração --- ou o pequeno conjunto de configurações --- que oferece
+a maior proteção com o menor impacto no desempenho.} Este objetivo responde
+diretamente à lacuna L5 (Secção~\ref{sec:discussao}): na literatura analisada, o
+custo de um mecanismo e os ataques que ele impede não são medidos no mesmo ensaio.
+
+A implementação de referência~\cite{mqttsecure2026repo} já permite ativar e
+desativar cada camada de forma independente, e inclui as duas ferramentas de
+medição usadas no plano: um conjunto de \emph{microbenchmarks} do encadeamento de
+camadas e um laboratório de carga com \emph{broker}, \emph{gateway}, sensores
+simulados e um atacante.
+
+% ---------------------------------------------------------------------------
+\subsection{Perguntas experimentais}
+
+\begin{enumerate}[label=\textbf{QP\arabic*.}, leftmargin=*]
+  \item Qual é o custo de cada camada num Raspberry Pi, em tempo de processador,
+    latência, débito, memória e octetos acrescentados, e quanto difere do custo num
+    computador de secretária?
+  \item Que ataques impede cada camada, e que ataques só são impedidos pela
+    combinação de camadas?
+  \item Como varia o custo com o tamanho da mensagem, a taxa de envio e o número de
+    dispositivos, e a partir de que carga o Raspberry Pi satura?
+  \item Qual é o peso da aceleração criptográfica por \emph{hardware} no custo de
+    cada configuração, e a configuração recomendada muda quando ela não existe?
+  \item Que configurações são ótimas de Pareto (nenhuma outra protege mais por menor
+    custo) e qual delas recomendar?
+\end{enumerate}
+
+% ---------------------------------------------------------------------------
+\subsection{Configurações em estudo}
+\label{sec:configuracoes}
+
+As configurações da Tabela~\ref{tab:configuracoes} acrescentam uma camada ou um
+mecanismo de cada vez, o que permite atribuir a cada passo o seu custo e o seu
+benefício marginais. A configuração K10 isola o contributo do TLS quando o envelope
+fim-a-fim já está ativo.
+
+\begin{table}[ht]
+  \centering
+  \caption{Configurações a avaliar. Transporte: TLS~1.3 com autenticação mútua por
+    certificado, palavras-passe, ACL e identificador de cliente ligado ao
+    utilizador. VT validade temporal; R anti-repetição; CT restrição chave--tópico;
+    LT limitação de tráfego antes da criptografia.}
+  \label{tab:configuracoes}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}lccccccL{5.0cm}@{}}
+    \toprule
+    \textbf{ID} & \textbf{Transporte} & \textbf{Envelope} & \textbf{VT} & \textbf{R}
+      & \textbf{CT} & \textbf{LT} & \textbf{O que acrescenta} \\
+    \midrule
+    K0  & --- & --- & --- & --- & --- & --- & referência, sem proteção \\
+    K1  & \Sim & --- & --- & --- & --- & --- & proteção de cada salto; quem fala com o \emph{broker} \\
+    K2  & \Sim & GMAC & --- & --- & --- & --- & integridade fim-a-fim e ligação ao tópico \\
+    K3  & \Sim & AES-GCM & --- & --- & --- & --- & + confidencialidade face ao \emph{broker} \\
+    K4  & \Sim & AES-GCM & \Sim & --- & --- & --- & + rejeição de mensagens antigas \\
+    K5  & \Sim & AES-GCM & --- & \Sim & --- & --- & + rejeição de repetições \\
+    K6  & \Sim & AES-GCM & \Sim & \Sim & --- & --- & envelope completo \\
+    K7  & \Sim & AES-GCM & \Sim & \Sim & \Sim & --- & + contenção de um dispositivo comprometido \\
+    K8  & \Sim & AES-GCM & \Sim & \Sim & \Sim & \Sim & + proteção contra inundação \\
+    K9  & \Sim & Ed25519 & \Sim & \Sim & \Sim & \Sim & + não repúdio (prova de origem) \\
+    \addlinespace
+    K10 & --- & AES-GCM & \Sim & \Sim & \Sim & --- & envelope completo sem TLS \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{sloppypar}
+Todas as configurações correspondem a combinações de parâmetros do laboratório de
+carga (\texttt{broker.mode}, \texttt{payload.protection}, \texttt{payload.freshness},
+\texttt{payload.replay}, \texttt{payload.key\_binding}, \texttt{payload.rate\_limit}),
+e K9 coincide com a predefinição \texttt{hardened}. A matriz completa é, por isso,
+executada de forma automática e reprodutível.
+\end{sloppypar}
+
+% ---------------------------------------------------------------------------
+\subsection{Plataforma experimental}
+
+As medições são feitas a dois níveis, ambos repetidos num computador de secretária
+como referência, para quantificar o fator de abrandamento do dispositivo restrito.
+
+\paragraph{Nível 1: custo das camadas no dispositivo.} Os \emph{microbenchmarks}
+são compilados e executados nativamente num Raspberry Pi~5 (Broadcom BCM2712,
+quatro núcleos Arm Cortex-A76 a 2,4~GHz, 8~GB de memória LPDDR4X e
+armazenamento SSD de 256~GB). Cada iteração percorre o caminho completo
+\emph{publisher} $\to$ \emph{broker} em memória $\to$ recetor, sem rede, isolando o
+custo de processador de cada camada para mensagens de 16~B, 256~B, 4~KiB e 64~KiB.
+É o custo que um sensor ou um \emph{gateway} restrito paga por mensagem.
+
+\paragraph{Aceleração criptográfica por \emph{hardware}.} Os núcleos Cortex-A76
+dispõem das extensões criptográficas da arquitetura Armv8 (instruções AES e
+multiplicação polinomial, usada pelo GCM), que aceleram o AES-GCM, mas não o
+Ed25519. Muitos dispositivos IoT não têm estas instruções. Para medir o seu impacto,
+as configurações selecionadas são executadas duas vezes no mesmo Raspberry Pi: com
+a aceleração ativa e com ela desativada, o que no OpenSSL, usado tanto pela
+implementação como pelo Mosquitto, se faz com a variável de ambiente
+\texttt{OPENSSL\_armcap=0}. A comparação abrange o envelope e o TLS; no TLS mede-se
+também a suite TLS\_CHACHA20\_POLY1305\_SHA256, a alternativa desenhada para
+processadores sem AES em \emph{hardware}~\cite{rfc8439}.
+
+\paragraph{Nível 2: sistema completo sob carga.} O \emph{broker} Mosquitto e o
+\emph{gateway} correm no Raspberry Pi, que faz de \emph{gateway} de periferia; os
+sensores simulados e o atacante correm noutras máquinas da mesma rede local
+(Ethernet), como agentes distribuídos do laboratório de carga. Este nível
+acrescenta o que o primeiro não vê: o TLS, o \emph{broker}, a rede, a concorrência
+de muitos dispositivos e os ataques reais.
+
+Para reduzir a variabilidade, fixa-se o regulador de frequência do processador em
+\texttt{performance}, monitoriza-se a temperatura e o estrangulamento térmico do
+Raspberry Pi durante cada ensaio (descartando ensaios com estrangulamento) e usa-se
+a mesma versão do Mosquitto em todas as máquinas.
+
+% ---------------------------------------------------------------------------
+\subsection{Métricas}
+
+\begin{table}[ht]
+  \centering
+  \caption{Métricas de custo e de benefício.}
+  \label{tab:metricas}
+  \small
+  \begin{tabularx}{\textwidth}{@{}L{4.3cm}YL{1.6cm}@{}}
+    \toprule
+    \textbf{Métrica} & \textbf{Definição} & \textbf{Nível} \\
+    \midrule
+    \multicolumn{3}{@{}l}{\textit{Custo}} \\
+    Processador por mensagem & µs de CPU por mensagem (envio e receção) & 1, 2 \\
+    Latência & p50 e p99, do envio pelo sensor à entrega à aplicação & 2 \\
+    Débito máximo sustentado & maior taxa com perda $< 1\,\%$ e p99 dentro do limite & 2 \\
+    Octetos acrescentados & octetos na rede menos o conteúdo; teoricamente 53 ou 89
+      (Eq.~\ref{eq:overhead}) & 1 \\
+    Memória & pico de memória residente do \emph{gateway} e do \emph{broker} & 2 \\
+    Estabelecimento de ligação & tempo de ligação (TLS e CONNECT) e custo das
+      religações & 2 \\
+    Energia (opcional) & consumo do Raspberry Pi, com medidor USB & 2 \\
+    \midrule
+    \multicolumn{3}{@{}l}{\textit{Benefício}} \\
+    Ataques impedidos & para cada ataque $a \in \mathcal{A}$, $b_a(c) = 1$ se a
+      configuração $c$ o impede & 1, 2 \\
+    Fuga de informação & fração das mensagens legítimas legível por um subscritor
+      de \texttt{\#} & 1, 2 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+O conjunto de ataques $\mathcal{A}$ cobre as ameaças da Tabela~\ref{tab:stride} e é
+executado pelo atacante do laboratório: escuta na rede; escuta por um subscritor de
+\texttt{\#}; injeção de mensagens em claro; adulteração; repetição; republicação
+noutro tópico; usurpação de identidade no \emph{broker}; publicação nos tópicos de
+outro dispositivo com uma chave válida (dispositivo comprometido); redução do nível
+de proteção; e inundação de um tópico.
+
+% ---------------------------------------------------------------------------
+\subsection{Critério de escolha da melhor configuração}
+\label{sec:criterio}
+
+\paragraph{Proteção.} A proteção de uma configuração $c$ é a fração ponderada dos
+ataques que impede,
+\begin{equation}
+  S(c) = \frac{\sum_{a \in \mathcal{A}} w_a\, b_a(c)}{\sum_{a \in \mathcal{A}} w_a},
+  \qquad 0 \le S(c) \le 1,
+  \label{eq:protecao}
+\end{equation}
+com pesos $w_a = 1$ por omissão; uma análise de sensibilidade repete a escolha com
+pesos proporcionais à gravidade de cada ameaça.
+
+\paragraph{Custo.} Cada métrica de custo $m$ é normalizada pela configuração de
+referência e agregada com pesos $v_m$ que somam 1:
+\begin{equation}
+  C(c) = \sum_{m} v_m\, \frac{m(c)}{m(\mathrm{K0})},
+  \label{eq:custo}
+\end{equation}
+dando por omissão maior peso ao processador por mensagem e à latência p99 no
+Raspberry Pi, que são os recursos escassos num dispositivo restrito. Nos octetos
+usa-se o total na rede (e não só o acrescentado), para que a referência não seja
+nula, e no débito, que é melhor quanto maior, usa-se o inverso da razão.
+
+\paragraph{Exequibilidade.} Uma configuração só é candidata se, no Raspberry Pi,
+sustentar a taxa de mensagens pretendida $R_{\text{alvo}}$ com latência
+$p99 \le L_{\max}$. Estes limites dependem do cenário de aplicação (número de
+dispositivos, frequência das mensagens e tolerância do serviço a atrasos), que só
+será definido na segunda parte. Os valores de $R_{\text{alvo}}$ e $L_{\max}$ ficam,
+por isso, em aberto: serão fixados e justificados no segundo relatório, antes de
+executada a matriz completa, para que a escolha dos limites não seja influenciada
+pelos resultados.
+
+\paragraph{Escolha.} A configuração $c$ domina $c'$ se $S(c) \ge S(c')$ e
+$C(c) \le C(c')$, com pelo menos uma desigualdade estrita. As configurações
+exequíveis não dominadas formam a \emph{fronteira de Pareto} $\mathcal{P}$, e a
+configuração recomendada é a mais barata entre as que atingem a proteção máxima:
+\begin{equation}
+  c^{*} = \operatorname*{arg\,min}_{c \in \mathcal{P},\ S(c) = S_{\max}} C(c).
+  \label{eq:melhor}
+\end{equation}
+Para os casos em que uma proteção ligeiramente inferior seja aceitável, reporta-se
+também o custo marginal de cada passo ao longo da fronteira,
+$\Delta C / \Delta S$, que mostra que mecanismos compram mais proteção por unidade
+de custo.
+
+% ---------------------------------------------------------------------------
+\subsection{Procedimento}
+
+Cada célula da matriz começa com um período de estabilização de 3~s, seguido de
+uma janela de medição de 30~s, e é repetida 10 vezes; reporta-se a mediana com um
+intervalo de confiança de 95\,\% obtido por \emph{bootstrap}. Para manter a matriz
+exequível, os fatores variam um de cada vez a partir de um cenário de referência:
+\begin{itemize}[leftmargin=*]
+  \item todas as configurações K0--K10 com o cenário de referência (256~B);
+  \item tamanho da mensagem (16~B a 64~KiB) para K0, K3, K6, K8 e K9;
+  \item taxa e número de sensores, aumentados até à saturação, para as mesmas
+    configurações, o que dá o débito máximo sustentado de cada uma;
+  \item K0, K1, K3, K6, K8 e K9 com e sem aceleração criptográfica por
+    \emph{hardware}, e K1 com a suite ChaCha20-Poly1305 no TLS;
+  \item os ataques de $\mathcal{A}$ contra cada configuração, com o tráfego legítimo
+    ativo, verificando também que nenhuma mensagem legítima é rejeitada.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\subsection{Hipóteses}
+
+\begin{enumerate}[label=\textbf{H\arabic*.}, leftmargin=*]
+  \item O envelope com AES-256-GCM (K3--K6) tem um custo por mensagem pequeno face à
+    latência da rede, também no Raspberry Pi. Na máquina de desenvolvimento, K6
+    custa cerca de 5,4~µs por mensagem de 256~B, de ponta a ponta.
+  \item A validade temporal, a anti-repetição e a restrição chave--tópico têm custo
+    marginal quase nulo (comparações, um mapa de bits e a correspondência de um
+    filtro): uma vez paga a cifra, aumentam $S$ quase sem aumentar $C$.
+  \item As assinaturas Ed25519 (K9) custam cerca de 40 vezes mais processador do que
+    o AES-GCM (cerca de 205~µs contra 5,4~µs por mensagem na máquina de
+    desenvolvimento), pelo que só se justificam onde o não repúdio é necessário,
+    por exemplo nas ordens enviadas aos atuadores.
+  \item O custo do TLS concentra-se no estabelecimento da ligação, como observado
+    em~\cite{prantl2021performance}, e depende sobretudo da frequência de religação.
+  \item Sob inundação, a limitação de tráfego antes da criptografia (K8) reduz o
+    processador gasto pelo \emph{gateway} face a K7.
+  \item Sem aceleração por \emph{hardware}, o custo do AES-GCM aumenta
+    significativamente, tanto no envelope como no TLS, reduzindo a diferença para
+    o Ed25519; o ChaCha20-Poly1305 torna-se, nesse caso, a cifra mais barata no TLS.
+\end{enumerate}
+
+Se H1 e H2 se confirmarem, a configuração recomendada, com aceleração por
+\emph{hardware}, será K8: proteção completa,
+exceto o não repúdio, a um custo próximo do da cifra isolada; K9 seria reservada aos
+fluxos que exigem prova de origem. Os resultados podem refutar esta expectativa, e
+é precisamente isso que a segunda parte pretende verificar.
+
+% ---------------------------------------------------------------------------
+\subsection{Resultados a entregar}
+
+\begin{itemize}[leftmargin=*]
+  \item Uma tabela de custo e benefício por configuração, no Raspberry Pi e no
+    computador de referência, com o fator de abrandamento entre ambos.
+  \item O custo de cada configuração com e sem aceleração criptográfica por
+    \emph{hardware}, e a configuração recomendada em cada caso.
+  \item O gráfico de $S(c)$ contra $C(c)$, com a fronteira de Pareto assinalada.
+  \item A configuração recomendada $c^{*}$ (Eq.~\ref{eq:melhor}), com justificação, e
+    recomendações por perfil de utilização (por exemplo, sensores de telemetria
+    contra atuadores críticos).
+  \item Os \emph{scripts}, as configurações e os dados brutos no repositório do
+    projeto, para que todas as medições possam ser repetidas.
+\end{itemize}

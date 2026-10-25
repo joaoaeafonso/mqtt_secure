@@ -8,7 +8,7 @@ segurança para comunicações IoT baseadas em MQTT, conduzida segundo um protoc
 explícito --- perguntas de investigação, PICOC, \emph{strings} de pesquisa por base
 de dados, critérios de inclusão, exclusão e qualidade, leitura em três passagens e
 formulário de extração --- e relatada com o diagrama PRISMA. Foram analisados
-\nIncluidos{} estudos primários (2014--2026) e \nSecundarios{} revisões
+\nIncluidos{} estudos primários (2015--2026) e \nSecundarios{} revisões
 relacionadas.
 
 As principais conclusões são as seguintes:
@@ -19,8 +19,8 @@ As principais conclusões são as seguintes:
     clientes com acesso legítimo, como mostram os estudos de análise de ameaças.
   \item A literatura organiza-se em oito categorias. A proteção leve fim-a-fim da
     mensagem é a mais numerosa, e a confidencialidade, a autenticação e a
-    autorização são as propriedades mais tratadas.
-  \item A frescura e a anti-repetição, a ligação da mensagem ao tópico, a política
+    integridade são as propriedades mais tratadas.
+  \item A validade temporal e a anti-repetição, a ligação da mensagem ao tópico, a política
     contra a redução do nível de proteção, a restrição chave--tópico e o não repúdio
     são pouco ou nada reportados, e a maioria das soluções continua a confiar no
     \emph{broker}.
@@ -31,7 +31,7 @@ As principais conclusões são as seguintes:
 Com base nestas lacunas, propôs-se uma arquitetura de segurança em camadas
 independentes e comutáveis, que combina defesa no transporte, um envelope fim-a-fim
 formalmente especificado (AES-256-GCM, GMAC ou Ed25519, com o tópico e o cabeçalho
-nos dados associados, frescura, janela anti-repetição, política de modos e
+nos dados associados, validade temporal, janela anti-repetição, política de modos e
 restrição chave--tópico) e limitação de tráfego antes de qualquer operação
 criptográfica. A proposta não pretende substituir trabalhos com objetivos distintos,
 como o anonimato ou a proteção do \emph{broker} por TEE, mas combinar numa só
@@ -40,9 +40,10 @@ camada propriedades que a literatura trata em separado.
 \subsection{Trabalho futuro}
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Avaliação experimental (segunda parte do projeto)}: medir, para cada
-    combinação de camadas, o custo (latência, processamento, octetos) e o benefício
-    (ataques impedidos) sobre um \emph{broker} real, respondendo à lacuna L5.
+  \item \textbf{Avaliação experimental (segunda parte do projeto)}: executar o plano
+    da Secção~\ref{sec:plano} num Raspberry Pi, medir o custo e os ataques impedidos
+    por cada configuração e escolher, pela fronteira de Pareto, a que dá a maior
+    proteção com o menor impacto no desempenho, respondendo à lacuna L5.
   \item \textbf{Verificação formal} das propriedades do envelope, à semelhança
     de~\cite{javadi2026cmap}.
   \item \textbf{Acordo de chaves por dispositivo} (por exemplo, ECDH autenticado),

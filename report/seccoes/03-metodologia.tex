@@ -74,7 +74,7 @@ quantificam \emph{quanto} é feito.
           (transporte, \emph{broker}, mensagem fim-a-fim, deteção)?
         & Taxonomia das soluções \\
     QF3 & Que propriedades garantem (confidencialidade, integridade, autenticação,
-          autorização, frescura e anti-repetição, não repúdio, disponibilidade,
+          autorização, validade temporal, anti-repetição, não repúdio, disponibilidade,
           privacidade) e assumem um \emph{broker} confiável?
         & Base da comparação \\
     QF4 & Como são avaliadas as soluções (protótipo, plataforma, métricas,
@@ -394,7 +394,7 @@ Anexo~\ref{anx:extracao}.
     Categoria & uma das oito categorias da taxonomia (Secção~\ref{sec:taxonomia}) & QF2, QE3 \\
     Ponto de atuação & transporte / \emph{broker} / mensagem fim-a-fim / deteção & QF2 \\
     Primitivas & AES, ChaCha20-Poly1305, HMAC, ABE, ECC, RSA, PAKE, TEE, ML\dots & QF2 \\
-    Propriedades & C, I, Au, Az, F/R, NR, D, P (ver Tabela~\ref{tab:comparacao}) & QF3, QE3 \\
+    Propriedades & C, I, Au, Az, V, R, NR, D, P (ver Tabela~\ref{tab:comparacao}) & QF3, QE3 \\
     Confiança no \emph{broker} & total / parcial / nenhuma & QF3 \\
     Avaliação & protótipo, plataforma, métricas, verificação formal & QF4 \\
     Dispositivos restritos & sim / não & QF4 \\

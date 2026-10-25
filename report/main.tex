@@ -12,13 +12,15 @@
 \documentclass[11pt, a4paper]{article}
 
 % ----------------------------------------------------- dados da capa -------
-\newcommand{\Mestrado}{\textcolor{red}{$\langle$Nome do Mestrado$\rangle$}}
+\newcommand{\Mestrado}{Engenharia Informática}
 \newcommand{\UnidadeCurricular}{Segurança em Redes e Sistemas de Informação}
 \newcommand{\Autores}{%
-  \textcolor{red}{Nome 1}, N.º \textcolor{red}{xxxxx}\\
-  \textcolor{red}{Nome 2}, N.º \textcolor{red}{yyyyy}}
+  Rodrigo Gorjão, N.º 82972\\
+  João Afonso, N.º 97990\\
+  João Tendeiro, N.º 129087\\
+  Jossivalter Leal, N.º 146851}
 \newcommand{\Data}{17-10-26}
-\newcommand{\Docente}{\textcolor{red}{$\langle$Nome do Docente$\rangle$}}
+\newcommand{\Docente}{Daniel Maximino Caçador}
 \newcommand{\Titulo}{Segurança em Camadas para Comunicações IoT Baseadas em MQTT:
   Revisão Sistemática da Literatura e Proposta de Arquitetura}
 \newcommand{\TituloCurto}{Segurança em camadas para MQTT}
@@ -36,7 +38,7 @@
   \thispagestyle{empty}
   \centering
   \IfFileExists{figuras/iscte-logo.png}%
-    {\includegraphics[width=0.42\textwidth]{figuras/iscte-logo.png}}%
+    {\includegraphics[width=0.62\textwidth]{figuras/iscte-logo.png}}%
     {\begin{tikzpicture}
        \node[draw=iscte, line width=1pt, minimum width=6cm, minimum height=2.2cm,
              text=iscte, font=\Large\bfseries] {iscte};
@@ -82,8 +84,9 @@
 \input{seccoes/04-trabalhos-relacionados}
 \input{seccoes/05-resultados}
 \input{seccoes/06-proposta}
-\input{seccoes/07-discussao}
-\input{seccoes/08-conclusoes}
+\input{seccoes/07-plano-avaliacao}
+\input{seccoes/08-discussao}
+\input{seccoes/09-conclusoes}
 
 % ---------------------------------------------------- referências ---------
 \clearpage

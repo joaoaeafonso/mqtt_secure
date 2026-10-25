@@ -30,12 +30,13 @@ Daqui resultam três problemas que estruturam este trabalho.
     mensagens existem em claro: quem o comprometer, ou qualquer cliente a quem
     uma lista de controlo de acessos mal configurada permita subscrever o filtro
     \texttt{\#}, vê e pode reencaminhar todo o tráfego~\cite{andy2017attack,
-    harsha2018shodan, segarra2020mqttz}.
-  \item \textbf{Autenticidade não é frescura.} Mesmo uma mensagem
-    criptograficamente autêntica pode ser capturada e repetida mais tarde, ou
-    publicada num tópico diferente daquele para que foi criada. Sem números de
-    sequência, carimbos temporais e ligação ao tópico, a autenticação não impede
-    estes ataques.
+    segarra2020mqttz}.
+  \item \textbf{Uma mensagem autêntica pode ser repetida ou desviada.} Mesmo uma
+    mensagem criptograficamente autêntica pode ser capturada e repetida mais tarde,
+    ou publicada num tópico diferente daquele para que foi criada. A autenticação
+    não impede estes ataques: são precisos, em separado, um carimbo temporal
+    autenticado (validade temporal), números de sequência (anti-repetição) e a
+    ligação criptográfica ao tópico.
   \item \textbf{Comprometimento de dispositivos.} Num parque com milhares de
     dispositivos, alguns acabarão comprometidos. Se uma chave válida puder
     publicar em qualquer tópico, um único dispositivo comprometido pode fazer-se
@@ -60,8 +61,11 @@ baseadas em MQTT, que propriedades garantem e que lacunas persistem?}
     um conjunto comum de propriedades de segurança e de avaliação.
   \item Comparar a presente revisão com as revisões já publicadas sobre o tema.
   \item Identificar as lacunas do estado da arte e, a partir delas, propor uma
-    arquitetura de segurança em camadas, descrita formalmente, cuja avaliação
-    experimental é objeto da segunda parte do projeto.
+    arquitetura de segurança em camadas, descrita formalmente.
+  \item Definir o objetivo e o plano experimental da segunda parte do projeto:
+    medir, num dispositivo restrito (Raspberry Pi), o custo de desempenho e o
+    benefício de segurança de cada camada, para identificar a configuração com a
+    maior proteção e o menor impacto no desempenho.
 \end{enumerate}
 
 \subsection{Contributos}
@@ -92,7 +96,8 @@ justifica a presente. A Secção~\ref{sec:resultados} apresenta os resultados: a
 caracterização estatística dos estudos, a taxonomia, a comparação detalhada e as
 respostas às perguntas de investigação. A Secção~\ref{sec:proposta} propõe a
 arquitetura em camadas e posiciona-a face aos trabalhos relacionados. A
-Secção~\ref{sec:discussao} discute as lacunas e as ameaças à validade, e a
+Secção~\ref{sec:plano} define o objetivo e o plano experimental da segunda parte
+do projeto. A Secção~\ref{sec:discussao} discute as lacunas e as ameaças à validade, e a
 Secção~\ref{sec:conclusoes} conclui e aponta o trabalho futuro. Os anexos contêm as
 \emph{strings} de pesquisa adaptadas a cada base de dados e a extração de dados por
 estudo.

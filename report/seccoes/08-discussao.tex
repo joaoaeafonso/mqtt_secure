@@ -7,9 +7,9 @@ A comparação das Secções~\ref{sec:resultados} e~\ref{sec:proposta} evidencia
 lacunas.
 
 \begin{enumerate}[label=\textbf{L\arabic*.}, leftmargin=*]
-  \item \textbf{A autenticidade raramente é acompanhada de frescura.} Nenhum dos
-    mecanismos analisados reporta proteção contra repetição ou frescura como
-    propriedade garantida. No MQTT, onde os duplicados legítimos do QoS~1 coexistem
+  \item \textbf{A autenticidade raramente é acompanhada de validade temporal nem
+    de anti-repetição.} Nenhum dos mecanismos analisados reporta a verificação de
+    carimbos temporais ou a proteção contra repetição como propriedade garantida. No MQTT, onde os duplicados legítimos do QoS~1 coexistem
     com repetições maliciosas, a ausência destes mecanismos permite reinjetar
     mensagens autênticas indefinidamente.
   \item \textbf{A mensagem não é ligada ao seu contexto.} A ligação criptográfica ao
@@ -18,7 +18,7 @@ lacunas.
     analisados como mecanismos explícitos, apesar de corresponderem a ameaças
     concretas (mudança de tópico, \emph{downgrade}, dispositivo comprometido).
   \item \textbf{O \emph{broker} continua, em regra, a ser de confiança.} Só seis dos
-    22 mecanismos dispensam, total ou parcialmente, a confiança no \emph{broker}; a
+    17 mecanismos dispensam, total ou parcialmente, a confiança no \emph{broker}; a
     maioria das soluções de autenticação e autorização reforça o \emph{broker} em
     vez de o tornar irrelevante para a segurança do conteúdo.
   \item \textbf{O não repúdio está ausente.} As soluções baseiam-se em segredos
@@ -32,7 +32,8 @@ lacunas.
 \end{enumerate}
 
 A arquitetura proposta responde diretamente a L1, L2, L3 e L4, e o seu desenho em
-camadas comutáveis foi pensado para que a segunda parte do projeto responda a L5.
+camadas comutáveis foi pensado para que a segunda parte do projeto responda a L5
+(Secção~\ref{sec:plano}).
 
 \subsection{Ameaças à validade}
 

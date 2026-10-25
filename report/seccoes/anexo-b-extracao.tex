@@ -18,75 +18,59 @@
 \endhead
 \bottomrule
 \endfoot
-\E{01} & Neisse et al.~\cite{neisse2014enforcement} & C3 &
-  Integração do SecKit (segurança baseada em modelos) com o MQTT para aplicar regras de
-  política sobre os fluxos de dados & Caso de estudo; viabilidade e desempenho \\
-\E{02} & Singh et al.~\cite{singh2015secure} & C4 &
+\E{01} & Singh et al.~\cite{singh2015secure} & C4 &
   SMQTT e SMQTT-SN: KP/CP-ABE sobre ECC leve & Não reportada no resumo \\
-\E{03} & Niruntasukrat et al.~\cite{niruntasukrat2016authorization} & C3 &
+\E{02} & Niruntasukrat et al.~\cite{niruntasukrat2016authorization} & C3 &
   Autorização baseada em OAuth~1.0a adaptada a nós restritos sem interface de utilizador
   & Plataforma IoT real; atraso de autorização e \emph{overhead} \\
-\E{04} & Shin et al.~\cite{shin2016framework} & C2 &
-  Enquadramento de segurança baseado em AugPAKE & Não reportada no resumo \\
-\E{05} & Rizzardi et al.~\cite{rizzardi2016aups} & C3 &
+\E{03} & Rizzardi et al.~\cite{rizzardi2016aups} & C3 &
   AUPS: gestão de chaves e aplicação de políticas sobre o MQTT; código aberto
   (Apache~2.0) & Protótipo de código aberto \\
-\E{06} & Mektoubi et al.~\cite{mektoubi2016rsa} & C5 &
-  Proteção da comunicação MQTT com criptografia assimétrica; comparação RSA vs.\ ECC
-  & Não reportada no resumo \\
-\E{07} & Andy et al.~\cite{andy2017attack} & C1 &
+\E{04} & Andy et al.~\cite{andy2017attack} & C1 &
   Cenários de ataque ao MQTT sem cifra; razões para a falta de segurança nas
   implementações & Demonstração de ataques \\
-\E{08} & Firdous et al.~\cite{firdous2017modelling} & C1 &
-  Modelo de ameaças do MQTT; avaliação de negação de serviço contra \emph{brokers}
-  & Avaliação experimental de DoS \\
-\E{09} & Bisne e Parmar~\cite{bisne2017composite} & C4 &
-  Combinação de ABE com AES de \emph{S-box} dinâmica & Não reportada no resumo \\
-\E{10} & Harsha et al.~\cite{harsha2018shodan} & C3 &
-  Vulnerabilidades identificadas com a API do Shodan; autenticação e ACL como
-  contramedidas & \emph{Broker} em Raspberry Pi; clientes em Python \\
-\E{11} & Calabretta et al.~\cite{calabretta2018mqttauth} & C3 &
+\E{05} & Calabretta et al.~\cite{calabretta2018mqttauth} & C3 &
   MQTT-Auth: AugPAKE para confidencialidade e dois \emph{tokens} (autenticação e
   autorização por tópico); hierarquias de tópicos & Comparação com soluções da literatura \\
-\E{12} & Hernández Ramos et al.~\cite{hernandez2018fuzzing} & C1 &
+\E{06} & Hernández Ramos et al.~\cite{hernandez2018fuzzing} & C1 &
   Enquadramento de \emph{fuzzing} baseado em modelos para o MQTT & Resultados experimentais iniciais \\
-\E{13} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & C5 &
+\E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & C5 &
   Mapeamento \emph{Value-to-HMAC}: confidencialidade e integridade com um só mecanismo
   & Desempenho face a cifra simétrica \\
-\E{14} & Lohachab e Karambir~\cite{lohachab2019ecc} & C2 &
+\E{08} & Lohachab e Karambir~\cite{lohachab2019ecc} & C2 &
   Autenticação e autorização leves entre dispositivos com ECC e MQTT
   & Implementação; comparação de segurança e desempenho \\
-\E{15} & Malina et al.~\cite{malina2019secure} & C5 &
+\E{09} & Malina et al.~\cite{malina2019secure} & C5 &
   Três níveis de segurança: integridade, privacidade de fontes e recetores,
   segurança de longo prazo com autenticação mútua & Não reportada no resumo \\
-\E{16} & Sadio et al.~\cite{sadio2019lightweight} & C5 &
+\E{10} & Sadio et al.~\cite{sadio2019lightweight} & C5 &
   AEAD ChaCha20-Poly1305 fim-a-fim para MQTT e MQTT-SN & Arduino UNO; memória e tempo de execução \\
-\E{17} & Vaccari et al.~\cite{vaccari2020slowite} & C1 &
+\E{11} & Vaccari et al.~\cite{vaccari2020slowite} & C1 &
   SlowITe: DoS de baixa taxa que explora a configuração do servidor pelo cliente
   & Serviços MQTT reais, com e sem cifra \\
-\E{18} & Vaccari et al.~\cite{vaccari2020mqttset} & C7 &
+\E{12} & Vaccari et al.~\cite{vaccari2020mqttset} & C7 &
   MQTTset: conjunto de dados de tráfego MQTT legítimo e de ataques & Sistema de deteção por ML \\
-\E{19} & Segarra et al.~\cite{segarra2020mqttz} & C6 &
+\E{13} & Segarra et al.~\cite{segarra2020mqttz} & C6 &
   MQT-TZ: \emph{broker} em ARM TrustZone; TLS mútuo e cifra em duas camadas
   & Micro e macro \emph{benchmarks}; cargas de uma aplicação médica \\
-\E{20} & Dahlmanns et al.~\cite{dahlmanns2021entrust} & C5 &
+\E{14} & Dahlmanns et al.~\cite{dahlmanns2021entrust} & C5 &
   ENTRUST: segurança fim-a-fim baseada em servidor de chaves, sem alterar o protocolo
   & Implementação sobre MQTT \\
-\E{21} & Spielvogel et al.~\cite{spielvogel2021tls} & C6 &
+\E{15} & Spielvogel et al.~\cite{spielvogel2021tls} & C6 &
   O \emph{broker} só reencaminha por ligações com o nível de segurança exigido
   & Protótipo; medições de \emph{overhead} \\
-\E{22} & Prantl et al.~\cite{prantl2021performance} & C6 &
+\E{16} & Prantl et al.~\cite{prantl2021performance} & C6 &
   Impacto do TLS no MQTT: débito, estabelecimento de ligação, energia
   & Microcontrolador comercial; todos os níveis de QoS \\
-\E{23} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & C5 &
+\E{17} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & C5 &
   Segurança muitos-para-muitos leve integrada no MQTT
   & $-80\,\%$ \emph{overhead} de comunicação e $-40\,\%$ computacional face ao MQTTS \\
-\E{24} & Buccafurri et al.~\cite{buccafurri2023mqtta} & C8 &
+\E{18} & Buccafurri et al.~\cite{buccafurri2023mqtta} & C8 &
   MQTT-A: anonimato de \emph{publishers} e subscritores via \emph{bridges}
   & \emph{Brokers} em nuvem em vários países; latência e \emph{goodput} \\
-\E{25} & Alotaibi et al.~\cite{alotaibi2024secure} & C7 &
+\E{19} & Alotaibi et al.~\cite{alotaibi2024secure} & C7 &
   Deteção distribuída de anomalias com H2O (melhor: XGBoost) & MSE, RMSE, erro por classe, \emph{log loss} \\
-\E{26} & Javadi et al.~\cite{javadi2026cmap} & C2 &
+\E{20} & Javadi et al.~\cite{javadi2026cmap} & C2 &
   CMAP: autenticação mútua sem certificados sobre ECC & Verificação formal; Raspberry Pi
   com Mosquitto; NS-3 \\
 \end{longtable}

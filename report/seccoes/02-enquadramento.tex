@@ -235,18 +235,22 @@ MAC, só o detentor de $s$ consegue assinar, enquanto qualquer detentor de $A$
 consegue verificar: a assinatura dá \emph{prova de origem} (não repúdio).
 
 % ---------------------------------------------------------------------------
-\subsection{Frescura e proteção contra repetição}
-\label{sec:frescura}
+\subsection{Validade temporal e proteção contra repetição}
+\label{sec:validade}
 
-\paragraph{Janela temporal.} Dada uma mensagem com carimbo temporal $t_m$,
+\paragraph{Janela temporal.} Uma mensagem tem \emph{validade temporal} se foi
+produzida há pouco tempo, segundo um carimbo temporal autenticado pelo remetente.
+Dada uma mensagem com carimbo temporal $t_m$,
 recebida no instante $t$, um recetor com tolerância de idade $\Delta_a$ e de
 desvio de relógio $\Delta_s$ aceita-a sse
 \begin{equation}
   t - \Delta_a \;\le\; t_m \;\le\; t + \Delta_s .
-  \label{eq:frescura}
+  \label{eq:validade}
 \end{equation}
-A frescura limita o tempo durante o qual uma mensagem capturada é útil, mas
-\emph{não} impede a repetição dentro da janela $\Delta_a$.
+A validade temporal responde à pergunta \enquote{esta mensagem é recente?} e
+limita o tempo durante o qual uma mensagem capturada é útil, mas \emph{não}
+responde a \enquote{esta mensagem já foi recebida?}: não impede a repetição
+dentro da janela $\Delta_a$. É esse o papel do mecanismo seguinte.
 
 \paragraph{Janela deslizante de números de sequência.} O mecanismo anti-repetição
 do IPsec ESP~\cite{rfc4303} mantém, por remetente, o maior número de sequência

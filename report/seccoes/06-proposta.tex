@@ -4,7 +4,8 @@
 Esta secção propõe uma arquitetura que responde às lacunas identificadas na
 Secção~\ref{sec:resultados}. A proposta é apresentada ao nível do desenho e da sua
 formalização; a avaliação experimental (custo de cada camada e ataques que cada uma
-impede) é objeto da segunda parte do projeto. Uma implementação de referência em
+impede) é objeto da segunda parte do projeto, planeada na
+Secção~\ref{sec:plano}. Uma implementação de referência em
 C++23, com documentação técnica completa, está disponível no repositório do
 projeto~\cite{mqttsecure2026repo}.
 
@@ -15,8 +16,8 @@ projeto~\cite{mqttsecure2026repo}.
   \item \textbf{Defesa em profundidade}~(Eq.~\ref{eq:profundidade}): proteção no
     transporte, na mensagem e na disponibilidade, de forma independente.
   \item \textbf{O \emph{broker} não é de confiança para o conteúdo}: a
-    confidencialidade, a integridade, a autenticidade e a frescura das mensagens
-    não podem depender dele.
+    confidencialidade, a integridade, a autenticidade, a validade temporal e a
+    não repetição das mensagens não podem depender dele.
   \item \textbf{Camadas independentes e comutáveis}: cada mecanismo é uma camada
     que pode ser ativada ou desativada sem alterar as restantes, o que permite medir
     isoladamente o custo e o benefício de cada um.
@@ -71,7 +72,7 @@ transporte para descartar inundações antes de qualquer operação criptográfi
     \node[font=\scriptsize, text=iscte, left=0.1cm of pers.west, anchor=east] {saída $\downarrow$};
     \node[font=\scriptsize, text=acento, right=0.1cm of pers.east, anchor=west] {$\uparrow$ entrada};
     \node[nota, right=0.9cm of sec] (n1) {Envelope fim-a-fim: AES-256-GCM, GMAC ou
-      Ed25519; tópico nos dados associados; frescura; janela anti-repetição;
+      Ed25519; tópico nos dados associados; validade temporal; janela anti-repetição;
       política de modos; restrição chave--tópico.};
     \node[nota, right=0.9cm of lim] (n2) {\emph{Token bucket} por tópico,
       antes de qualquer operação criptográfica; estado limitado.};
@@ -195,7 +196,7 @@ recebido. A ordem decorre do princípio D4.
     \midrule
     1 & Formato do envelope & Descarta conteúdo não protegido (por exemplo, injeções em claro) & mensagem malformada \\
     2 & Modo $\mu \in \mathcal{A}$ & Barato; o modo está em $A$, pelo que mentir sobre ele só pode falhar & modo não aceite \\
-    3 & Frescura, Eq.~\eqref{eq:frescura} & Barato; o instante está em $A$, pelo que alterá-lo invalida a etiqueta & mensagem expirada \\
+    3 & Validade temporal, Eq.~\eqref{eq:validade} & Barato; o instante está em $A$, pelo que alterá-lo invalida a etiqueta & mensagem expirada \\
     4 & Chave conhecida e verificação criptográfica & A partir daqui a mensagem é autêntica; a falha é sempre a mesma, sem revelar a causa (sem oráculo) & falha de autenticação \\
     5 & Restrição chave--tópico, Eq.~\eqref{eq:ligacao} & Só depois da autenticação: entrada não autenticada não pode sondar a política & permissão negada \\
     6 & Janela anti-repetição, Eq.~\eqref{eq:janela} & Só depois da autenticação (números forjados não avançam a janela) e da restrição (uma mensagem recusada não consome o seu número) & repetição detetada \\
@@ -204,14 +205,14 @@ recebido. A ordem decorre do princípio D4.
 \end{table}
 
 % ---------------------------------------------------------------------------
-\subsection{Frescura e anti-repetição}
+\subsection{Validade temporal e anti-repetição}
 
-A frescura usa a Eq.~\eqref{eq:frescura} com $\Delta_a = 60$~s e
+A verificação da validade temporal usa a Eq.~\eqref{eq:validade} com $\Delta_a = 60$~s e
 $\Delta_s = 5$~s, e a anti-repetição a janela da Eq.~\eqref{eq:janela} com
 $w = 64$, mantida por identificador de chave. Os dois mecanismos são
-complementares: a frescura sozinha deixa passar todas as repetições com menos de
+complementares: a validade temporal sozinha deixa passar todas as repetições com menos de
 $\Delta_a$; a janela sozinha não protege contra a perda do seu estado (por exemplo,
-reinício do recetor), situação em que a frescura limita a exposição a $\Delta_a$.
+reinício do recetor), situação em que a validade temporal limita a exposição a $\Delta_a$.
 Para cumprir o princípio D5, o número de janelas é limitado e um identificador de
 chave novo é recusado quando o limite é atingido. Os limites do GCM
 (Eq.~\eqref{eq:aniversario}) e do espaço de sequências ($2^{64}$) impõem a rotação
@@ -298,7 +299,7 @@ Tabela~\ref{tab:stride} com os mecanismos da proposta.
     Adulteração do conteúdo ou do cabeçalho & Etiqueta GCM ou assinatura sobre $A \,\|\, P$ & mensagem \\
     Republicação noutro tópico   & Tópico em $A$, Eq.~\eqref{eq:aad} & mensagem \\
     Repetição                    & Janela anti-repetição & mensagem \\
-    Mensagens antigas            & Frescura & mensagem \\
+    Mensagens antigas            & Validade temporal & mensagem \\
     Injeção de mensagens em claro & Formato do envelope e autenticação & mensagem \\
     Redução do nível de proteção & Modo em $A$ e política $\mathcal{A}$ & mensagem \\
     Usurpação de identidade no \emph{broker} & Palavras-passe, mTLS, identificador ligado ao utilizador & transporte \\
@@ -332,32 +333,32 @@ chave--tópico (CT).
   \scriptsize
   \setlength{\tabcolsep}{2.8pt}
   \renewcommand{\arraystretch}{1.2}
-  \begin{tabular}{@{}lL{2.8cm}ccccccccc|cccc@{}}
+  \begin{tabular}{@{}lL{2.8cm}cccccccccc|cccc@{}}
     \toprule
     \textbf{ID} & \textbf{Trabalho}
-      & \textbf{C} & \textbf{I} & \textbf{Au} & \textbf{Az} & \textbf{F/R} & \textbf{NR}
+      & \textbf{C} & \textbf{I} & \textbf{Au} & \textbf{Az} & \textbf{V} & \textbf{R} & \textbf{NR}
       & \textbf{D} & \textbf{P} & \textbf{BnC} & \textbf{LT} & \textbf{RN} & \textbf{CT} & \textbf{Com.} \\
     \midrule
-    \E{02} & Singh et al.~\cite{singh2015secure}
-      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
-    \E{11} & Calabretta et al.~\cite{calabretta2018mqttauth}
-      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
-    \E{13} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
-    \E{15} & Malina et al.~\cite{malina2019secure}
-      & \Parc & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr \\
-    \E{16} & Sadio et al.~\cite{sadio2019lightweight}
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
-    \E{19} & Segarra et al.~\cite{segarra2020mqttz}
-      & \Sim & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
-    \E{20} & Dahlmanns et al.~\cite{dahlmanns2021entrust}
-      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
-    \E{26} & Javadi et al.~\cite{javadi2026cmap}
-      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \E{01} & Singh et al.~\cite{singh2015secure}
+      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
+    \E{05} & Calabretta et al.~\cite{calabretta2018mqttauth}
+      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
+      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{09} & Malina et al.~\cite{malina2019secure}
+      & \Parc & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr \\
+    \E{10} & Sadio et al.~\cite{sadio2019lightweight}
+      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{13} & Segarra et al.~\cite{segarra2020mqttz}
+      & \Sim & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
+    \E{14} & Dahlmanns et al.~\cite{dahlmanns2021entrust}
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{20} & Javadi et al.~\cite{javadi2026cmap}
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
     \midrule
     \rowcolor{fundotab}
     --- & \textbf{Proposta}
-      & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Parc & \Nao & \Sim & \Sim & \Sim & \Sim & \Sim \\
+      & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Parc & \Nao & \Sim & \Sim & \Sim & \Sim & \Sim \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -368,7 +369,7 @@ TEE~\cite{segarra2020mqttz}, não oferece confidencialidade de grupo por atribut
 \cite{singh2015secure} e não tem verificação formal~\cite{javadi2026cmap}. O seu
 contributo está na \emph{combinação}, numa só camada fim-a-fim, de propriedades
 que a literatura analisada trata separadamente ou não reporta (ligação ao tópico,
-frescura com anti-repetição, política contra a redução do nível de proteção,
+validade temporal com anti-repetição, política contra a redução do nível de proteção,
 restrição chave--tópico e não repúdio opcional) e na organização em camadas
 comutáveis, que permite medir o custo e o benefício de cada mecanismo isoladamente.
 
@@ -386,18 +387,8 @@ comutáveis, que permite medir o custo e o benefício de cada mecanismo isoladam
     que um atacante que inunde o tópico de uma vítima consome também o orçamento da
     vítima; limites por cliente pertencem ao \emph{broker}.
   \item \textbf{Estado da janela não persistente}: o reinício do recetor apaga as
-    janelas anti-repetição, ficando a proteção limitada à frescura ($\Delta_a$).
+    janelas anti-repetição, ficando a proteção limitada à validade temporal ($\Delta_a$).
   \item \textbf{Dados falsos mas autênticos}: um dispositivo comprometido continua a
     poder publicar dados falsos nos seus próprios tópicos; só a deteção e a
     revogação o travam.
 \end{itemize}
-
-% ---------------------------------------------------------------------------
-\subsection{Plano de avaliação (segunda parte do projeto)}
-
-A avaliação experimental medirá, para cada combinação de camadas: (i)~o custo, em
-latência fim-a-fim, tempo de processador por mensagem, débito e octetos
-acrescentados (Eq.~\ref{eq:overhead}); e (ii)~o benefício, como a fração de
-ataques bem-sucedidos (escuta, injeção, repetição, mudança de tópico, usurpação de
-identidade, inundação) com cada defesa ativa ou inativa. Esta medição conjunta de
-custo e benefício responde diretamente à lacuna identificada na QF4.

@@ -12,18 +12,21 @@ literatura sobre mecanismos de segurança para comunicações baseadas em MQTT,
 conduzida segundo um protocolo explícito: perguntas de investigação, critérios
 PICOC, \emph{strings} de pesquisa com grupos de sinónimos, critérios de inclusão,
 exclusão e qualidade, leitura em três passagens e formulário de extração de dados.
-Analisam-se 26 estudos primários publicados entre 2014 e 2026 e cinco revisões
+Analisam-se \nIncluidos{} estudos primários publicados entre 2015 e 2026 e cinco revisões
 relacionadas, classificados numa taxonomia de oito categorias e comparados segundo
 as propriedades de segurança que garantem. A comparação mostra que a literatura
-trata sobretudo autenticação, controlo de acesso e confidencialidade, mas raramente
-reporta, em conjunto, a ligação criptográfica da mensagem ao tópico, a proteção
-contra repetição, a política do recetor contra a redução do nível de proteção e a
+trata sobretudo confidencialidade, autenticação e integridade, mas raramente
+reporta, em conjunto, a ligação criptográfica da mensagem ao tópico, a validade
+temporal e a proteção contra repetição, a política do recetor contra a redução do nível de proteção e a
 restrição dos tópicos em que cada chave pode publicar. Com base nestas lacunas,
 propõe-se uma arquitetura de segurança em camadas, composta por camadas
 independentes e comutáveis entre a aplicação e o transporte, que combina defesa no
 transporte, um envelope fim-a-fim com AES-256-GCM ou Ed25519 e limitação de
-tráfego antes de qualquer operação criptográfica. A avaliação experimental da
-proposta é remetida para a segunda parte do projeto.
+tráfego antes de qualquer operação criptográfica. Por fim, define-se o objetivo e o
+plano da segunda parte do projeto: implementar a arquitetura e medir, num
+dispositivo restrito (Raspberry Pi), o custo de desempenho e os ataques impedidos
+por cada camada e combinação de camadas, para identificar a configuração que
+oferece a maior proteção com o menor impacto no desempenho.
 
 \vspace{0.6cm}
 \noindent\textbf{Palavras-chave:} MQTT; Internet das Coisas; segurança fim-a-fim;
