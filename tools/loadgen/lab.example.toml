@@ -1,4 +1,6 @@
 # Load-lab configuration. Every key is optional; missing keys use these defaults.
+# The defaults are security level K0: no defence at all. Start from another level
+# with --preset K0 … K10 (or the dashboard's level buttons).
 # All settings can be changed while the lab runs (dashboard or POST /api/config)
 # except the ones marked "startup only".
 
@@ -11,10 +13,10 @@ advertise = ""             # startup only; address clients use (default: host, o
 
 [transport]                # defence layer 1: the broker and the connections to it
 mode = "plain"             # plain | tls | mtls   (mtls: client certificates, CN = username)
-tls_version = "1.2"        # 1.2 | 1.3 (tls and mtls; restarts the broker)
-protocol = "3.1.1"         # 3.1.1 | 5   MQTT version of every client (reconnects them)
+tls_version = "1.3"        # 1.2 | 1.3 (tls and mtls; restarts the broker)
+protocol = "5"            # 3.1.1 | 5   MQTT version of every client (reconnects them)
 auth = false               # username/password required
-acl = true                 # open/ for everyone, restricted/ per client. Off = no ACL at all
+acl = false                # open/ for everyone, restricted/ per client. Off = no ACL at all
 clientid_binding = false   # client id := username, so no client can take over another's
                            # session by reusing its client id (restarts the broker)
 sys_topics = false         # publish $SYS/# broker statistics (readable by all without ACL)
@@ -22,10 +24,10 @@ max_packet = 0             # bytes; larger packets disconnect the sender. 0 = no
 max_connections = 0        # broker-wide connection limit. 0 = no limit
 
 [payload]                  # defence layer 2: end to end, sensor <-> gateway
-protection = "encrypt"     # none | auth_only | encrypt | sign (Ed25519: proof of origin)
-freshness = true           # reject messages older than 60 s
-replay = true              # sequence-number replay window
-key_binding = true         # a key may only publish on its owner's topics (+/sensors/<owner>/#)
+protection = "none"        # none | auth_only | encrypt | sign (Ed25519: proof of origin)
+freshness = false          # reject messages older than 60 s
+replay = false             # sequence-number replay window
+key_binding = false        # a key may only publish on its owner's topics (+/sensors/<owner>/#)
 rate_limit = 0             # gateway: inbound msg/s per topic, 0 = off
 key_epoch = 0              # raise it while running to rotate every payload key
                            # (old keys are revoked 3 s later); never goes back

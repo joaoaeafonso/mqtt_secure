@@ -2,12 +2,13 @@
 
 import unittest
 
-from lab import DEFAULTS, PACKET_OVERHEAD, PRESETS, merged, parse_revoked, validate
+from lab import (DEFAULTS, LEVELS, PACKET_OVERHEAD, PRESETS, current_level, merged, parse_revoked,
+                 validate)
 
 
 class Validate(unittest.TestCase):
     def test_defaults_are_valid(self):
-        self.assertEqual(merged(DEFAULTS, {})["payload"]["protection"], "encrypt")
+        self.assertEqual(merged(DEFAULTS, {})["payload"]["protection"], "none")
 
     def test_choices_accept_numbers_or_text(self):
         cfg = merged(DEFAULTS, {"transport": {"protocol": 5, "tls_version": 1.3}})
@@ -57,6 +58,63 @@ class HardenedPreset(unittest.TestCase):
     def test_packet_limit_must_fit_the_payload(self):
         with self.assertRaises(ValueError):
             merged(DEFAULTS, {"transport": {"max_packet": 100}})
+
+
+class SecurityLevels(unittest.TestCase):
+    """K0..K10 follow Table 17 of the report (Section 7)."""
+
+    def apply(self, level_id, base=DEFAULTS):
+        return merged(base, PRESETS[level_id](base))
+
+    def test_ids_match_the_report(self):
+        self.assertEqual([lv.id for lv in LEVELS], [f"K{i}" for i in range(11)])
+
+    def test_every_level_is_valid_and_recognised(self):
+        for lv in LEVELS:
+            with self.subTest(lv.id):
+                self.assertEqual(current_level(self.apply(lv.id)), lv.id)
+
+    def test_k9_is_hardened(self):
+        self.assertEqual(PRESETS["K9"](DEFAULTS), PRESETS["hardened"](DEFAULTS))
+
+    def test_each_step_adds_one_thing(self):
+        table = {  # transport, protection, freshness, replay, key binding, limits
+            "K0": (False, "none", False, False, False, False),
+            "K1": (True, "none", False, False, False, False),
+            "K2": (True, "auth_only", False, False, False, False),
+            "K3": (True, "encrypt", False, False, False, False),
+            "K4": (True, "encrypt", True, False, False, False),
+            "K5": (True, "encrypt", False, True, False, False),
+            "K6": (True, "encrypt", True, True, False, False),
+            "K7": (True, "encrypt", True, True, True, False),
+            "K8": (True, "encrypt", True, True, True, True),
+            "K9": (True, "sign", True, True, True, True),
+            "K10": (False, "encrypt", True, True, True, False),
+        }
+        for level_id, (on, protection, fresh, replay, binding, limits) in table.items():
+            with self.subTest(level_id):
+                cfg = self.apply(level_id)
+                t, p = cfg["transport"], cfg["payload"]
+                self.assertEqual(t["mode"], "mtls" if on else "plain")
+                self.assertEqual((t["auth"], t["acl"], t["clientid_binding"]), (on, on, on))
+                self.assertEqual((p["protection"], p["freshness"], p["replay"],
+                                  p["key_binding"]), (protection, fresh, replay, binding))
+                self.assertEqual(p["rate_limit"] > 0, limits)
+                self.assertEqual(t["max_packet"] > 0 and t["max_connections"] > 0, limits)
+
+    def test_defaults_are_k0(self):
+        self.assertEqual(current_level(merged(DEFAULTS, {})), "K0")
+        self.assertEqual(self.apply("K0"), merged(DEFAULTS, {}))  # picking K0 changes nothing
+
+    def test_level_survives_a_load_change(self):
+        cfg = self.apply("K8")
+        cfg = merged(cfg, {"load": {"rate": 80.0}})  # rate limit no longer derived from it
+        self.assertEqual(current_level(cfg), "K8")
+
+    def test_any_other_change_is_custom(self):
+        cfg = merged(self.apply("K6"), {"payload": {"replay": False, "freshness": False}})
+        self.assertEqual(current_level(cfg), "K3")
+        self.assertIsNone(current_level(merged(cfg, {"transport": {"acl": False}})))
 
 
 if __name__ == "__main__":

@@ -24,8 +24,8 @@ therefore run last):
 
 | Section | Baseline |
 |---|---|
-| transport | defaults (`plain`, TLS 1.2, MQTT 3.1.1, no auth, no client-id binding, no `$SYS`, no limits) with **`acl = false`** |
-| payload | defaults (`encrypt`, freshness, replay, key binding, no rate limit) |
+| transport | `plain`, TLS 1.2, MQTT 3.1.1, no auth, **no ACL**, no client-id binding, no `$SYS`, no limits |
+| payload | `encrypt`, freshness, replay, key binding, no rate limit (each scenario turns off what it examines) |
 | storage | `none` |
 | downlink | rate 0 |
 | load | default rate (20) and payload (64), **zone `open`** |

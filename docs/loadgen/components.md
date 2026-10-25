@@ -279,7 +279,7 @@ tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t to
 | File | Tests |
 |---|---|
 | `test_envelope.py` | shared vectors reproduced; round trip in every mode; tampering, topic rebinding, unknown keys; mode policy and plaintext; replay window and reordering; freshness; allowed senders; key-file round trip |
-| `test_lab_config.py` | defaults valid; choices as text or numbers; bad values rejected; revoked list parsing and bounds; flattening; hardened preset turns everything on; limits follow the load; packet limit must fit the payload |
+| `test_lab_config.py` | defaults valid and equal to level K0; security levels K0–K10 match the report; choices as text or numbers; bad values rejected; revoked list parsing and bounds; flattening; hardened preset turns everything on; limits follow the load; packet limit must fit the payload |
 | `test_pki.py` | gateway never holds sensor private keys; device views; epochs never reuse ids; CRL and passwd generation (needs `mosquitto_passwd`); listener options follow `listener`; ACL off ⇒ no `acl_file`; `apply` chooses reload vs restart; TLS 1.2 is capped via `OPENSSL_CONF` |
 | `test_wireshark.py` | dissector on a generated capture (modes, overhead, replay, deliveries, forgery, malformed); real TLS 1.2 / 1.3 sessions to `broker.Broker` decrypted with the shim's secrets; capture post-processing (timestamps, embedded secrets, comments) — needs tshark |
 

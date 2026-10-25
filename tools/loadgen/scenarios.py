@@ -17,10 +17,16 @@ from lab import DEFAULTS, hardened
 
 # Live settings every scenario starts from. Sensors publish in the open zone
 # with no ACL, so the broker lets everything through and each scenario's
-# defence is the only thing standing between the attack and the gateway.
+# defence is the only thing standing between the attack and the gateway. The
+# payload is encrypted with every check on, so each scenario turns off what it
+# examines. Spelled out rather than taken from DEFAULTS (which are level K0),
+# so the scenarios' predictions do not depend on the lab's defaults.
 BASELINE: dict = {
-    "transport": dict(DEFAULTS["transport"]) | {"acl": False},
-    "payload": {k: v for k, v in DEFAULTS["payload"].items() if k != "key_epoch"},
+    "transport": {"mode": "plain", "tls_version": "1.2", "protocol": "3.1.1", "auth": False,
+                  "acl": False, "clientid_binding": False, "sys_topics": False,
+                  "max_packet": 0, "max_connections": 0},
+    "payload": {"protection": "encrypt", "freshness": True, "replay": True,
+                "key_binding": True, "rate_limit": 0},
     "storage": dict(DEFAULTS["storage"]),
     "downlink": {"rate": 0},
     "load": {"rate": DEFAULTS["load"]["rate"], "payload": DEFAULTS["load"]["payload"],

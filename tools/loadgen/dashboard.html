@@ -20,6 +20,8 @@
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
     --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7;
     --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --good-bg: rgba(12, 163, 12, 0.10); --warning-bg: rgba(250, 178, 25, 0.16);
+    --critical-bg: rgba(208, 59, 59, 0.10);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -29,6 +31,8 @@
       --control: #262624; --accent: #3987e5;
       --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
       --s5: #d55181; --s6: #008300; --s7: #9085e9;
+      --good-bg: rgba(12, 163, 12, 0.18); --warning-bg: rgba(250, 178, 25, 0.18);
+      --critical-bg: rgba(208, 59, 59, 0.20);
     }
   }
   :root[data-theme="dark"] {
@@ -38,6 +42,8 @@
     --control: #262624; --accent: #3987e5;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
     --s5: #d55181; --s6: #008300; --s7: #9085e9;
+    --good-bg: rgba(12, 163, 12, 0.18); --warning-bg: rgba(250, 178, 25, 0.18);
+    --critical-bg: rgba(208, 59, 59, 0.20);
   }
   * { box-sizing: border-box; }
   body {
@@ -45,30 +51,81 @@
     font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   header {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
-    padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface);
   }
-  header h1 { font-size: 16px; margin: 0 12px 0 0; font-weight: 600; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); }
-  .pill b { color: var(--ink); font-weight: 600; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .dot.good { background: var(--good); }
-  .dot.warning { background: var(--warning); }
-  .dot.critical { background: var(--critical); }
-  main {
-    display: grid; grid-template-columns: minmax(280px, 330px) 1fr; gap: 16px;
-    padding: 16px 20px 32px;
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .banner {
+    font-size: 13px; padding: 4px 10px; border-radius: 6px;
+    background: var(--warning-bg); color: var(--ink);
   }
-  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-  aside { display: flex; flex-direction: column; gap: 12px; }
-  section.card {
+  .banner.critical { background: var(--critical-bg); }
+  main { display: flex; flex-direction: column; gap: 16px; padding: 16px 20px 32px; max-width: 1500px; margin: 0 auto; }
+  section.card, details.card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px 14px;
   }
-  section.card h2 {
+  h2, details.card > summary {
     font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--muted); margin: 0 0 8px; font-weight: 600;
   }
+  details.card > summary { cursor: pointer; margin: 0; }
+  details.card[open] > summary { margin-bottom: 10px; }
+  details.card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; }
+  .dot.good { background: var(--good); }
+  .dot.warning { background: var(--warning); }
+  .dot.critical { background: var(--critical); }
+  .dot.idle { background: var(--axis); }
+
+  /* ---- security level ladder ---- */
+  .ladder { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ladder .sep { width: 10px; }
+  .ladder button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+    min-width: 92px; padding: 6px 9px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--control); color: var(--ink-2);
+    font: inherit; font-size: 12px; text-align: left;
+  }
+  .ladder button b { color: var(--ink); font-size: 14px; }
+  .ladder button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ladder button[aria-pressed="true"] b { color: #fff; }
+  .ladder button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .level-desc { margin: 10px 0 0; color: var(--ink-2); }
+  .level-desc b { color: var(--ink); }
+
+  /* ---- summary tiles ---- */
+  .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 900px) { .summary { grid-template-columns: 1fr; } }
+  .tile .big { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .tile .big .dot { width: 11px; height: 11px; }
+  .facts { list-style: none; margin: 0; padding: 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .facts li { padding: 2px 0; }
+  .facts b { color: var(--ink); font-weight: 600; }
+  .delta { color: var(--muted); font-size: 12.5px; }
+
+  /* ---- attack table ---- */
+  .table-wrap { overflow-x: auto; }
+  table.attacks { width: 100%; border-collapse: collapse; }
+  table.attacks th {
+    text-align: left; font-size: 12px; color: var(--muted); font-weight: 600;
+    padding: 4px 8px; border-bottom: 1px solid var(--border);
+  }
+  table.attacks td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.attacks tr:last-child td { border-bottom: 0; }
+  table.attacks td.name b { display: block; }
+  table.attacks td.name small { color: var(--muted); font-size: 12px; }
+  .status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap;
+            padding: 2px 8px; border-radius: 999px; font-size: 12.5px; }
+  .status.blocked { background: var(--good-bg); }
+  .status.partial { background: var(--warning-bg); }
+  .status.succeeds { background: var(--critical-bg); }
+  .status.idle, .status.settling { color: var(--muted); font-weight: 400; }
+  td.why { color: var(--ink-2); }
+
+  /* ---- controls (advanced) ---- */
+  .adv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+  .adv-grid section.card { background: var(--page); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
   .row label { color: var(--ink); }
   .row small { display: block; color: var(--muted); font-size: 12px; }
@@ -102,22 +159,31 @@
   .action {
     font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--border); background: var(--control); color: var(--ink);
+    white-space: nowrap;
   }
+  .action.stop { border-color: var(--critical); }
   .action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .inline { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+  #error { color: var(--critical); font-size: 13px; }
+  #error:empty { display: none; }
+
+  /* ---- log, agents ---- */
+  .bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
   #events { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font-size: 12.5px; }
   #events li { display: flex; gap: 8px; padding: 3px 0; border-top: 1px solid var(--border); }
   #events li:first-child { border-top: 0; }
   #events time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
-  #error { color: var(--critical); font-size: 13px; min-height: 1em; }
   #agents { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
   #agents li { padding: 6px 0; border-top: 1px solid var(--border); }
   #agents li:first-child { border-top: 0; padding-top: 0; }
   #agents .head { display: flex; align-items: center; gap: 6px; color: var(--ink); font-weight: 600; }
   #agents .meta { color: var(--ink-2); font-variant-numeric: tabular-nums; margin-left: 15px; }
-  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; align-content: start; }
+
+  /* ---- charts ---- */
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px; align-content: start; }
   @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
   .chart { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 8px; position: relative; }
+  details .chart { background: var(--page); }
   .chart h3 { margin: 0; font-size: 14px; font-weight: 600; }
   .chart .sub { color: var(--muted); font-size: 12px; margin: 1px 0 6px; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 4px; }
@@ -140,110 +206,164 @@
 <body>
 <header>
   <h1>mqtt-secure live lab</h1>
-  <span class="pill" id="pill-broker"></span>
-  <span class="pill" id="pill-gateway"></span>
-  <span class="pill" id="pill-sensors"></span>
-  <span class="pill" id="pill-attacker"></span>
+  <span id="banner" class="banner" role="status" aria-live="polite" hidden></span>
 </header>
 <main>
-  <aside>
-    <section class="card" aria-labelledby="h-profile">
-      <h2 id="h-profile">Profile</h2>
-      <div class="row"><label>Every defence on<small>mTLS 1.3, MQTT 5, auth, ACL, client-id binding, limits; signatures, freshness, replay, key binding, rate limit</small></label>
-        <button type="button" class="action" id="preset-hardened">Harden</button></div>
+  <section class="card" aria-labelledby="h-level">
+    <h2 id="h-level">Security level · the report's configurations</h2>
+    <div class="ladder" id="ladder" role="group" aria-labelledby="h-level"></div>
+    <p class="level-desc" id="level-desc"></p>
+  </section>
+
+  <div class="summary">
+    <section class="card tile" aria-labelledby="h-traffic">
+      <h2 id="h-traffic">Is traffic flowing?</h2>
+      <div class="big" id="traffic-big"></div>
+      <ul class="facts" id="traffic-facts"></ul>
     </section>
-    <section class="card" aria-labelledby="h-transport">
-      <h2 id="h-transport">Transport · broker</h2>
-      <div class="row"><label>Encryption<small>restarts broker, clients reconnect</small></label>
-        <div class="seg" data-key="transport.mode" data-options="plain,tls,mtls" data-labels="Plain,TLS,mTLS"></div></div>
-      <div class="row"><label for="t-auth">Authentication<small>username + password</small></label>
-        <span class="switch"><input type="checkbox" id="t-auth" data-key="transport.auth"><span></span></span></div>
-      <div class="row"><label>TLS version<small>restarts broker</small></label>
-        <div class="seg" data-key="transport.tls_version" data-options="1.2,1.3" data-labels="1.2,1.3"></div></div>
-      <div class="row"><label>MQTT version<small>all clients reconnect</small></label>
-        <div class="seg" data-key="transport.protocol" data-options="3.1.1,5" data-labels="3.1.1,5"></div></div>
-      <div class="row"><label for="t-acl">Topic ACL<small>open/ for all, restricted/ per client; off = no ACL</small></label>
-        <span class="switch"><input type="checkbox" id="t-acl" data-key="transport.acl"><span></span></span></div>
-      <div class="row"><label for="t-cid">Client id = username<small>no session takeover by id reuse; restarts broker</small></label>
-        <span class="switch"><input type="checkbox" id="t-cid" data-key="transport.clientid_binding"><span></span></span></div>
-      <div class="row"><label for="t-sys">$SYS topics<small>broker statistics, readable by all without ACL</small></label>
-        <span class="switch"><input type="checkbox" id="t-sys" data-key="transport.sys_topics"><span></span></span></div>
-      <div class="row"><label for="t-pkt">Max packet<small>bytes, 0 = no limit; restarts broker</small></label>
-        <input type="number" id="t-pkt" min="0" step="1" data-key="transport.max_packet"></div>
-      <div class="row"><label for="t-conn">Max connections<small>0 = no limit; restarts broker</small></label>
-        <input type="number" id="t-conn" min="0" step="1" data-key="transport.max_connections"></div>
+    <section class="card tile" aria-labelledby="h-security">
+      <h2 id="h-security">Is it secure?</h2>
+      <div class="big" id="security-big"></div>
+      <ul class="facts" id="security-facts"></ul>
     </section>
-    <section class="card" aria-labelledby="h-payload">
-      <h2 id="h-payload">Payload · end to end</h2>
-      <div class="row"><label>Protection</label>
-        <div class="seg" data-key="payload.protection" data-options="none,auth_only,encrypt,sign" data-labels="None,Auth,Encrypt,Sign"></div></div>
-      <div class="row"><label for="p-fresh">Freshness check<small>reject messages older than 60 s</small></label>
-        <span class="switch"><input type="checkbox" id="p-fresh" data-key="payload.freshness"><span></span></span></div>
-      <div class="row"><label for="p-replay">Replay protection<small>sequence-number window</small></label>
-        <span class="switch"><input type="checkbox" id="p-replay" data-key="payload.replay"><span></span></span></div>
-      <div class="row"><label for="p-bind">Key → topic binding<small>a key may only publish on its owner's topics</small></label>
-        <span class="switch"><input type="checkbox" id="p-bind" data-key="payload.key_binding"><span></span></span></div>
-      <div class="row"><label for="p-rate">Rate limit<small>msg/s per topic at the gateway, 0 = off</small></label>
-        <input type="number" id="p-rate" min="0" step="1" data-key="payload.rate_limit"></div>
-      <div class="row"><label>Key rotation<small>new keys for every device; old ones revoked after 3 s</small></label>
-        <span class="inline"><span class="fixed" id="p-epoch"></span>
-          <button type="button" class="action" id="p-rotate">Rotate</button></span></div>
+    <section class="card tile" aria-labelledby="h-cost">
+      <h2 id="h-cost">What does it cost?</h2>
+      <div class="big" id="cost-big"></div>
+      <ul class="facts" id="cost-facts"></ul>
     </section>
-    <section class="card" aria-labelledby="h-downlink">
-      <h2 id="h-downlink">Downlink · gateway → actuators</h2>
-      <div class="row"><label for="d-rate">Commands<small>per second, protected like uplink</small></label>
-        <input type="number" id="d-rate" min="0" step="1" data-key="downlink.rate"></div>
-    </section>
-    <section class="card" aria-labelledby="h-response">
-      <h2 id="h-response">Incident response</h2>
-      <div class="row"><label for="r-sensor">Revoke a sensor<small>keys, password, certificate (CRL); permanent</small></label>
-        <span class="inline"><input type="number" id="r-sensor" min="1" step="1" aria-label="sensor number">
-          <button type="button" class="action" id="r-revoke">Revoke</button></span></div>
-      <div class="row"><label>Revoked</label><span class="fixed" id="r-list"></span></div>
-    </section>
-    <section class="card" aria-labelledby="h-storage">
-      <h2 id="h-storage">Storage · gateway</h2>
-      <div class="row"><label>Persistence</label>
-        <div class="seg" data-key="storage.persistence" data-options="none,plain,at-rest" data-labels="Off,Plaintext,At rest"></div></div>
-    </section>
-    <section class="card" aria-labelledby="h-load">
-      <h2 id="h-load">Load</h2>
-      <div class="row"><label for="l-rate">Rate per sensor<small>msg/s</small></label>
-        <input type="number" id="l-rate" min="0" step="any" data-key="load.rate"></div>
-      <div class="row"><label for="l-payload">Payload size<small>bytes, min 8</small></label>
-        <input type="number" id="l-payload" min="8" step="1" data-key="load.payload"></div>
-      <div class="row"><label>Topic zone</label>
-        <div class="seg" data-key="load.zone" data-options="open,restricted" data-labels="open/,restricted/"></div></div>
-      <div class="row"><label>Sensors · processes · QoS<small>fixed at startup</small></label>
-        <span class="fixed" id="l-fixed"></span></div>
-    </section>
-    <section class="card" aria-labelledby="h-attacker">
-      <h2 id="h-attacker">Attacker</h2>
-      <div class="row"><label for="a-on">Enabled<small>subscribes to #, has only the CA cert</small></label>
-        <span class="switch"><input type="checkbox" id="a-on" data-key="attacker.enabled"><span></span></span></div>
-      <div class="row"><label for="a-imp">Impersonate gateway<small>username "gateway", no password</small></label>
-        <span class="switch"><input type="checkbox" id="a-imp" data-key="attacker.impersonate"><span></span></span></div>
-      <div class="row"><label for="a-inj">Inject forged<small>msg/s into sensor-1's topic</small></label>
-        <input type="number" id="a-inj" min="0" step="any" data-key="attacker.inject_rate"></div>
-      <div class="row"><label for="a-rep">Replay captured<small>msg/s</small></label>
-        <input type="number" id="a-rep" min="0" step="any" data-key="attacker.replay_rate"></div>
+  </div>
+
+  <section class="card" aria-labelledby="h-attacks">
+    <h2 id="h-attacks">Attacks · what the attacker tries, and what stops it</h2>
+    <div class="table-wrap">
+      <table class="attacks">
+        <thead><tr><th>Attack</th><th>Status</th><th>Why</th><th></th></tr></thead>
+        <tbody id="attacks"></tbody>
+      </table>
+    </div>
+  </section>
+  <div id="error" role="alert"></div>
+
+  <div class="charts" id="charts"></div>
+  <details class="card" id="more-charts">
+    <summary>More charts — rejections by reason, attacker, downlink</summary>
+    <div class="charts" id="charts-more"></div>
+  </details>
+
+  <details class="card">
+    <summary>Advanced settings — every switch on its own (leaves the report's levels)</summary>
+    <div class="adv-grid">
+      <section class="card" aria-labelledby="h-transport">
+        <h2 id="h-transport">Transport · broker</h2>
+        <div class="row"><label>Encryption<small>restarts broker, clients reconnect</small></label>
+          <div class="seg" data-key="transport.mode" data-options="plain,tls,mtls" data-labels="Plain,TLS,mTLS"></div></div>
+        <div class="row"><label for="t-auth">Authentication<small>username + password</small></label>
+          <span class="switch"><input type="checkbox" id="t-auth" data-key="transport.auth"><span></span></span></div>
+        <div class="row"><label>TLS version<small>restarts broker</small></label>
+          <div class="seg" data-key="transport.tls_version" data-options="1.2,1.3" data-labels="1.2,1.3"></div></div>
+        <div class="row"><label>MQTT version<small>all clients reconnect</small></label>
+          <div class="seg" data-key="transport.protocol" data-options="3.1.1,5" data-labels="3.1.1,5"></div></div>
+        <div class="row"><label for="t-acl">Topic ACL<small>open/ for all, restricted/ per client; off = no ACL</small></label>
+          <span class="switch"><input type="checkbox" id="t-acl" data-key="transport.acl"><span></span></span></div>
+        <div class="row"><label for="t-cid">Client id = username<small>no session takeover by id reuse; restarts broker</small></label>
+          <span class="switch"><input type="checkbox" id="t-cid" data-key="transport.clientid_binding"><span></span></span></div>
+        <div class="row"><label for="t-sys">$SYS topics<small>broker statistics, readable by all without ACL</small></label>
+          <span class="switch"><input type="checkbox" id="t-sys" data-key="transport.sys_topics"><span></span></span></div>
+        <div class="row"><label for="t-pkt">Max packet<small>bytes, 0 = no limit; restarts broker</small></label>
+          <input type="number" id="t-pkt" min="0" step="1" data-key="transport.max_packet"></div>
+        <div class="row"><label for="t-conn">Max connections<small>0 = no limit; restarts broker</small></label>
+          <input type="number" id="t-conn" min="0" step="1" data-key="transport.max_connections"></div>
+      </section>
+      <section class="card" aria-labelledby="h-payload">
+        <h2 id="h-payload">Payload · end to end</h2>
+        <div class="row"><label>Protection</label>
+          <div class="seg" data-key="payload.protection" data-options="none,auth_only,encrypt,sign" data-labels="None,Auth,Encrypt,Sign"></div></div>
+        <div class="row"><label for="p-fresh">Timestamp check<small>temporal validity: reject messages older than 60 s</small></label>
+          <span class="switch"><input type="checkbox" id="p-fresh" data-key="payload.freshness"><span></span></span></div>
+        <div class="row"><label for="p-replay">Replay window<small>sequence numbers: reject copies</small></label>
+          <span class="switch"><input type="checkbox" id="p-replay" data-key="payload.replay"><span></span></span></div>
+        <div class="row"><label for="p-bind">Key–topic restriction<small>a key may only publish on its owner's topics</small></label>
+          <span class="switch"><input type="checkbox" id="p-bind" data-key="payload.key_binding"><span></span></span></div>
+        <div class="row"><label for="p-rate">Rate limit<small>msg/s per topic at the gateway, 0 = off</small></label>
+          <input type="number" id="p-rate" min="0" step="1" data-key="payload.rate_limit"></div>
+        <div class="row"><label>Key rotation<small>new keys for every device; old ones revoked after 3 s</small></label>
+          <span class="inline"><span class="fixed" id="p-epoch"></span>
+            <button type="button" class="action" id="p-rotate">Rotate</button></span></div>
+      </section>
+      <section class="card" aria-labelledby="h-attacker">
+        <h2 id="h-attacker">Attacker · exact rates</h2>
+        <div class="row"><label for="a-on">Enabled<small>subscribes to #, has only the CA cert</small></label>
+          <span class="switch"><input type="checkbox" id="a-on" data-key="attacker.enabled"><span></span></span></div>
+        <div class="row"><label for="a-imp">Impersonate gateway<small>username "gateway", no password</small></label>
+          <span class="switch"><input type="checkbox" id="a-imp" data-key="attacker.impersonate"><span></span></span></div>
+        <div class="row"><label for="a-inj">Inject forged<small>msg/s into sensor-1's topic</small></label>
+          <input type="number" id="a-inj" min="0" step="any" data-key="attacker.inject_rate"></div>
+        <div class="row"><label for="a-rep">Replay captured<small>msg/s</small></label>
+          <input type="number" id="a-rep" min="0" step="any" data-key="attacker.replay_rate"></div>
+      </section>
+      <section class="card" aria-labelledby="h-load">
+        <h2 id="h-load">Load</h2>
+        <div class="row"><label for="l-rate">Rate per sensor<small>msg/s</small></label>
+          <input type="number" id="l-rate" min="0" step="any" data-key="load.rate"></div>
+        <div class="row"><label for="l-payload">Payload size<small>bytes, min 8</small></label>
+          <input type="number" id="l-payload" min="8" step="1" data-key="load.payload"></div>
+        <div class="row"><label>Topic zone</label>
+          <div class="seg" data-key="load.zone" data-options="open,restricted" data-labels="open/,restricted/"></div></div>
+        <div class="row"><label>Sensors · processes · QoS<small>fixed at startup</small></label>
+          <span class="fixed" id="l-fixed"></span></div>
+      </section>
+      <section class="card" aria-labelledby="h-downlink">
+        <h2 id="h-downlink">Downlink · gateway → actuators</h2>
+        <div class="row"><label for="d-rate">Commands<small>per second, protected like uplink</small></label>
+          <input type="number" id="d-rate" min="0" step="1" data-key="downlink.rate"></div>
+      </section>
+      <section class="card" aria-labelledby="h-response">
+        <h2 id="h-response">Incident response</h2>
+        <div class="row"><label for="r-sensor">Revoke a sensor<small>keys, password, certificate (CRL); permanent</small></label>
+          <span class="inline"><input type="number" id="r-sensor" min="1" step="1" aria-label="sensor number">
+            <button type="button" class="action" id="r-revoke">Revoke</button></span></div>
+        <div class="row"><label>Revoked</label><span class="fixed" id="r-list"></span></div>
+      </section>
+      <section class="card" aria-labelledby="h-storage">
+        <h2 id="h-storage">Storage · gateway</h2>
+        <div class="row"><label>Persistence</label>
+          <div class="seg" data-key="storage.persistence" data-options="none,plain,at-rest" data-labels="Off,Plaintext,At rest"></div></div>
+      </section>
+    </div>
+  </details>
+
+  <div class="bottom">
+    <section class="card" aria-labelledby="h-events">
+      <h2 id="h-events">Changes</h2>
+      <ol id="events" reversed></ol>
     </section>
     <section class="card" aria-labelledby="h-agents" id="agents-card" hidden>
       <h2 id="h-agents">Agents · other machines</h2>
       <ul id="agents"></ul>
     </section>
-    <div id="error" role="status" aria-live="polite"></div>
-    <section class="card" aria-labelledby="h-events">
-      <h2 id="h-events">Changes</h2>
-      <ol id="events" reversed></ol>
-    </section>
-  </aside>
-  <div class="charts" id="charts"></div>
+  </div>
 </main>
 
 <script>
 "use strict";
 const WINDOW_S = 180;
+const RECENT_S = 5;        // summaries and attack verdicts average this many seconds
+const SETTLE_S = 4;        // after a change, verdicts wait this long
+const INJECT_RATE = 20;    // the same rates the scenarios use
+const REPLAY_RATE = 20;
+const FLOOD_RATE = 150;
+const OVERHEAD_B = { none: 0, auth_only: 53, encrypt: 53, sign: 89 };  // Eq. (overhead) in the report
+const BROKER_RESTART_KEYS = ["mode", "tls_version", "clientid_binding", "max_packet",
+                             "max_connections", "protocol"];
+const LAYER = {
+  MalformedMessage: "envelope check (not a protected message)",
+  AuthenticationFailed: "authentication tag",
+  PermissionDenied: "key–topic restriction",
+  ProtectionNotAccepted: "protection-mode policy",
+  ReplayDetected: "replay window",
+  MessageExpired: "timestamp check",
+  RateLimited: "rate limit (before any crypto)",
+};
 const REJECTION_SERIES = [
   ["AuthenticationFailed", "Authentication failed"],
   ["ReplayDetected", "Replay detected"],
@@ -260,6 +380,8 @@ const CHARTS = [
     series: [["p50", p => p.lat_p50], ["p99", p => p.lat_p99]] },
   { title: "CPU", unit: "%", sub: "100% = one core",
     series: [["Gateway", p => p.gw_cpu], ["Broker", p => p.broker_cpu]] },
+];
+const MORE_CHARTS = [
   { title: "Gateway rejections", unit: "msg/s", sub: "messages a pipeline layer refused, by reason",
     series: REJECTION_SERIES.map(([code, label]) => [label, p => (p.rejected_by || {})[code] || 0]) },
   { title: "What the attacker achieves", unit: "msg/s", sub: "received via # · forgeries and replays the gateway accepted",
@@ -271,13 +393,17 @@ const CHARTS = [
 const COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7"];
 
 let config = null;
+let level = null;
+let levels = [];
 let history = [];
 let events = [];
 let lastT = 0;
+let connectionLost = false;
 
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const fmt = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + "k"
                  : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(v ? 2 : 0);
+const fmtUs = us => us >= 1000 ? `${(us / 1000).toFixed(us >= 10000 ? 0 : 1)} ms` : `${us.toFixed(0)} µs`;
 // Axis ticks: as many decimals as the step itself has (2.5 → 1, 0.25 → 2).
 const tick = (v, step) => v >= 1000 && step >= 1000 ? `${+(v / 1000).toFixed(1)}k`
   : v.toFixed(Math.min(3, (String(+step.toPrecision(6)).split(".")[1] || "").length));
@@ -290,20 +416,45 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// ------------------------------------------------------------------- windows --
+const now = () => history.length ? history[history.length - 1].t : Date.now() / 1000;
+const recent = () => history.filter(p => p.t > now() - RECENT_S);
+const mean = (pts, f) => pts.length ? pts.reduce((s, p) => s + (f(p) || 0), 0) / pts.length : 0;
+const rejection = (pts, code) => mean(pts, p => (p.rejected_by || {})[code]);
+const lastChange = () => events.length ? events[events.length - 1].t : 0;
+const settling = () => now() - lastChange() < SETTLE_S;
+
+// CPU µs per delivered message: CPU % of one core × 10⁴ / msg/s.
+function cpuPerMsg(pts) {
+  const delivered = mean(pts, p => p.delivered);
+  return delivered > 0 ? mean(pts, p => p.gw_cpu) * 1e4 / delivered : null;
+}
+
+// The 10 s before the last change, to show what the change cost.
+function beforeLastChange() {
+  const t = lastChange();
+  const pts = history.filter(p => p.t > t - 11 && p.t <= t - 1);
+  return pts.length >= 3 && now() - t > SETTLE_S ? pts : null;
+}
+
 // ------------------------------------------------------------------ controls --
 function get(key) { const [s, k] = key.split("."); return config[s][k]; }
 
-async function apply(key, value) {
-  const [section, name] = key.split(".");
-  const res = await fetch("/api/config", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ [section]: { [name]: value } }),
+async function post(path, body) {
+  const res = await fetch(path, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
-  const body = await res.json();
-  document.getElementById("error").textContent = res.ok ? "" : body.error;
-  if (body.config) { config = body.config; renderControls(); }
+  const reply = await res.json();
+  document.getElementById("error").textContent = res.ok ? "" : reply.error;
+  if (reply.config) { config = reply.config; renderControls(); }
   poll();
 }
+
+const apply = (key, value) => {
+  const [section, name] = key.split(".");
+  return post("/api/config", { [section]: { [name]: value } });
+};
+const applyPreset = name => post("/api/preset", { name });
 
 function initControls() {
   document.querySelectorAll(".seg").forEach(seg => {
@@ -321,16 +472,6 @@ function initControls() {
       const v = Number(input.value);
       if (input.value !== "" && v >= 0) apply(input.dataset.key, input.step === "1" ? Math.round(v) : v);
     }));
-  document.getElementById("preset-hardened").addEventListener("click", async () => {
-    const res = await fetch("/api/preset", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "hardened" }),
-    });
-    const body = await res.json();
-    document.getElementById("error").textContent = res.ok ? "" : body.error;
-    if (body.config) { config = body.config; renderControls(); }
-    poll();
-  });
   document.getElementById("p-rotate").addEventListener("click", () =>
     apply("payload.key_epoch", config.payload.key_epoch + 1));
   document.getElementById("r-revoke").addEventListener("click", () => {
@@ -356,30 +497,211 @@ function renderControls() {
     config.response.revoked ? config.response.revoked.split(",").map(n => `sensor-${n}`).join(", ") : "none";
 }
 
-function pill(id, state, label, value) {
-  const p = document.getElementById(id);
-  p.replaceChildren(el("span", { class: `dot ${state}`, "aria-hidden": "true" }),
-                    `${label} `, el("b", {}, value));
+// ------------------------------------------------------------ security level --
+function renderLevels() {
+  const ladder = document.getElementById("ladder");
+  if (!ladder.childElementCount && levels.length) {
+    for (const lv of levels) {
+      if (lv.id === "K10") ladder.append(el("span", { class: "sep", "aria-hidden": "true" }));
+      const b = el("button", { type: "button", "data-level": lv.id, title: lv.adds },
+                   el("b", {}, lv.id), lv.name);
+      b.addEventListener("click", () => applyPreset(lv.id));
+      ladder.append(b);
+    }
+  }
+  ladder.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.level === level)));
+  const desc = document.getElementById("level-desc");
+  const lv = levels.find(l => l.id === level);
+  desc.replaceChildren(...(lv
+    ? [el("b", {}, `${lv.id} — ${lv.name}`), `: ${lv.adds}.`]
+    : [el("b", {}, "Custom settings"),
+       ": no report level matches what is set now (changed under Advanced settings). " +
+       "Pick a level to return to a configuration of the report."]));
 }
 
-function renderStatus() {
-  const p = history[history.length - 1];
+// ------------------------------------------------------------------- attacks --
+function brokerBlock() {
   const t = config.transport;
-  const mode = { plain: "plain TCP", tls: "TLS", mtls: "mutual TLS" }[t.mode];
-  pill("pill-broker", t.mode === "plain" ? "warning" : "good", "Broker",
-       `${mode}${t.mode === "plain" ? "" : " " + t.tls_version}, MQTT ${t.protocol}, ` +
-       `auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`);
-  if (!p) return;
-  pill("pill-gateway", p.gw_connected ? "good" : "critical", "Gateway",
-       p.gw_connected ? "connected" : "disconnected");
-  const up = p.sensors_up, total = p.sensors_total;
+  if (t.mode === "mtls") return "broker: mutual TLS — it has no client certificate";
+  if (t.auth) return "broker: password authentication";
+  return history.length ? history[history.length - 1].attacker.detail : "broker refused it";
+}
+
+const layers = (pts, codes) => codes.filter(c => rejection(pts, c) > 0.05).map(c => LAYER[c]);
+
+const ATTACKS = [
+  { name: "Eavesdrop", what: "subscribes to # and reads what it receives; stopping it disconnects the attacker",
+    running: c => c.attacker.enabled,
+    start: { attacker: { enabled: true } }, stop: { attacker: { enabled: false } },
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const got = mean(pts, p => p.eavesdropped);
+      if (got < 0.05) return ["blocked", config.transport.acl ? "broker ACL: # delivers nothing to it"
+                                                               : "nothing reaches it"];
+      const prot = config.payload.protection;
+      if (prot === "encrypt")
+        return ["blocked", `encryption: it gets ${fmt(got)} msg/s of ciphertext (sees topics and timing, not contents)`];
+      return ["succeeds", `reads ${fmt(got)} msg/s in clear — ` +
+        (prot === "none" ? "the payload is not encrypted"
+                         : `${prot === "sign" ? "signatures" : "authentication-only mode"} keep the payload readable`)];
+    } },
+  { name: "Impersonate the gateway", what: "logs in with username “gateway” and no password",
+    running: c => c.attacker.enabled && c.attacker.impersonate,
+    start: { attacker: { enabled: true, impersonate: true } }, stop: { attacker: { impersonate: false } },
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      return ["succeeds", "the broker accepted the name without a password" +
+        (config.transport.acl ? " — it inherits the gateway's ACL rights" : "")];
+    } },
+  { name: "Inject forged readings", what: `publishes fake readings (${INJECT_RATE}/s) on sensor-1's topic`,
+    running: c => c.attacker.enabled && c.attacker.inject_rate > 0 && c.attacker.inject_rate < FLOOD_RATE,
+    start: { attacker: { enabled: true, inject_rate: INJECT_RATE } }, stop: { attacker: { inject_rate: 0 } },
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const forged = mean(pts, p => p.forged_ok);
+      if (forged > 0.05) return ["succeeds", `the gateway accepts ${fmt(forged)} forged msg/s — payload protection is off`];
+      const by = layers(pts, ["MalformedMessage", "AuthenticationFailed", "PermissionDenied",
+                              "ProtectionNotAccepted", "RateLimited"]);
+      if (by.length) return ["blocked", `stopped by the ${by.join(", ")}`];
+      if (mean(pts, p => p.injected) > 0) return ["blocked", "broker ACL drops its publications"];
+      return ["settling", "measuring…"];
+    } },
+  { name: "Replay captured messages", what: `re-publishes captured authentic messages (${REPLAY_RATE}/s)`,
+    running: c => c.attacker.enabled && c.attacker.replay_rate > 0,
+    start: { attacker: { enabled: true, replay_rate: REPLAY_RATE } }, stop: { attacker: { replay_rate: 0 } },
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const p = config.payload;
+      const ok = mean(pts, q => q.replays_ok);
+      if (ok > 0.05) return ["succeeds", `the gateway accepts ${fmt(ok)} replays/s — ` +
+        (p.protection === "none" ? "no envelope, so a copy looks like a new message"
+         : p.freshness ? "the timestamp check alone lets copies younger than 60 s through"
+         : "replay window and timestamp check are off")];
+      const by = layers(pts, ["ReplayDetected", "MessageExpired", "AuthenticationFailed", "PermissionDenied"]);
+      if (by.length) return ["blocked", `stopped by the ${by.join(", ")}`];
+      if (!a.captured) return ["blocked", "it has captured nothing to replay (broker ACL)"];
+      if (mean(pts, q => q.replayed) > 0) return ["blocked", "broker ACL drops its publications"];
+      return ["settling", "measuring…"];
+    } },
+  { name: "Flood a topic", what: `publishes ${FLOOD_RATE}/s on sensor-1's topic (replaces the injection)`,
+    running: c => c.attacker.enabled && c.attacker.inject_rate >= FLOOD_RATE,
+    start: { attacker: { enabled: true, inject_rate: FLOOD_RATE } }, stop: { attacker: { inject_rate: 0 } },
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const limited = rejection(pts, "RateLimited");
+      if (limited > 0.05) return ["blocked", `rate limit drops ${fmt(limited)} msg/s before any crypto`];
+      if (mean(pts, p => p.forged_ok) > 0.05) return ["succeeds", "the gateway accepts the flood as readings"];
+      const by = layers(pts, ["MalformedMessage", "AuthenticationFailed", "PermissionDenied"]);
+      if (by.length) return ["partial", `rejected by the ${by.join(", ")}, but only after crypto — ` +
+                                        `gateway CPU ${fmt(mean(pts, p => p.gw_cpu))}%`];
+      if (mean(pts, p => p.injected) > 0) return ["blocked", "broker ACL drops its publications"];
+      return ["settling", "measuring…"];
+    } },
+];
+
+const STATUS_LABEL = { idle: "not running", settling: "settling…", blocked: "blocked",
+                       partial: "partly blocked", succeeds: "succeeds" };
+const STATUS_DOT = { idle: "idle", settling: "idle", blocked: "good", partial: "warning", succeeds: "critical" };
+
+function verdicts() {
+  const pts = recent(), last = history[history.length - 1];
+  return ATTACKS.map(atk => {
+    if (!atk.running(config)) return ["idle", ""];
+    if (!last || settling()) return ["settling", "waiting for the last change to take effect"];
+    return atk.verdict(pts, last.attacker);
+  });
+}
+
+function renderAttacks(vs) {
+  document.getElementById("attacks").replaceChildren(...ATTACKS.map((atk, i) => {
+    const [state, why] = vs[i];
+    const on = atk.running(config);
+    const button = el("button", { type: "button", class: `action${on ? " stop" : ""}` }, on ? "Stop" : "Start");
+    button.addEventListener("click", () => post("/api/config", on ? atk.stop : atk.start));
+    return el("tr", {},
+      el("td", { class: "name" }, el("b", {}, atk.name), el("small", {}, atk.what)),
+      el("td", {}, el("span", { class: `status ${state}` },
+                      el("span", { class: `dot ${STATUS_DOT[state]}`, "aria-hidden": "true" }), STATUS_LABEL[state])),
+      el("td", { class: "why" }, why),
+      el("td", {}, button));
+  }));
+}
+
+// ----------------------------------------------------------------- summaries --
+function tile(id, state, headline, facts) {
+  document.getElementById(`${id}-big`).replaceChildren(
+    el("span", { class: `dot ${state}`, "aria-hidden": "true" }), headline);
+  document.getElementById(`${id}-facts`).replaceChildren(...facts.map(f => el("li", {}, ...f)));
+}
+
+function renderSummaries(vs) {
+  const pts = recent(), last = history[history.length - 1];
+  if (!last) return;
+  // Traffic
+  // Accepted forgeries and replays are counted as delivered too: leave them out.
+  const sent = mean(pts, p => p.sent);
+  const delivered = Math.max(0, mean(pts, p => p.delivered - p.forged_ok - p.replays_ok));
   const revoked = config.response.revoked ? config.response.revoked.split(",").length : 0;
-  pill("pill-sensors", up >= total - revoked ? "good" : up ? "warning" : "critical", "Sensors",
-       `${up}/${total} up` + (revoked ? `, ${revoked} revoked` : "") +
-       (p.sensor_error ? ` (${p.sensor_error})` : ""));
-  const a = p.attacker;
-  pill("pill-attacker", !a.enabled ? "good" : a.connected ? "critical" : "good", "Attacker",
-       a.enabled ? a.detail : "off");
+  const expected = last.sensors_total - revoked;
+  const pct = sent > 0 ? Math.min(100, 100 * delivered / sent) : 0;
+  const trafficState = !last.gw_connected ? "critical"
+    : pct < 95 || last.sensors_up < expected ? "warning" : "good";
+  tile("traffic", trafficState,
+       !last.gw_connected ? "Gateway disconnected" : `${pct.toFixed(0)}% delivered`,
+       [["Delivered ", el("b", {}, `${fmt(delivered)}`), ` of ${fmt(sent)} msg/s sent`],
+        ["Sensors up ", el("b", {}, `${last.sensors_up}/${expected}`),
+         revoked ? ` (${revoked} revoked)` : "", last.sensor_error ? ` — ${last.sensor_error}` : ""],
+        ["Gateway rejects ", el("b", {}, fmt(mean(pts, p => p.rejected))), " msg/s"]]);
+  // Security
+  const running = vs.filter(([s]) => s !== "idle");
+  const failed = running.filter(([s]) => s === "succeeds").length;
+  const partial = running.filter(([s]) => s === "partial").length;
+  const judged = running.filter(([s]) => s !== "settling").length;
+  const t = config.transport;
+  const secState = !running.length ? "idle" : failed ? "critical" : partial ? "warning"
+    : judged ? "good" : "idle";
+  tile("security", secState,
+       !running.length ? "No attack running"
+       : judged < running.length && !failed ? "Measuring…"
+       : failed ? `${failed} of ${running.length} attacks succeed`
+       : `${running.length - partial} of ${running.length} attacks blocked`,
+       [["Level ", el("b", {}, level || "custom"),
+         level ? ` — ${levels.find(l => l.id === level).name}` : ""],
+        ["Broker ", el("b", {}, { plain: "plain TCP", tls: "TLS", mtls: "mutual TLS" }[t.mode]),
+         t.mode === "plain" ? "" : ` ${t.tls_version}`, `, auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`],
+        ["Payload ", el("b", {}, { none: "unprotected", auth_only: "authenticated (GMAC)",
+                                   encrypt: "encrypted (AES-GCM)", sign: "signed (Ed25519)" }[config.payload.protection])]]);
+  // Cost
+  const before = beforeLastChange();
+  const delta = (cur, prev, unit) => prev === null || cur === null ? ""
+    : ` (${cur - prev >= 0 ? "+" : "−"}${unit(Math.abs(cur - prev))} vs before the last change)`;
+  const cpu = cpuPerMsg(pts), p99 = mean(pts, p => p.lat_p99);
+  tile("cost", "idle",
+       cpu === null ? "No traffic" : `${cpu.toFixed(1)} µs CPU per message`,
+       [["Gateway CPU ", el("b", {}, `${fmt(mean(pts, p => p.gw_cpu))}%`),
+         el("span", { class: "delta" }, delta(cpu, before && cpuPerMsg(before), v => `${v.toFixed(1)} µs/msg`))],
+        ["Latency p99 ", el("b", {}, fmtUs(p99)),
+         el("span", { class: "delta" }, delta(p99, before && mean(before, p => p.lat_p99), fmtUs))],
+        ["Bytes added per message ", el("b", {}, `${OVERHEAD_B[config.payload.protection]} B`),
+         ` on ${config.load.payload} B of payload`]]);
+}
+
+// ------------------------------------------------------------- status, logs --
+function renderBanner() {
+  const banner = document.getElementById("banner");
+  const last = history[history.length - 1];
+  const restart = events.some(e => now() - e.t < 10 &&
+    BROKER_RESTART_KEYS.some(k => e.text.startsWith(`transport.${k}:`)));
+  const reconnecting = last && last.sensors_up < last.sensors_total -
+    (config.response.revoked ? config.response.revoked.split(",").length : 0);
+  let text = "", critical = false;
+  if (connectionLost) { text = "Lost connection to the lab controller"; critical = true; }
+  else if (restart && reconnecting) text = "Broker restarting — clients are reconnecting; numbers settle in a few seconds";
+  else if (last && !last.gw_connected) { text = "Gateway disconnected"; critical = true; }
+  banner.hidden = !text;
+  banner.textContent = text;
+  banner.classList.toggle("critical", critical);
 }
 
 function renderAgents(agents) {
@@ -394,12 +716,12 @@ function renderAgents(agents) {
       status = `${r.up ?? 0}/${r.total ?? "?"} sensors up` + (r.last_error ? ` — ${r.last_error}` : "");
       state = r.up === r.total ? "good" : r.up ? "warning" : "critical";
     } else { status = r.detail || "starting"; state = r.connected ? "critical" : "good"; }
-    const clock = c.offset_ns === undefined ? "clock: measuring…"
+    const clockText = c.offset_ns === undefined ? "clock: measuring…"
       : `clock ${c.corrected ? "corrected" : "raw"}: offset ${us(c.offset_ns)} ± ${us(c.uncertainty_ns)}`;
     return el("li", {},
       el("div", { class: "head" }, el("span", { class: `dot ${state}`, "aria-hidden": "true" }),
          `#${a.id} ${a.role} · ${a.host}`),
-      el("div", { class: "meta" }, status), el("div", { class: "meta" }, clock));
+      el("div", { class: "meta" }, status), el("div", { class: "meta" }, clockText));
   }));
 }
 
@@ -409,9 +731,28 @@ function renderEvents() {
     el("li", {}, el("time", {}, clock(e.t)), el("span", {}, e.text))));
 }
 
+// Short chart label for a burst of changes: the level if one was picked,
+// else the first change ("replay → off"), plus how many more.
+function changeLabel(group) {
+  const lv = group.find(e => e.text.startsWith("security level "));
+  if (lv) return lv.text.split(" ")[2];
+  const m = /^\w+\.(\w+): .* → (.+)$/.exec(group[0].text);
+  const first = m ? `${m[1]} → ${m[2]}` : group[0].text.slice(0, 18);
+  return group.length > 1 ? `${first} +${group.length - 1}` : first;
+}
+
+function groupEvents(evs) {
+  const groups = [];
+  for (const e of evs) {
+    const g = groups[groups.length - 1];
+    if (g && e.t - g[0].t < 1.5) g.push(e); else groups.push([e]);
+  }
+  return groups;
+}
+
 // -------------------------------------------------------------------- charts --
 class LineChart {
-  constructor(spec) {
+  constructor(spec, container) {
     this.spec = spec;
     this.legendValues = [];
     const legend = el("div", { class: "legend" });
@@ -425,7 +766,7 @@ class LineChart {
     this.root = el("div", { class: "chart" },
       el("h3", {}, `${spec.title} `, el("span", { class: "sub" }, `(${spec.unit})`)),
       el("div", { class: "sub" }, spec.sub), legend, this.canvas, this.tip);
-    document.getElementById("charts").append(this.root);
+    container.append(this.root);
     this.hoverX = null;
     this.canvas.addEventListener("pointermove", e => { this.hoverX = e.offsetX; this.draw(); });
     this.canvas.addEventListener("pointerleave", () => { this.hoverX = null; this.tip.hidden = true; this.draw(); });
@@ -440,10 +781,10 @@ class LineChart {
     const g = c.getContext("2d");
     g.scale(dpr, dpr);
     g.clearRect(0, 0, w, h);
-    const pad = { l: 44, r: 8, t: 8, b: 20 };
+    const pad = { l: 44, r: 8, t: 20, b: 20 };
     const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
-    const now = history.length ? history[history.length - 1].t : Date.now() / 1000;
-    const t0 = now - WINDOW_S;
+    const tNow = history.length ? history[history.length - 1].t : Date.now() / 1000;
+    const t0 = tNow - WINDOW_S;
     const pts = history.filter(p => p.t >= t0);
     const values = this.spec.series.map(([, f]) => pts.map(p => Math.max(0, f(p) || 0)));
     let max = Math.max(1, ...values.flat());  // an all-zero chart still gets a 0..1 axis
@@ -467,14 +808,25 @@ class LineChart {
       g.fillText(s === WINDOW_S ? "now" : `-${(WINDOW_S - s) / 60}m`, x(t0 + s), h - pad.b + 5);
     }
 
-    // config changes
+    // config changes: a dashed line and a short label per burst of changes
     const evs = events.filter(e => e.t >= t0);
-    g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.lineWidth = 1;
-    for (const e of evs) {
-      const ex = Math.round(x(e.t)) + .5;
+    let labelStart = Infinity;
+    g.font = "11px system-ui, sans-serif";
+    g.textAlign = "left"; g.textBaseline = "top";
+    for (const group of groupEvents(evs).reverse()) {  // newest first: it keeps its label
+      const ex = Math.round(x(group[0].t)) + .5;
+      g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.lineWidth = 1;
       g.beginPath(); g.moveTo(ex, pad.t); g.lineTo(ex, pad.t + ph); g.stroke();
+      g.setLineDash([]);
+      const text = changeLabel(group);
+      const tw = g.measureText(text).width;
+      const lx = Math.min(ex + 3, w - pad.r - tw);
+      if (lx + tw + 4 < labelStart) {  // skip labels that would overlap a newer one
+        g.fillStyle = css("--ink-2");
+        g.fillText(text, lx, 3);
+        labelStart = lx;
+      }
     }
-    g.setLineDash([]);
 
     // series
     values.forEach((vals, i) => {
@@ -523,19 +875,26 @@ async function poll() {
   try {
     const res = await fetch(`/api/state?since=${lastT}`);
     const s = await res.json();
+    connectionLost = false;
     config = s.config;
+    level = s.level;
+    levels = s.levels || [];
     history = history.concat(s.history).slice(-(WINDOW_S + 30));
     if (history.length) lastT = history[history.length - 1].t;
     events = s.events;
-    renderControls(); renderStatus(); renderEvents(); renderAgents(s.agents || []);
+    const vs = verdicts();
+    renderControls(); renderLevels(); renderAttacks(vs); renderSummaries(vs);
+    renderBanner(); renderEvents(); renderAgents(s.agents || []);
     charts.forEach(c => c.draw());
   } catch (e) {
-    document.getElementById("error").textContent = "lost connection to the lab controller";
+    connectionLost = true;
+    renderBanner();
   }
 }
 
 initControls();
-CHARTS.forEach(spec => charts.push(new LineChart(spec)));
+CHARTS.forEach(spec => charts.push(new LineChart(spec, document.getElementById("charts"))));
+MORE_CHARTS.forEach(spec => charts.push(new LineChart(spec, document.getElementById("charts-more"))));
 poll();
 setInterval(poll, 1000);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => charts.forEach(c => c.draw()));

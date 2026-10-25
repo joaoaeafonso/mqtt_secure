@@ -35,6 +35,7 @@ import shutil
 import tempfile
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import keylog
@@ -48,12 +49,13 @@ from sensors import SensorFleet
 
 ROTATION_GRACE_S = 3.0
 
+# No defence at all: security level K0. Every defence is something to turn on.
 DEFAULTS: dict = {
     "broker": {"host": "127.0.0.1", "port": 18830, "advertise": ""},
-    "transport": {"mode": "plain", "tls_version": "1.2", "protocol": "3.1.1", "auth": False,
-                  "acl": True, "clientid_binding": False, "sys_topics": False, "max_packet": 0,
+    "transport": {"mode": "plain", "tls_version": "1.3", "protocol": "5", "auth": False,
+                  "acl": False, "clientid_binding": False, "sys_topics": False, "max_packet": 0,
                   "max_connections": 0},
-    "payload": {"protection": "encrypt", "freshness": True, "replay": True, "key_binding": True,
+    "payload": {"protection": "none", "freshness": False, "replay": False, "key_binding": False,
                 "rate_limit": 0, "key_epoch": 0},
     "storage": {"persistence": "none"},
     "downlink": {"rate": 0},
@@ -97,24 +99,93 @@ LOOPBACK = ("127.0.0.1", "localhost", "::1")
 PACKET_OVERHEAD = 512
 
 
+@dataclass(frozen=True)
+class Level:
+    """One configuration of the report's evaluation plan (Section 7, Table 17).
+
+    Each level adds one layer or mechanism to the previous one, so the cost and
+    the benefit of every step can be measured on its own. `transport` switches
+    the whole broker layer (mTLS 1.3, passwords, ACL, client id = username);
+    `limits` switches the gateway rate limit together with the broker's packet
+    and connection limits."""
+    id: str
+    name: str
+    adds: str
+    transport: bool
+    protection: str
+    freshness: bool
+    replay: bool
+    key_binding: bool
+    limits: bool
+
+    def patch(self, config: dict) -> dict:
+        """Limits are derived from the load, so legitimate traffic fits: a
+        connection per sensor plus room for the gateway, attackers and
+        reconnects; twice each sensor's rate per topic; the largest legitimate
+        packet."""
+        load, on = config["load"], self.transport
+        return {
+            "transport": {"mode": "mtls" if on else "plain", "tls_version": "1.3",
+                          "protocol": "5", "auth": on, "acl": on, "clientid_binding": on,
+                          "sys_topics": False,
+                          "max_packet": load["payload"] + PACKET_OVERHEAD if self.limits else 0,
+                          "max_connections": load["sensors"] + 16 if self.limits else 0},
+            "payload": {"protection": self.protection, "freshness": self.freshness,
+                        "replay": self.replay, "key_binding": self.key_binding,
+                        "rate_limit": max(10, int(load["rate"] * 2) + 1) if self.limits else 0},
+            "load": {"zone": "restricted"},
+        }
+
+    def matches(self, config: dict) -> bool:
+        """True if `config` is this level, whatever the load-derived limits are."""
+        t, p = config["transport"], config["payload"]
+        on = self.transport
+        return (t["mode"] == ("mtls" if on else "plain") and t["auth"] == on
+                and t["acl"] == on and t["clientid_binding"] == on
+                and (not on or t["tls_version"] == "1.3")
+                and p["protection"] == self.protection and p["freshness"] == self.freshness
+                and p["replay"] == self.replay and p["key_binding"] == self.key_binding
+                and (p["rate_limit"] > 0) == self.limits)
+
+
+LEVELS: list[Level] = [
+    Level("K0", "No protection", "reference, nothing on",
+          False, "none", False, False, False, False),
+    Level("K1", "Transport", "each hop protected; only known clients reach the broker",
+          True, "none", False, False, False, False),
+    Level("K2", "+ Authentication", "end-to-end integrity and topic binding (GMAC)",
+          True, "auth_only", False, False, False, False),
+    Level("K3", "+ Encryption", "confidentiality, also from the broker (AES-256-GCM)",
+          True, "encrypt", False, False, False, False),
+    Level("K4", "+ Timestamp", "rejects old messages (temporal validity)",
+          True, "encrypt", True, False, False, False),
+    Level("K5", "+ Replay window", "rejects replayed messages (sequence numbers)",
+          True, "encrypt", False, True, False, False),
+    Level("K6", "Full envelope", "timestamp check and replay window together",
+          True, "encrypt", True, True, False, False),
+    Level("K7", "+ Key–topic", "a stolen key only publishes on its owner's topics",
+          True, "encrypt", True, True, True, False),
+    Level("K8", "+ Rate limit", "floods dropped before any cryptography",
+          True, "encrypt", True, True, True, True),
+    Level("K9", "Signatures", "proof of origin (Ed25519) instead of AES",
+          True, "sign", True, True, True, True),
+    Level("K10", "Envelope, no TLS", "K7's envelope over plain TCP: what TLS adds",
+          False, "encrypt", True, True, True, False),
+]
+LEVEL_BY_ID = {level.id: level for level in LEVELS}
+
+
+def current_level(config: dict) -> str | None:
+    return next((level.id for level in LEVELS if level.matches(config)), None)
+
+
 def hardened(config: dict) -> dict:
-    """Every defence on at once. Limits are derived from the load, so legitimate
-    traffic fits: a connection per sensor plus room for the gateway, attackers
-    and reconnects; twice each sensor's rate per topic; the largest legitimate
-    packet. What remains possible with all of this on is listed in the README."""
-    load = config["load"]
-    return {
-        "transport": {"mode": "mtls", "tls_version": "1.3", "protocol": "5", "auth": True,
-                      "acl": True, "clientid_binding": True, "sys_topics": False,
-                      "max_packet": load["payload"] + PACKET_OVERHEAD,
-                      "max_connections": load["sensors"] + 16},
-        "payload": {"protection": "sign", "freshness": True, "replay": True,
-                    "key_binding": True, "rate_limit": max(10, int(load["rate"] * 2) + 1)},
-        "load": {"zone": "restricted"},
-    }
+    """Every defence on at once: level K9. What remains possible with all of
+    this on is listed in the README."""
+    return LEVEL_BY_ID["K9"].patch(config)
 
 
-PRESETS = {"hardened": hardened}
+PRESETS = {"hardened": hardened, **{level.id: level.patch for level in LEVELS}}
 
 
 def uses_agents(config: dict) -> bool:
@@ -394,7 +465,12 @@ class Lab:
     def apply_preset(self, name: str) -> list[str]:
         if name not in PRESETS:
             raise ValueError(f"unknown preset {name!r} (known: {', '.join(PRESETS)})")
-        return self.apply(PRESETS[name](self.config))
+        with self.lock:
+            changes = self.apply(PRESETS[name](self.config))
+            level = LEVEL_BY_ID.get(name)
+            self._event(f"security level {level.id} — {level.name}" if level
+                        else f"preset {name}")
+            return changes
 
     def _active_sensors(self) -> list[int]:
         revoked = parse_revoked(self.config["response"]["revoked"])
@@ -512,6 +588,9 @@ class Lab:
     def state(self, since: float = 0.0) -> dict:
         with self.lock:
             return {"config": copy.deepcopy(self.config),
+                    "level": current_level(self.config),
+                    "levels": [{"id": lv.id, "name": lv.name, "adds": lv.adds}
+                               for lv in LEVELS],
                     "startup_only": [f"{s}.{k}" for s, k in sorted(STARTUP_ONLY)],
                     "history": [p for p in self.history if p["t"] > since],
                     "events": list(self.events),

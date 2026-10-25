@@ -58,7 +58,7 @@ Common options (`live`, `matrix`, `scenarios`):
 |---|---|
 | `--config FILE` | TOML config (see `lab.example.toml`) |
 | `--set section.key=value` | override one setting; repeatable; values parsed as bool (`true/on/yes`, `false/off/no`), int, float, else string |
-| `--preset hardened` | every defence on, limits derived from the load |
+| `--preset NAME` | `K0` … `K10` (the report's security levels, see [configuration.md](configuration.md#security-levels-k0k10)) or `hardened` (= K9, every defence on); limits derived from the load |
 | `--gateway PATH` | gateway binary (default `build/bench/apps/load_gateway/msec_load_gateway`) |
 | `--verbose` | gateway logs every rejection |
 | `--state-dir DIR` | controller CA/cert/token (default `build/loadtest/controller`) |
@@ -72,7 +72,7 @@ Command-specific:
 | Command | Options |
 |---|---|
 | `live` | `--http-port` (8088), `--http-host` (127.0.0.1 — no auth, keep it local), `--workdir DIR` (keep certificates, keys and logs), `--open` |
-| `matrix` | `--vary section.key=v1,v2,…` (repeatable, cartesian product; default `transport.mode × payload.protection`), `--settle` (3 s), `--duration` (10 s), `--out` |
+| `matrix` | `--levels K0,K3,…` (security levels to measure, combined with `--vary`; adds a `level` column), `--vary section.key=v1,v2,…` (repeatable, cartesian product; default `transport.mode × payload.protection` without `--levels`), `--settle` (3 s), `--duration` (10 s), `--out` |
 | `scenarios` | `--list`, `--only a,b`, `--settle` (3 s), `--duration` (6 s), `--out` (path without extension) |
 | `agent` | `--controller HOST[:PORT]`, `--token`, `--fingerprint`, `--role sensors\|attacker`, `--processes` (CPU count), `--no-clock-correction` |
 

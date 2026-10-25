@@ -9,6 +9,10 @@ object. Every key is optional; missing keys take the defaults below
 
 ## Settings
 
+The defaults are security level **K0**: no defence at all (plain TCP, no
+authentication, no ACL, unprotected payload, every check off). Every defence is
+something to turn on, one at a time with the levels below or individually.
+
 ### `[broker]` — all startup
 
 | Key | Default | Type | Meaning |
@@ -22,10 +26,10 @@ object. Every key is optional; missing keys take the defaults below
 | Key | Default | Values | Meaning |
 |---|---|---|---|
 | `mode` | `"plain"` | `plain` · `tls` · `mtls` | the broker has only this listener; `mtls` requires client certificates and uses the CN as username |
-| `tls_version` | `"1.2"` | `1.2` · `1.3` | tls and mtls; **exactly** this version: Mosquitto's `tls_version` sets the minimum and the broker caps the maximum through `OPENSSL_CONF` |
-| `protocol` | `"3.1.1"` | `3.1.1` · `5` | MQTT version of every client |
+| `tls_version` | `"1.3"` | `1.2` · `1.3` | tls and mtls; **exactly** this version: Mosquitto's `tls_version` sets the minimum and the broker caps the maximum through `OPENSSL_CONF` |
+| `protocol` | `"5"` | `3.1.1` · `5` | MQTT version of every client |
 | `auth` | `false` | bool | username/password required (`allow_anonymous false` + `password_file`) |
-| `acl` | `true` | bool | `open/` for everyone, `restricted/` per client; **off = no ACL at all** (`$SYS` included) |
+| `acl` | `false` | bool | `open/` for everyone, `restricted/` per client; **off = no ACL at all** (`$SYS` included) |
 | `clientid_binding` | `false` | bool | `use_username_as_clientid`: nobody can take over another client's session by reusing its client id |
 | `sys_topics` | `false` | bool | publish `$SYS/#` statistics every 10 s (readable by all without ACL) |
 | `max_packet` | `0` | int ≥ 0 | bytes; larger packets disconnect the sender; 0 = no limit |
@@ -35,10 +39,10 @@ object. Every key is optional; missing keys take the defaults below
 
 | Key | Default | Values | Meaning |
 |---|---|---|---|
-| `protection` | `"encrypt"` | `none` · `auth_only` · `encrypt` · `sign` | sensors, actuators and gateway |
-| `freshness` | `true` | bool | reject messages older than 60 s (or > 5 s in the future) |
-| `replay` | `true` | bool | sequence-number replay window |
-| `key_binding` | `true` | bool | a key may only publish on `+/sensors/<owner>/#` |
+| `protection` | `"none"` | `none` · `auth_only` · `encrypt` · `sign` | sensors, actuators and gateway |
+| `freshness` | `false` | bool | reject messages older than 60 s (or > 5 s in the future) |
+| `replay` | `false` | bool | sequence-number replay window |
+| `key_binding` | `false` | bool | a key may only publish on `+/sensors/<owner>/#` |
 | `rate_limit` | `0` | int ≥ 0 | gateway inbound msg/s per topic; 0 = off |
 | `key_epoch` | `0` | int ≥ 0 | **raise while running** to rotate every payload key; may only increase; must be 0 at startup |
 
@@ -146,8 +150,40 @@ attacker is affected.
 
 ## Presets
 
-`--preset hardened`, the dashboard's **Harden** button, or `POST /api/preset
-{"name":"hardened"}`:
+### Security levels K0–K10
+
+The configurations of the report's evaluation plan (Section 7, Table 17), each
+adding one layer or mechanism to the previous one. Pick one with `--preset K6`,
+the level buttons at the top of the dashboard, `POST /api/preset {"name":"K6"}`,
+or measure several with `matrix --levels K0,K3,K6`. Defined in `lab.py`
+(`LEVELS`).
+
+| Level | Transport (mTLS 1.3, passwords, ACL, client id = username) | `protection` | `freshness` | `replay` | `key_binding` | limits | Adds |
+|---|---|---|---|---|---|---|---|
+| K0 | off (plain TCP, no auth, no ACL) | `none` | off | off | off | off | reference, nothing on |
+| K1 | on | `none` | off | off | off | off | each hop protected; only known clients reach the broker |
+| K2 | on | `auth_only` | off | off | off | off | end-to-end integrity and topic binding (GMAC) |
+| K3 | on | `encrypt` | off | off | off | off | confidentiality, also from the broker |
+| K4 | on | `encrypt` | on | off | off | off | old messages rejected (temporal validity) |
+| K5 | on | `encrypt` | off | on | off | off | replays rejected |
+| K6 | on | `encrypt` | on | on | off | off | full envelope |
+| K7 | on | `encrypt` | on | on | on | off | a stolen key only publishes on its owner's topics |
+| K8 | on | `encrypt` | on | on | on | on | floods dropped before any crypto |
+| K9 | on | `sign` | on | on | on | on | proof of origin; **= `hardened`** |
+| K10 | off | `encrypt` | on | on | on | off | K7's envelope without TLS: what TLS adds |
+
+Every level also sets `protocol=5`, `tls_version=1.3`, `sys_topics=false` and
+`load.zone=restricted`. "Limits" means `payload.rate_limit = max(10, int(2 ×
+load.rate) + 1)`, `max_packet = load.payload + 512` and `max_connections =
+load.sensors + 16`; without limits all three are 0. `/api/state` reports which
+level the current settings match (`level`, or `null` for anything else); a
+change of `load.*` does not leave a level even though the derived limits no
+longer follow it.
+
+### `hardened`
+
+`--preset hardened`, the dashboard's **K9** button, or `POST /api/preset
+{"name":"hardened"}` — the same as K9:
 
 | Layer | Settings |
 |---|---|

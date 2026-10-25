@@ -165,8 +165,11 @@ python3 -m venv tools/loadgen/.venv
 tools/loadgen/.venv/bin/pip install -r tools/loadgen/requirements.txt
 ```
 
-**Live dashboard**: flip switches and watch throughput, latency, CPU, rejections
-(by reason) and what the attacker achieves, with every change marked on the charts:
+**Live dashboard**: pick one of the report's security levels (K0–K10), start or
+stop attacks, and read three answers at the top — is traffic flowing, is it
+secure (each attack: blocked, by which layer, or why it succeeds), and what it
+costs (CPU per message, p99 latency, bytes added). Charts mark every change; the
+individual switches are under **Advanced settings**:
 
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py live \
@@ -179,6 +182,10 @@ curl -s localhost:8088/api/config -d '{"transport": {"mode": "mtls", "auth": tru
 (cartesian product of `--vary`; startup-only settings start a fresh lab):
 
 ```bash
+# the report's configurations, at three payload sizes
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
+    --levels K0,K1,K3,K6,K8,K9 --vary load.payload=16,256,4096
+# or any combination of individual settings
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
     --set load.sensors=100 --set load.rate=100 \
     --vary transport.mode=plain,tls,mtls --vary transport.auth=off,on \
@@ -216,8 +223,11 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --set load.sen
 
 ### The `hardened` preset
 
-`--preset hardened` (CLI, also `./run.sh`), the **Harden** button on the
-dashboard, or `POST /api/preset {"name": "hardened"}` switches every defence on:
+`--preset hardened` (CLI, also `./run.sh`), the **K9** level on the
+dashboard, or `POST /api/preset {"name": "hardened"}` switches every defence on.
+It is the last of the report's security levels K0–K10
+([configuration.md](docs/loadgen/configuration.md#security-levels-k0k10)), which
+add one defence at a time and are available the same way (`--preset K6`):
 
 | Layer | Settings |
 |---|---|

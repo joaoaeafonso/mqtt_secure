@@ -10,21 +10,38 @@ external dependencies) from a stdlib `ThreadingHTTPServer`
 > lab. It binds to `127.0.0.1` by default; reach it from elsewhere through an SSH
 > tunnel rather than `--http-host 0.0.0.0`.
 
-Layout:
+Layout, top to bottom:
 
-- **Header pills** — Broker (transport, TLS version, MQTT version, auth, ACL),
-  Gateway (connected?), Sensors (up/total, revoked, last error), Attacker
-  (off / its status detail). Colour = good / warning / critical.
-- **Control cards** (left):
-  Profile (**Harden** button) · Transport · Payload (protection, freshness,
-  replay, key binding, rate limit, **Rotate** button showing the epoch) ·
-  Downlink (commands/s) · Incident response (**Revoke** a sensor number; list
-  of revoked) · Storage · Load (rate, payload, zone; sensors/processes/QoS shown
-  as fixed) · Attacker (enabled, impersonate, inject rate, replay rate) ·
-  Agents (only with cluster agents: role, host, status, clock offset ±
-  uncertainty) · Changes (event log).
-- **Charts** (right), last 3 minutes, one point per second, dashed vertical
-  markers at every configuration change (hover shows values and the change):
+- **Security level** — one button per configuration of the report (K0–K10, see
+  [configuration.md](configuration.md#security-levels-k0k10)); the active one is
+  highlighted with what it adds. Settings changed by hand show as **Custom**.
+- **Three summaries**, averaged over the last 5 s:
+  - *Is traffic flowing?* — legitimate messages delivered vs. sent (accepted
+    forgeries and replays excluded), sensors up, gateway rejections.
+  - *Is it secure?* — how many running attacks are blocked, the level, the broker
+    and payload protection in words.
+  - *What does it cost?* — gateway CPU µs per message (CPU % × 10⁴ / delivered
+    msg/s), p99 latency, bytes added per message (0, 53 or 89), each with the
+    difference from the 10 s before the last change.
+- **Attacks** — one row per attack the lab can run, with **Start/Stop**:
+  eavesdrop (`attacker.enabled`; stopping it disconnects the attacker),
+  impersonate the gateway (`impersonate`), inject forged readings
+  (`inject_rate` = 20), replay captured messages (`replay_rate` = 20), flood a
+  topic (`inject_rate` = 150, replacing the injection). Each running attack
+  gets a verdict — *blocked* (and by what), *partly blocked*, or *succeeds* (and
+  which disabled defence lets it through) — derived from the attacker's state,
+  the gateway's rejections by reason and the accepted forgeries/replays. Verdicts
+  wait 4 s after any change.
+- **Charts**, last 3 minutes, one point per second: throughput, end-to-end
+  latency and CPU; **More charts** holds the rejections by reason, what the
+  attacker achieves, and the downlink. Each burst of changes is a dashed line
+  labelled with the level picked or the first setting changed.
+- **Advanced settings** (collapsed) — every individual switch: transport,
+  payload, exact attacker rates, load, downlink, incident response (revoke),
+  storage.
+- **Changes** (the event log) and **Agents** (only with cluster agents).
+- A banner while the broker restarts and clients reconnect, or when the gateway
+  or the controller is unreachable.
 
 | Chart | Series |
 |---|---|
@@ -45,9 +62,9 @@ custom properties). Every control posts the single changed key to
 | Method | Path | Request | Response |
 |---|---|---|---|
 | `GET` | `/` | — | the page |
-| `GET` | `/api/state?since=T` | — | `200 {config, startup_only, history, events, agents}` |
+| `GET` | `/api/state?since=T` | — | `200 {config, level, levels, startup_only, history, events, agents}` |
 | `POST` | `/api/config` | partial config JSON | `200 {changed, config}` · `400 {error, config}` |
-| `POST` | `/api/preset` | `{"name": "hardened"}` | `200 {changed, config}` · `400 {error, config}` |
+| `POST` | `/api/preset` | `{"name": "K0"…"K10"}` or `{"name": "hardened"}` | `200 {changed, config}` · `400 {error, config}` |
 | any other | | | `404 {"error": "not found"}` |
 
 Responses carry `Cache-Control: no-store`. HTTP access logging is suppressed
@@ -58,6 +75,7 @@ curl -s localhost:8088/api/config -d '{"payload": {"replay": false}}'
 curl -s localhost:8088/api/config -d '{"transport": {"mode": "mtls", "auth": true}}'
 curl -s localhost:8088/api/config -d '{"payload": {"key_epoch": 1}}'          # rotate
 curl -s localhost:8088/api/config -d '{"response": {"revoked": "3,7"}}'       # revoke
+curl -s localhost:8088/api/preset -d '{"name": "K6"}'          # a security level
 curl -s localhost:8088/api/preset -d '{"name": "hardened"}'
 curl -s 'localhost:8088/api/state?since=0' | jq '.history[-1]'
 ```
@@ -70,9 +88,11 @@ curl -s 'localhost:8088/api/state?since=0' | jq '.history[-1]'
 | Field | Content |
 |---|---|
 | `config` | the full current configuration |
+| `level` | the security level the configuration matches (`"K6"`), or `null` |
+| `levels` | `[{id, name, adds}]` for K0–K10, in order |
 | `startup_only` | `["broker.host", …, "load.sensors", …]` |
 | `history` | metric points with `t > since` (max 900 kept) |
-| `events` | `[{t, text}]` (max 200) — "lab started", every change, "keys of epoch N revoked" |
+| `events` | `[{t, text}]` (max 200) — "lab started", every change, "security level K6 — Full envelope", "keys of epoch N revoked" |
 | `agents` | `[{id, role, host, connected, busy, clock, report}]` |
 
 ### History point (one per second)

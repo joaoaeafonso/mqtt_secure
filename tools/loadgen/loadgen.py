@@ -12,7 +12,8 @@ Configuration: lab.example.toml documents every setting. Pass a file with
 
 Examples
   loadgen.py live --set load.sensors=100 --set transport.mode=tls
-  loadgen.py live --preset hardened
+  loadgen.py live --preset hardened          (or K0 … K10, the report's levels)
+  loadgen.py matrix --levels K0,K1,K3,K6,K8,K9 --vary load.payload=16,256,4096
   loadgen.py matrix --vary transport.mode=plain,tls,mtls --vary payload.protection=none,encrypt
 
 Multiple machines: on the controller (broker + gateway) set
@@ -36,7 +37,7 @@ from pathlib import Path
 import keylog
 from capture import Capture
 from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
-from lab import DEFAULTS, PRESETS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
+from lab import DEFAULTS, LEVEL_BY_ID, PRESETS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
@@ -161,6 +162,14 @@ def cmd_live(args) -> None:
 
 # ------------------------------------------------------------------- matrix ---
 
+def parse_levels(text: str) -> str:
+    unknown = [x for x in text.split(",") if x not in LEVEL_BY_ID]
+    if unknown:
+        raise argparse.ArgumentTypeError(
+            f"unknown level(s) {', '.join(unknown)} (known: {', '.join(LEVEL_BY_ID)})")
+    return text
+
+
 def scenarios(vary: list[tuple[str, str, str]]) -> list[dict]:
     """Cartesian product of the --vary lists, as partial configs."""
     axes = [[(s, k, parse_value(v)) for v in values.split(",")] for s, k, values in vary]
@@ -179,15 +188,16 @@ def label(patch: dict) -> dict:
 
 def cmd_matrix(args) -> None:
     base = load_config(args)
-    vary = args.vary or [("transport", "mode", "plain,tls,mtls"),
-                         ("payload", "protection", "none,encrypt")]
+    levels = [LEVEL_BY_ID[x] for x in args.levels.split(",")] if args.levels else [None]
+    vary = args.vary or ([] if args.levels else [("transport", "mode", "plain,tls,mtls"),
+                                                 ("payload", "protection", "none,encrypt")])
     # Settings that need a fresh lab (e.g. load.sensors) form the outer loop.
     startup = [v for v in vary if (v[0], v[1]) in STARTUP_ONLY]
     live = [v for v in vary if (v[0], v[1]) not in STARTUP_ONLY]
     outer, inner = scenarios(startup), scenarios(live)
     for patch in outer + inner:
         merged(base, patch)  # validate everything before starting
-    total = len(outer) * len(inner)
+    total = len(outer) * len(levels) * len(inner)
     out = Path(args.out or REPO / "build" / "loadtest" /
                f"matrix-{time.strftime('%Y%m%d-%H%M%S')}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -204,10 +214,13 @@ def cmd_matrix(args) -> None:
             lab.listeners.append(cap.mark)
         try:
             lab.start()
-            for patch in inner:
+            for level, patch in itertools.product(levels, inner):
                 n += 1
+                if level:
+                    lab.apply(level.patch(lab.config))
                 lab.apply(patch)
-                settings = {**label(startup_patch), **label(patch)}
+                settings = {**({"level": level.id} if level else {}),
+                            **label(startup_patch), **label(patch)}
                 cell = "  ".join(f"{k}={v}" for k, v in settings.items())
                 lab.mark(f"matrix cell {n}/{total}: {cell}")
                 log(f"[{n}/{total}] {cell}")
@@ -302,8 +315,9 @@ def main() -> None:
         p.add_argument("--config", type=Path, help="TOML file (see lab.example.toml)")
         p.add_argument("--set", type=parse_assignment, action="append", metavar="SECTION.KEY=VALUE",
                        help="override one setting; repeatable")
-        p.add_argument("--preset", choices=sorted(PRESETS),
-                       help="start from a named profile (hardened: every defence on)")
+        p.add_argument("--preset", choices=list(PRESETS),
+                       help="start from a named profile: K0 … K10 (the report's security "
+                            "levels) or hardened (= K9, every defence on)")
         p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
         p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
         p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE,
@@ -333,7 +347,11 @@ def main() -> None:
     p.add_argument("--vary", type=parse_assignment, action="append",
                    metavar="SECTION.KEY=V1,V2,...",
                    help="values to try; repeatable, combined as a cartesian product "
-                        "(default: transport.mode × payload.protection)")
+                        "(default: transport.mode × payload.protection, or nothing "
+                        "with --levels)")
+    p.add_argument("--levels", type=parse_levels, metavar="K0,K1,...",
+                   help="security levels to measure (outer loop of the live settings); "
+                        "combined with --vary")
     p.add_argument("--settle", type=float, default=3, help="seconds after each change")
     p.add_argument("--duration", type=float, default=10, help="measurement window, seconds")
     p.add_argument("--out", help="CSV path (default build/loadtest/matrix-<time>.csv)")
