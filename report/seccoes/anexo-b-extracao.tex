@@ -1,74 +1,69 @@
-\section{Extração de dados por estudo}
+\section{Extração de dados e referências dos estudos}
 \label{anx:extracao}
 
+A Tabela~\ref{tab:extracao} resume a extração de dados de cada estudo analisado e
+identifica-o pela publicação, pelo DOI e pela versão do texto integral consultada;
+as secções citadas referem-se a essa versão. A localização de cada célula das
+tabelas~\ref{tab:comparacao} e~\ref{tab:proposta-vs} está no ficheiro
+\texttt{report/rsl/rastreabilidade.md} do repositório.
+
 {\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{longtable}{@{}lL{2.7cm}cL{6.0cm}L{3.6cm}@{}}
-\caption{Resumo da extração de dados dos estudos incluídos, com a secção da fonte. A localização de cada célula das tabelas~\ref{tab:comparacao} e~\ref{tab:proposta-vs} está no ficheiro \texttt{report/rsl/rastreabilidade.md} do repositório.}\label{tab:extracao}\\
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}lL{2.2cm}cL{4.4cm}L{3.0cm}L{3.6cm}@{}}
+\caption{Extração de dados, publicação e versão consultada dos estudos e revisões analisados.}\label{tab:extracao}\\
 \toprule
-\textbf{ID} & \textbf{Estudo} & \textbf{Cat.} & \textbf{Contributo principal} & \textbf{Avaliação reportada} \\
+\textbf{ID} & \textbf{Estudo} & \textbf{Cat.} & \textbf{Contributo principal} & \textbf{Avaliação reportada} & \textbf{Publicação; DOI; texto consultado} \\
 \midrule
 \endfirsthead
 \toprule
-\textbf{ID} & \textbf{Estudo} & \textbf{Cat.} & \textbf{Contributo principal} & \textbf{Avaliação reportada} \\
+\textbf{ID} & \textbf{Estudo} & \textbf{Cat.} & \textbf{Contributo principal} & \textbf{Avaliação reportada} & \textbf{Publicação; DOI; texto consultado} \\
 \midrule
 \endhead
 \bottomrule
 \endfoot
 \E{01} & Singh et al.~\cite{singh2015secure} & C4 &
-  SMQTT e SMQTT-SN: KP/CP-ABE sobre ECC leve; o \emph{broker} é o gerador de chaves (§III-B)
-  & Três portáteis a simular dispositivos IoT (§VII-A) \\
+  SMQTT e SMQTT-SN: KP/CP-ABE sobre ECC leve; o \emph{broker} é o gerador de chaves (§III-B) & Três portáteis a simular dispositivos IoT (§VII-A) & CSNT 2015, pp.~746--751; \url{10.1109/CSNT.2015.16}; Editor (IEEE Xplore) \\
 \E{02} & Niruntasukrat et al.~\cite{niruntasukrat2016authorization} & C3 &
-  Autorização baseada em OAuth~1.0a adaptada a nós restritos sem interface de utilizador
-  & Plataforma IoT real; atraso de autorização em Arduino Mega e outros (§IV) \\
+  Autorização baseada em OAuth~1.0a adaptada a nós restritos sem interface de utilizador & Plataforma IoT real; atraso de autorização em Arduino Mega e outros (§IV) & IEEE ICC Workshops 2016, pp.~290--295; \url{10.1109/ICCW.2016.7503802}; Editor (IEEE Xplore) \\
 \E{03} & Rizzardi et al.~\cite{rizzardi2016aups} & C3 &
-  AUPS: gestão de chaves por tópico e aplicação de políticas sobre o MQTT; código aberto
-  (Apache~2.0) & Robustez (§IV-A); \emph{overhead}, latência e computação em Raspberry Pi (§V) \\
+  AUPS: gestão de chaves por tópico e aplicação de políticas sobre o MQTT; código aberto (Apache~2.0) & Robustez (§IV-A); \emph{overhead}, latência e computação em Raspberry Pi (§V) & Information Systems 62 (2016), pp.~29--41; \url{10.1016/j.is.2016.05.004}; Versão de autor (15~pp., paginação própria) \\
 \E{04} & Andy et al.~\cite{andy2017attack} & C1 &
-  Cenários de ataque ao MQTT sem cifra; razões para a falta de segurança nas
-  implementações & Demonstração de ataques \\
+  Cenários de ataque ao MQTT sem cifra; razões para a falta de segurança nas implementações & Demonstração de ataques & EECSI 2017, pp.~1--6; \url{10.1109/EECSI.2017.8239179}; Só o resumo \\
 \E{05} & Calabretta et al.~\cite{calabretta2018mqttauth} & C3 &
-  MQTT-Auth: AugPAKE para confidencialidade e dois \emph{tokens} (autenticação e
-  autorização por tópico); o \emph{broker} decifra e recifra (§IV-A)
-  & Dois \emph{testbeds}: portáteis e UDOO Cortex-A9 (§V) \\
+  MQTT-Auth: AugPAKE para confidencialidade e dois \emph{tokens} (autenticação e autorização por tópico); o \emph{broker} decifra e recifra (§IV-A) & Dois \emph{testbeds}: portáteis e UDOO Cortex-A9 (§V) & J.\ Commun.\ Softw.\ Syst.\ 14(4) (2018), pp.~320--331; \url{10.24138/jcomss.v14i4.604}; Editor (JCOMSS) \\
 \E{06} & Hernández Ramos et al.~\cite{hernandez2018fuzzing} & C1 &
-  Enquadramento de \emph{fuzzing} baseado em \emph{templates} para o MQTT & Resultados experimentais iniciais \\
+  Enquadramento de \emph{fuzzing} baseado em \emph{templates} para o MQTT & Resultados experimentais iniciais & Wirel.\ Commun.\ Mob.\ Comput.\ 2018, 8261746; \url{10.1155/2018/8261746}; Só o resumo \\
 \E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & C5 &
-  Mapeamento \emph{Value-to-HMAC}: confidencialidade e integridade com um só mecanismo;
-  repetição fora do âmbito (§6) & Desempenho face a cifra simétrica em Onion Omega2+ (§3.1, §4.2) \\
+  Mapeamento \emph{Value-to-HMAC}: confidencialidade e integridade com um só mecanismo; repetição fora do âmbito (§6) & Desempenho face a cifra simétrica em Onion Omega2+ (§3.1, §4.2) & Applied Sciences 9(5) (2019), 848; \url{10.3390/app9050848}; Editor (MDPI) \\
 \E{08} & Malina et al.~\cite{malina2019secure} & C5 &
-  Três níveis com assinatura Schnorr sobre nível, tópico, identidade, dados e carimbo
-  temporal (§4.5, Eq.~6) & Analítica: contagem de operações (§5.1) \\
+  Três níveis com assinatura Schnorr sobre nível, tópico, identidade, dados e carimbo temporal (§4.5, Eq.~6) & Analítica: contagem de operações (§5.1) & ARES 2019, pp.~1--10; \url{10.1145/3339252.3340503}; PDF em formato ACM (10~pp.) \\
 \E{09} & Sadio et al.~\cite{sadio2019lightweight} & C5 &
-  AEAD ChaCha20-Poly1305 fim-a-fim para MQTT e MQTT-SN & Arduino UNO; memória e tempo de execução (§IV-B) \\
+  AEAD ChaCha20-Poly1305 fim-a-fim para MQTT e MQTT-SN & Arduino UNO; memória e tempo de execução (§IV-B) & IOTSMS 2019, pp.~119--123; \url{10.1109/IOTSMS48152.2019.8939177}; Editor (IEEE Xplore) \\
 \E{10} & Vaccari et al.~\cite{vaccari2020slowite} & C1 &
-  SlowITe: DoS de baixa taxa que explora a configuração do servidor pelo cliente
-  & Serviços MQTT reais, com e sem cifra (§5) \\
+  SlowITe: DoS de baixa taxa que explora a configuração do servidor pelo cliente & Serviços MQTT reais, com e sem cifra (§5) & Sensors 20(10) (2020), 2932; \url{10.3390/s20102932}; PubMed Central (PMC7285273) \\
 \E{11} & Vaccari et al.~\cite{vaccari2020mqttset} & C7 &
-  MQTTset: conjunto de dados de tráfego MQTT legítimo e de ataques & Sistema de deteção por ML (§3.2, §4) \\
+  MQTTset: conjunto de dados de tráfego MQTT legítimo e de ataques & Sistema de deteção por ML (§3.2, §4) & Sensors 20(22) (2020), 6578; \url{10.3390/s20226578}; PubMed Central (PMC7698741) \\
 \E{12} & Segarra et al.~\cite{segarra2020mqttz} & C6 &
-  MQT-TZ: \emph{broker} em ARM TrustZone; TLS mútuo e cifra em duas camadas
-  & Micro e macro \emph{benchmarks}; cargas de uma aplicação médica \\
+  MQT-TZ: \emph{broker} em ARM TrustZone; TLS mútuo e cifra em duas camadas & Micro e macro \emph{benchmarks}; cargas de uma aplicação médica & SRDS 2020, pp.~256--265; \url{10.1109/SRDS51746.2020.00033}; Pré-publicação (arXiv:2007.12442v2) \\
 \E{13} & Dahlmanns et al.~\cite{dahlmanns2021entrust} & C5 &
-  ENTRUST: chave por tópico distribuída por um servidor de chaves com ACL; contador
-  por publicador contra duplicados (§5.2--5.3) & RedBear Duo (Cortex-M3) e Mosquitto (§7) \\
+  ENTRUST: chave por tópico distribuída por um servidor de chaves com ACL; contador por publicador contra duplicados (§5.2--5.3) & RedBear Duo (Cortex-M3) e Mosquitto (§7) & ACM SaT-CPS 2021, pp.~78--87; \url{10.1145/3445969.3450423}; Cópia de autor \\
 \E{14} & Spielvogel et al.~\cite{spielvogel2021tls} & C6 &
-  O \emph{broker} só reencaminha por ligações com o nível de segurança exigido
-  & Protótipo; medições de \emph{overhead} (§II-C) \\
+  O \emph{broker} só reencaminha por ligações com o nível de segurança exigido & Protótipo; medições de \emph{overhead} (§II-C) & STM 2021, LNCS, pp.~145--162; \url{10.1007/978-3-030-91859-0_8}; Pré-publicação (arXiv:2109.01169) \\
 \E{15} & Prantl et al.~\cite{prantl2021performance} & C6 &
-  Impacto do TLS~1.2 no MQTT: débito, estabelecimento de ligação, energia
-  & ESP8266; todos os níveis de QoS (§4) \\
+  Impacto do TLS~1.2 no MQTT: débito, estabelecimento de ligação, energia & ESP8266; todos os níveis de QoS (§4) & ACM/SPEC ICPE 2021, pp.~241--248; \url{10.1145/3427921.3450253}; Atas ICPE (SPEC Research) \\
 \E{16} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & C5 &
-  Três opções com assinatura Schnorr e carimbo temporal; \emph{broker} honesto mas
-  curioso, CA confiável (§3.1, §4.3)
-  & $-80\,\%$ \emph{overhead} de comunicação e $-40\,\%$ computacional face ao MQTTS (Raspberry Pi) \\
+  Três opções com assinatura Schnorr e carimbo temporal; \emph{broker} honesto mas curioso, CA confiável (§3.1, §4.3) & $-80\,\%$ \emph{overhead} de comunicação e $-40\,\%$ computacional face ao MQTTS (Raspberry Pi) & Sensors 22(19) (2022), 7391; \url{10.3390/s22197391}; PubMed Central (PMC9572294) \\
 \E{17} & Buccafurri et al.~\cite{buccafurri2023mqtta} & C8 &
-  MQTT-A: anonimato de \emph{publishers} e subscritores via \emph{bridges}
-  & \emph{Brokers} em nuvem em vários países; latência e \emph{goodput} (§VIII) \\
+  MQTT-A: anonimato de \emph{publishers} e subscritores via \emph{bridges} & \emph{Brokers} em nuvem em vários países; latência e \emph{goodput} (§VIII) & IEEE IoT J.\ 10(17) (2023), pp.~15443--15463; \url{10.1109/JIOT.2023.3264019}; Editor (IEEE Xplore) \\
 \E{18} & Alotaibi et al.~\cite{alotaibi2024secure} & C7 &
-  Deteção distribuída de anomalias com H2O (melhor: XGBoost) & MSE, RMSE, erro por classe, \emph{log loss} (§4.3) \\
+  Deteção distribuída de anomalias com H2O (melhor: XGBoost) & MSE, RMSE, erro por classe, \emph{log loss} (§4.3) & Sensors 24(5) (2024), 1638; \url{10.3390/s24051638}; PubMed Central (PMC10935133) \\
 \E{19} & Javadi et al.~\cite{javadi2026cmap} & C2 &
-  CMAP: autenticação mútua sem certificados sobre ECC, entre dispositivo e \emph{broker}
-  & Prova no modelo do oráculo aleatório (§V-B); Raspberry Pi com Mosquitto; NS-3 \\
+  CMAP: autenticação mútua sem certificados sobre ECC, entre dispositivo e \emph{broker} & Prova no modelo do oráculo aleatório (§V-B); Raspberry Pi com Mosquitto; NS-3 & IEEE Access 14 (2026), pp.~60836--60852; \url{10.1109/ACCESS.2026.3684371}; Editor (IEEE Access) \\
+\midrule
+--- & Perrone et al.~\cite{perrone2017mirai} & --- & Revisão relacionada (Secção~\ref{sec:relacionados}) & --- & IoTBDS 2017, pp.~246--253; \url{10.5220/0006287302460253}; Editor (SciTePress) \\
+--- & Nebbione e Calzarossa~\cite{nebbione2020security} & --- & Revisão relacionada (Secção~\ref{sec:relacionados}) & --- & Future Internet 12(3) (2020), 55; \url{10.3390/fi12030055}; Editor (MDPI) \\
+--- & Hintaw et al.~\cite{hintaw2023mqtt} & --- & Revisão relacionada (Secção~\ref{sec:relacionados}) & --- & IETE J.\ Res.\ 69(6) (2023), pp.~3368--3397; \url{10.1080/03772063.2021.1912651}; Só o resumo e a introdução \\
+--- & Lakshminarayana et al.~\cite{lakshminarayana2024securing} & --- & Revisão relacionada (Secção~\ref{sec:relacionados}) & --- & IEEE Commun.\ Surv.\ Tutor.\ 26(4) (2024), pp.~2510--2546; \url{10.1109/COMST.2024.3372630}; Editor (IEEE Xplore) \\
+--- & Laghari et al.~\cite{laghari2024securing} & --- & Revisão relacionada (Secção~\ref{sec:relacionados}) & --- & IEEE Access 12 (2024), pp.~139273--139289; \url{10.1109/ACCESS.2024.3412030}; Editor (IEEE Access) \\
 \end{longtable}
 }

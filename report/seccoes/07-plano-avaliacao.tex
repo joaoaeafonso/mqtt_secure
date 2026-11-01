@@ -68,19 +68,14 @@ desenvolver deverá executar esta matriz de forma automática.
 % ---------------------------------------------------------------------------
 \subsection{Plataforma experimental}
 
-\paragraph{Nível 1: custo das camadas.} Os \emph{microbenchmarks} correrão nativamente
-num Raspberry Pi~5 (quatro núcleos Arm Cortex-A76 a 2,4~GHz, 8~GB de memória),
-percorrendo \emph{publisher} $\to$ \emph{broker} em memória $\to$ recetor, sem rede,
-para mensagens de 16~B a 64~KiB. As configurações principais correrão também com a
-aceleração AES do processador desativada (\texttt{OPENSSL\_armcap=0}), porque muitos
-dispositivos IoT não a têm~\cite{sadio2019lightweight}; nesse caso medir-se-á também o ChaCha20-Poly1305, no
-envelope (K11) e no TLS~\cite{rfc8439}.
-
-\paragraph{Nível 2: sistema sob carga.} O \emph{broker} Mosquitto e o
-\emph{gateway} correrão no Raspberry Pi; os sensores simulados e o atacante correrão
-noutras máquinas da rede local. Este nível acrescentará o TLS, o \emph{broker}, a
-rede, a concorrência e os ataques reais. Ambos os níveis serão repetidos num
-computador de secretária como referência.
+Os \emph{microbenchmarks} medirão o custo de cada camada num Raspberry~Pi~5, sem
+rede, para mensagens de 16~B a 64~KiB, também com a aceleração AES desativada
+(\texttt{OPENSSL\_armcap=0}), porque muitos dispositivos IoT não a
+têm~\cite{sadio2019lightweight}; nesse caso medir-se-á também o ChaCha20-Poly1305
+(K11). O laboratório de carga acrescentará o TLS, o \emph{broker}, a rede e os
+ataques: o \emph{broker} e o \emph{gateway} no Raspberry~Pi, os sensores e o
+atacante noutras máquinas da rede local. Ambos serão repetidos num computador de
+secretária como referência.
 
 % ---------------------------------------------------------------------------
 \subsection{Métricas}
@@ -99,7 +94,7 @@ computador de secretária como referência.
     Latência & p50 e p99, do envio pelo sensor à entrega à aplicação & 2 \\
     Débito máximo sustentado & maior taxa com perda $< 1\,\%$ e p99 dentro do limite & 2 \\
     Octetos acrescentados & octetos na rede menos o conteúdo; teoricamente 53 ou 89
-      (Eq.~\ref{eq:overhead}) & 1 \\
+      (Secção~\ref{sec:envelope}) & 1 \\
     Memória & pico de memória residente do \emph{gateway} e do \emph{broker} & 2 \\
     Estabelecimento de ligação & tempo de ligação (TLS e CONNECT) e custo das
       religações & 2 \\
@@ -224,19 +219,12 @@ fronteira.
 % ---------------------------------------------------------------------------
 \subsection{Procedimento e hipóteses}
 
-Cada ensaio terá 3~s de estabilização e 30~s de medição, repetido 10 vezes em
-ordem aleatória; reportar-se-á a mediana com intervalo de confiança de 95\,\% por
-\emph{bootstrap} sobre as execuções, e não sobre mensagens correlacionadas da mesma
-execução. Os fatores variarão um de cada vez a partir de um cenário de referência
-(mensagens de 256~B). O custo marginal de uma camada $\ell$ numa métrica $m$ é
-$m(c_{\ell=1}) - m(c_{\ell=0})$, com os restantes fatores fixos; para pares de
-camadas que interagem (transporte e envelope, validade temporal e anti-repetição,
-ACL e restrição chave--tópico, limitação de tráfego e envelope), a diferença das
-diferenças mostra se o custo ou a proteção da combinação diferem da soma das
-partes. Os ataques correrão com tráfego legítimo ativo e
-com controlos negativos, isto é, a mesma mensagem com uma única alteração conhecida
-e a configuração sem a camada em causa, para atribuir cada rejeição à camada
-certa e verificar que nenhuma mensagem legítima é rejeitada.
+Cada configuração será repetida 10 vezes em ordem aleatória, com intervalos de
+confiança por \emph{bootstrap} sobre as execuções. O custo marginal de uma camada
+$\ell$ numa métrica $m$ é $m(c_{\ell=1}) - m(c_{\ell=0})$, com os restantes fatores
+fixos, e a diferença das diferenças mostra se pares de camadas interagem. Os
+ataques correrão com tráfego legítimo ativo e com controlos negativos (a mesma
+configuração sem a camada em causa), para atribuir cada rejeição à camada certa.
 
 \begin{enumerate}[label=\textbf{H\arabic*.}, leftmargin=*]
   \item O envelope AES-256-GCM terá um custo por mensagem pequeno face à latência
@@ -255,26 +243,3 @@ Se as hipóteses se confirmarem, a configuração recomendada será K8 (ou K11, 
 processadores sem AES em \emph{hardware}) para a telemetria, com K9 reservada às
 ordens que exigem prova de origem. É precisamente isso que a segunda parte pretende
 verificar.
-
-% ---------------------------------------------------------------------------
-\subsection{Artefacto a entregar}
-\label{sec:artefacto}
-
-Para que terceiros possam repetir os ensaios, o artefacto da segunda parte deverá
-cumprir os seguintes requisitos:
-\begin{enumerate}[leftmargin=*]
-  \item Camadas ativáveis por configuração, com validação das dependências: a
-    validade temporal, a anti-repetição e a restrição chave--tópico exigem o
-    envelope ativo.
-  \item Testes automatizados das regras de aceitação: ordem de verificação,
-    validade temporal, janela anti-repetição, restrição chave--tópico e política de
-    modos, com mensagens legítimas e inválidas.
-  \item Exportação, com cada execução, da configuração completa, de um manifesto
-    das versões do sistema, das bibliotecas e do \emph{broker}, das sementes da
-    geração de carga e da ordem dos ensaios.
-  \item Dados brutos por execução e \emph{scripts} de análise que reconstruam as
-    tabelas e figuras.
-  \item Credenciais geradas para cada laboratório; nenhum segredo real é publicado.
-\end{enumerate}
-Reprodutibilidade significa poder repetir o procedimento e conhecer as condições,
-não obter os mesmos tempos noutro \emph{hardware} ou noutra rede.

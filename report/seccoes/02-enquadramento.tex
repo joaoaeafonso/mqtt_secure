@@ -88,7 +88,7 @@ conteúdo, o que agrava o problema P1.
         perdas de pacotes~\cite{prantl2021performance}; um cliente só controla o seu
         próprio salto~\cite{spielvogel2021tls} \\
     \addlinespace
-    TLS mútuo
+    TLS mútuo (mTLS)
       & Autenticação forte do cliente por certificado
       & Exige infraestrutura de chave pública e revogação \\
     \addlinespace
@@ -123,15 +123,17 @@ com chave $K$, \emph{nonce} $N$, texto $P$, dados associados $A$, criptograma $C
 etiqueta $T$. Como $A$ é autenticado sem ser cifrado, permite ligar à mensagem
 metadados que têm de ficar legíveis, como o cabeçalho ou o tópico.
 
-\paragraph{AES-GCM e GMAC.} O AES-GCM é a AEAD normalizada pelo
-NIST~\cite{nist-sp800-38d}; com $P$ vazio, obtém-se o GMAC, um código de autenticação de mensagem. A sua
+\paragraph{AES-GCM e GMAC.} O AES-GCM (\emph{Advanced Encryption Standard} em modo
+\emph{Galois/Counter}) é a AEAD normalizada pelo NIST~\cite{nist-sp800-38d}; com $P$
+vazio, obtém-se o GMAC (\emph{Galois Message Authentication Code}). A sua
 segurança colapsa se o mesmo par $(K, N)$ for usado duas vezes, o que permite
 falsificar etiquetas~\cite{bock2016nonce}. Com \emph{nonces} aleatórios, o NIST
 limita a $2^{32}$ o número de cifras por chave~\cite[§8.3]{nist-sp800-38d}, pelo que
 esquemas de longa duração precisam de rotação de chaves. O ChaCha20-Poly1305~\cite{rfc8439} é a
 alternativa para processadores sem AES em \emph{hardware}.
 
-\paragraph{MAC e assinaturas.} Um MAC, como o HMAC~\cite{rfc2104}, dá integridade e
+\paragraph{MAC e assinaturas.} Um código de autenticação de mensagem (MAC), como o
+HMAC (\emph{keyed-Hash MAC})~\cite{rfc2104}, dá integridade e
 autenticidade, mas \emph{não} prova a origem: qualquer detentor da chave, incluindo
 o recetor, pode produzir a mesma etiqueta. Uma assinatura Ed25519~\cite{bernstein2012ed25519,
 rfc8032} (64 octetos) só pode ser produzida com a chave privada e é verificável com
@@ -209,7 +211,8 @@ os quais está autorizado.
 
 A
 Tabela~\ref{tab:stride} organiza as ameaças segundo as categorias
-STRIDE~\cite{kohnfelder1999threats}; cinco
+STRIDE (\emph{Spoofing, Tampering, Repudiation, Information disclosure,
+Denial of service, Elevation of privilege})~\cite{kohnfelder1999threats}; cinco
 delas coincidem com as classes de problemas que Hintaw et al.~\cite{hintaw2023mqtt}
 identificam no MQTT, e acrescenta-se o repúdio.
 
@@ -229,7 +232,7 @@ identificam no MQTT, e acrescenta-se o repúdio.
     \emph{Repudiation} & Remetente nega ter enviado; recetor fabrica mensagens em nome do remetente
                        & Assinaturas digitais (um MAC partilhado não basta) \\
     \emph{Information disclosure} & Subscrição de \texttt{\#}; \emph{broker} curioso
-                       & ACL; cifra fim-a-fim; TEE no \emph{broker}~\cite{segarra2020mqttz} \\
+                       & ACL; cifra fim-a-fim; ambiente de execução confiável (TEE) no \emph{broker}~\cite{segarra2020mqttz} \\
     \emph{Denial of service} & Inundação; ligações lentas~\cite{vaccari2020slowite}; esgotamento de estado
                        & Limitação de tráfego; estado limitado; deteção de intrusões~\cite{vaccari2020mqttset} \\
     \emph{Elevation of privilege} & Chave de um dispositivo usada para publicar por outros

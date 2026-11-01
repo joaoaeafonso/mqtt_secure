@@ -21,15 +21,16 @@
   Jossivalter Leal, N.º 146851}
 \newcommand{\Data}{17-10-26}
 \newcommand{\Docente}{Daniel Maximino Caçador}
-\newcommand{\Titulo}{Segurança em Camadas para Comunicações IoT Baseadas em MQTT:
-  Revisão Sistemática da Literatura e Proposta de Arquitetura}
+\newcommand{\Titulo}{Segurança em Camadas para Comunicações IoT Baseadas em MQTT}
+\newcommand{\Subtitulo}{Revisão Crítica, Arquitetura Modular e Plano de Avaliação}
+\newcommand{\Entrega}{Projeto --- Parte 1: entrega teórica}
 \newcommand{\TituloCurto}{Segurança em camadas para MQTT}
 \newcommand{\Repositorio}{https://github.com/joaoaeafonso/mqtt_secure}
 
 \input{preambulo}
 \input{dados-revisao}
 
-\hypersetup{pdftitle={\Titulo}, pdfsubject={SRSI -- Projeto, Parte 1}}
+\hypersetup{pdftitle={\Titulo: \Subtitulo}, pdfsubject={SRSI -- Projeto, Parte 1}}
 
 \begin{document}
 
@@ -48,15 +49,20 @@
   {\Large Mestrado em \Mestrado\par}
   \vspace{0.6cm}
   {\LARGE\bfseries\color{iscte} \UnidadeCurricular\par}
-  \vspace{2.4cm}
+  \vspace{1.6cm}
+
+  {\Large\bfseries \Titulo\par}
+  \vspace{0.4cm}
+  {\large \Subtitulo\par}
+  \vspace{0.6cm}
+  {\normalsize\itshape \Entrega\par}
+  \vspace{1.6cm}
 
   \begin{flushleft}
     \large
     \textbf{Autores:}\\[0.2cm]
     \Autores\\[0.8cm]
     \textbf{Data:} \Data\\[0.8cm]
-    \textbf{Título do trabalho:}\\[0.2cm]
-    \Titulo\\[0.8cm]
     \textbf{Docente:} \Docente\\[0.8cm]
     \textbf{Repositório:} \url{\Repositorio}
   \end{flushleft}
@@ -70,10 +76,7 @@
 \clearpage
 \tableofcontents
 \clearpage
-\listoffigures
-\listoftables
 \clearpage
-\input{seccoes/00-glossario}
 \clearpage
 
 % --------------------------------------------------------- texto ----------
@@ -99,6 +102,5 @@
 \renewcommand{\thesection}{\Alph{section}}
 \input{seccoes/anexo-a-strings}
 \input{seccoes/anexo-b-extracao}
-\input{seccoes/anexo-c-referencias}
 
 \end{document}

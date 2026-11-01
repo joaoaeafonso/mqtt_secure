@@ -46,20 +46,19 @@ atribuída na taxonomia da Secção~\ref{sec:taxonomia}.
 \label{sec:estatistica}
 
 \paragraph{Publicações por ano (QE1).} A Figura~\ref{fig:por-ano} mostra a
-distribuição temporal. O interesse surge logo após a normalização do MQTT~3.1.1 (2014)
-e concentra-se entre 2016 e 2021, período que reúne $2+1+2+3+3+3 = 14$ dos
-\nIncluidos{} estudos ($73{,}7\,\%$). Os estudos posteriores a 2022 tratam problemas
-mais específicos: segurança muitos-para-muitos, anonimato, deteção distribuída e
-autenticação sem certificados. Esta distribuição é a do conjunto analisado; o
-volume de publicações devolvido pelas pesquisas cresce de forma contínua até 2025
-(Secção~\ref{sec:selecao}).
+distribuição temporal dos \nElegiveis{} estudos elegíveis após a triagem. O
+interesse surge logo após a normalização do MQTT~3.1.1 (2014) e cresce de forma
+contínua: os anos de 2023 a 2026 reúnem 410 estudos ($56{,}9\,\%$), e o ano de 2026
+está contado só até à data das pesquisas. Destes estudos elegíveis, só
+\nIncluidos{} foram analisados em texto integral (Secção~\ref{sec:selecao}); as
+restantes estatísticas desta secção referem-se a esse conjunto.
 
 \begin{figure}[ht]
   \centering
   \begin{tikzpicture}
     \begin{axis}[
         ybar, bar width=12pt, width=0.92\textwidth, height=5.2cm,
-        ymin=0, ymax=5, ytick={0,1,...,5},
+        ymin=0, ymax=130, ytick={0,20,...,120},
         symbolic x coords={2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026},
         xtick=data, x tick label style={font=\small},
         ylabel={N.º de estudos}, ylabel style={font=\small},
@@ -67,15 +66,15 @@ volume de publicações devolvido pelas pesquisas cresce de forma contínua até
         axis lines*=left, ymajorgrids, grid style={cinza!25},
         enlarge x limits=0.05]
       \addplot[fill=acento!70, draw=iscte] coordinates {
-        (2014,0) (2015,1) (2016,2) (2017,1) (2018,2) (2019,3) (2020,3)
-        (2021,3) (2022,1) (2023,1) (2024,1) (2025,0) (2026,1)};
+        (2014,2) (2015,4) (2016,9) (2017,17) (2018,30) (2019,58) (2020,51)
+        (2021,74) (2022,66) (2023,75) (2024,115) (2025,101) (2026,119)};
     \end{axis}
   \end{tikzpicture}
-  \caption{Número de estudos primários incluídos por ano de publicação ($n = \nIncluidos$).}
+  \caption{Estudos elegíveis após a triagem, por ano de publicação ($n = \nElegiveis$; 2026 até à data das pesquisas). Destes, \nIncluidos{} foram analisados em texto integral.}
   \label{fig:por-ano}
 \end{figure}
 
-\paragraph{Tipo de publicação (QE2).} Dez estudos ($52{,}6\,\%$) foram publicados
+\paragraph{Tipo de publicação (QE2).} Dos \nIncluidos{} estudos analisados, dez ($52{,}6\,\%$) foram publicados
 em revistas, seis ($31{,}6\,\%$) em conferências e três ($15{,}8\,\%$) em
 \emph{workshops}.
 
@@ -151,7 +150,7 @@ tópico.
 
 Singh et al.~\cite{singh2015secure} propõem o SMQTT e o SMQTT-SN, que acrescentam
 ao MQTT cifra baseada em atributos com política na chave ou no criptograma
-(KP/CP-ABE) sobre ECC leve, avaliada em simulação: só os subscritores com
+(KP/CP-ABE) sobre criptografia de curvas elípticas (ECC) leve, avaliada em simulação: só os subscritores com
 atributos compatíveis decifram. A ABE resolve a confidencialidade de grupo, mas com
 um custo computacional elevado para dispositivos restritos.
 
@@ -177,8 +176,8 @@ mensagem leva um contador por publicador, que permite detetar duplicados e
 perdas~\cite[§5.3]{dahlmanns2021entrust}. Van Glabbeek et
 al.~\cite{vanglabbeek2022flexible} propõem três opções (autenticação e não repúdio;
 mais confidencialidade; mais anonimato), todas com assinatura Schnorr e carimbo
-temporal, com um \emph{broker} honesto mas curioso e uma CA totalmente
-confiável~\cite[§3.1, §4.3]{vanglabbeek2022flexible}. Face ao MQTT sobre TLS, reduzem
+temporal, com um \emph{broker} honesto mas curioso e uma autoridade de
+certificação (CA) totalmente confiável~\cite[§3.1, §4.3]{vanglabbeek2022flexible}. Face ao MQTT sobre TLS, reduzem
 em 80\,\% o \emph{overhead} de comunicação e em 40\,\% o computacional no
 estabelecimento da ligação.
 
@@ -326,11 +325,9 @@ ataques que ele impede.
 \subsection{Respostas às perguntas de investigação}
 \label{sec:respostas}
 
-\paragraph{QG e QF2.} A literatura atua em três frentes: compreender as ameaças
-(análise de vulnerabilidades, \emph{fuzzing}, deteção de intrusões), proteger a
-ligação e o \emph{broker} (autenticação, autorização, TEE, políticas por salto) e
-proteger a mensagem (cifra leve fim-a-fim, MAC, ABE, anonimato). A proteção
-fim-a-fim é a categoria mais numerosa.
+\paragraph{QG e QF2.} Compreender as ameaças, proteger a ligação e o
+\emph{broker}, e proteger a mensagem, sendo esta última a frente mais numerosa
+(Secção~\ref{sec:taxonomia}).
 
 \paragraph{QF1.} Escuta e injeção quando o MQTT é usado sem cifra, o que acontece
 por omissão~\cite{andy2017attack}, negação de serviço que a cifra não
@@ -338,14 +335,11 @@ evita~\cite{vaccari2020slowite}, erros de implementação~\cite{hernandez2018fuz
 e o \emph{broker} como ponto de exposição de todo o
 conteúdo~\cite{segarra2020mqttz, dahlmanns2021entrust}.
 
-\paragraph{QF3 e QE3.} A confidencialidade é a propriedade mais tratada; só quatro
-mecanismos dispensam, total ou parcialmente, a confiança no \emph{broker}, e vários
-assumem-na explicitamente~\cite{singh2015secure, calabretta2018mqttauth,
-malina2019secure}. A validade temporal, a anti-repetição e o não repúdio aparecem
-em três estudos, mas sempre isolados (Figura~\ref{fig:propriedades}).
+\paragraph{QF3 e QE3.} Ver a Figura~\ref{fig:propriedades}: a confidencialidade
+domina, só quatro mecanismos dispensam a confiança no \emph{broker}, e a validade
+temporal, a anti-repetição e o não repúdio aparecem isolados em três estudos.
 
-\paragraph{QF4.} A avaliação é maioritariamente experimental e centrada no custo; a
-verificação formal é rara.
+\paragraph{QF4.} Sobretudo experimental (14 de 16); uma única prova formal.
 
 \paragraph{QF5.} O custo da segurança em dispositivos a bateria~\cite{hintaw2023mqtt},
 a inadequação do TLS a nós restritos~\cite{sadio2019lightweight, javadi2026cmap},

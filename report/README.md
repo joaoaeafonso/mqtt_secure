@@ -22,7 +22,7 @@ carregar a pasta `report/` inteira e usar o compilador pdfLaTeX.
 | `preambulo.tex` | pacotes, cores, macros (`\Sim`, `\Parc`, `\Nr`, `\Nao`) |
 | `dados-revisao.tex` | **números do processo de revisão, a preencher** |
 | `referencias.bib` | 42 referências verificadas (autores, local, ano, páginas, DOI) |
-| `seccoes/` | resumo, glossário, secções 1–9 (a 7 é o plano da segunda parte), anexos A (strings) e B (extração) |
+| `seccoes/` | resumo, secções 1–9 (a 7 é o plano da segunda parte), anexos A (strings) e B (extração e referências dos estudos) |
 | `figuras/` | `iscte-logo.png` (logótipo horizontal do sítio do Iscte) |
 
 ## Antes de entregar

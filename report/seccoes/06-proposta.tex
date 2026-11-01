@@ -81,8 +81,8 @@ para descartar inundações antes de qualquer operação criptográfica.
 A primeira camada usa o que os \emph{brokers} já oferecem
 (Tabela~\ref{tab:seguranca-nativa}), configurado de forma restritiva: só TLS~1.3;
 autenticação mútua por certificado; palavras-passe; ACL de negação por omissão,
-parametrizadas pelo utilizador autenticado (por exemplo,
-\texttt{restricted/sensors/\%u/\#}); identificador de cliente igual ao utilizador;
+parametrizadas pelo utilizador autenticado; identificador de cliente ligado ao
+utilizador;
 e limites de tamanho de pacote e de ligações. Esta camada restringe quem fala com o
 \emph{broker}, mas deixa intactos os problemas P1 a P3.
 
@@ -91,36 +91,9 @@ e limites de tamanho de pacote e de ligações. Esta camada restringe quem fala 
 \label{sec:envelope}
 
 A camada de segurança substitui o conteúdo de cada mensagem por um
-\emph{envelope} (Figura~\ref{fig:envelope}), com cabeçalho fixo de 25 octetos.
-
-\begin{figure}[ht]
-  \centering
-  \begin{tikzpicture}[
-      campo/.style={draw=iscte, minimum height=0.85cm, font=\scriptsize, align=center,
-                    fill=fundotab},
-      corpo/.style={draw=iscte, minimum height=0.85cm, font=\scriptsize, align=center,
-                    fill=acento!20}]
-    \node[campo, minimum width=0.9cm] (m)  {\texttt{"MS"}\\2};
-    \node[campo, minimum width=0.8cm, right=0pt of m] (v) {ver.\\1};
-    \node[campo, minimum width=0.9cm, right=0pt of v] (md) {modo\\1};
-    \node[campo, minimum width=1.4cm, right=0pt of md] (k) {id. chave\\4};
-    \node[campo, minimum width=1.8cm, right=0pt of k] (s) {sequência\\8};
-    \node[campo, minimum width=1.8cm, right=0pt of s] (t) {instante (ms)\\8};
-    \node[campo, minimum width=0.7cm, right=0pt of t] (n) {$|N|$\\1};
-    \node[campo, minimum width=1.3cm, right=0pt of n] (nn) {\emph{nonce}\\$|N|$};
-    \node[corpo, minimum width=3.6cm, right=0pt of nn] (b) {corpo\\variável};
-    \draw[decorate, decoration={brace, amplitude=5pt}, thick, bom]
-      ([yshift=2pt]m.north west) -- ([yshift=2pt]nn.north east)
-      node[midway, above=6pt, font=\scriptsize, text=bom]
-      {autenticado como dados associados, juntamente com o tópico MQTT};
-    \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, iscte]
-      ([yshift=-2pt]m.south west) -- ([yshift=-2pt]n.south east)
-      node[midway, below=6pt, font=\scriptsize, text=iscte] {cabeçalho fixo: 25 octetos};
-  \end{tikzpicture}
-  \caption{Formato do envelope (inteiros em \emph{big-endian}); o número sob cada
-    campo é o seu tamanho em octetos.}
-  \label{fig:envelope}
-\end{figure}
+\emph{envelope}: um cabeçalho fixo de 25 octetos (identificador do formato, versão,
+modo, identificador de chave, número de sequência, instante em milissegundos e
+comprimento do \emph{nonce}), seguido do \emph{nonce} e do corpo.
 
 \paragraph{Dados associados e ligação ao tópico.} Sendo $\mathit{cab}$ o cabeçalho,
 $N$ o \emph{nonce} e $\tau$ o tópico MQTT, os dados associados são
@@ -146,16 +119,9 @@ autenticação, o AES-256-GCM poderá ser substituído pelo
 ChaCha20-Poly1305~\cite[§2.8]{rfc8439}, a alternativa para processadores sem AES
 em \emph{hardware}. O algoritmo será um atributo da chave identificada no
 cabeçalho, que é autenticado, pelo que o formato do envelope não muda: ambos usam
-\emph{nonces} de 96 bits e etiquetas de 128 bits~\cite[§2.5, §2.8]{rfc8439}. O custo
-fixo por mensagem é
-\begin{equation}
-  \omega(\text{modo}) = 25 + |N| + |T| =
-  \begin{cases}
-    25 + 12 + 16 = 53 \text{ octetos} & \text{(cifra, autenticação)},\\
-    25 + 0 + 64 = 89 \text{ octetos} & \text{(assinatura)}.
-  \end{cases}
-  \label{eq:overhead}
-\end{equation}
+\emph{nonces} de 96 bits e etiquetas de 128 bits~\cite[§2.5, §2.8]{rfc8439}. O custo fixo
+por mensagem é de 53 octetos nos modos de cifra e de autenticação (cabeçalho, \emph{nonce}
+de 12 e etiqueta de 16) e de 89 no modo de assinatura (cabeçalho e assinatura de 64).
 
 \paragraph{Política do recetor contra a redução do nível de proteção.} Cada recetor
 mantém o conjunto $\mathcal{A} \subseteq \{\text{cifra}, \text{autenticação},
@@ -227,27 +193,12 @@ com $\operatorname{corr}$ como na Secção~\ref{sec:mqtt}. Por exemplo, com o pa
 % ---------------------------------------------------------------------------
 \subsection{Gestão de chaves}
 
-Cada dispositivo $d$ tem, por época $e$, uma chave AES, um par de chaves Ed25519 e o
-identificador $\operatorname{id}(d, e) = e \cdot 10^{6} + d$ (o \emph{gateway} é
-$d = 0$). Identificadores nunca são reutilizados, porque um identificador reutilizado
-teria uma janela anti-repetição nova. A Tabela~\ref{tab:chaves} mostra que chaves
-cada papel detém.
-
-\begin{table}[ht]
-  \centering
-  \caption{Distribuição de chaves por papel.}
-  \label{tab:chaves}
-  \small
-  \begin{tabularx}{\textwidth}{@{}L{2.4cm}YYY@{}}
-    \toprule
-    \textbf{Papel} & \textbf{Chaves AES} & \textbf{Chaves privadas Ed25519} & \textbf{Chaves públicas Ed25519} \\
-    \midrule
-    \emph{Gateway}  & de todos os dispositivos e a sua & \textbf{apenas a sua} & de todos os dispositivos e a sua \\
-    Dispositivo $d$ & a sua e a do \emph{gateway} (ordens) & a sua & a do \emph{gateway} \\
-    Atacante        & --- & --- & --- (apenas o certificado da CA) \\
-    \bottomrule
-  \end{tabularx}
-\end{table}
+Cada dispositivo tem, por época, uma chave AEAD e um par de chaves Ed25519, com um
+identificador que nunca é reutilizado, porque um identificador reutilizado teria uma
+janela anti-repetição nova. O \emph{gateway} conhece as chaves AEAD e as chaves
+públicas de todos os dispositivos, mas só a sua chave privada; cada dispositivo
+conhece as suas chaves e, do \emph{gateway}, a chave AEAD (usada nas ordens) e a
+chave pública.
 
 A \textbf{rotação} instala as chaves da época $e+1$ ao lado das da época $e$ e
 revoga as antigas após um período de graça; a \textbf{revogação} de um dispositivo
@@ -321,22 +272,12 @@ nível de proteção (RN) e restrição chave--tópico (CT).
   \end{tabular}
 \end{table}
 
-Cada uma das propriedades da proposta já existe, isolada, na literatura. A
-ligação ao tópico e o não repúdio estão em Malina et al., que assinam o tópico e um
-carimbo temporal~\cite[§4.5]{malina2019secure}; a deteção de duplicados está no
-ENTRUST, com um contador por publicador~\cite[§5.3]{dahlmanns2021entrust}; e níveis
-de proteção selecionáveis estão em Malina et al.\ e em Van Glabbeek et
-al.~\cite{malina2019secure, vanglabbeek2022flexible}. O que nenhum dos trabalhos
-analisados faz é combiná-las no mesmo recetor: limite de idade \emph{e} deteção de
-duplicados dentro desse limite, restrição chave--tópico aplicada à credencial
-autenticada, política local contra a redução do nível de proteção, e tudo isto sem
-confiar no \emph{broker}. A proposta também não supera os trabalhos relacionados em
-tudo: não oferece anonimato~\cite{buccafurri2023mqtta}, não protege o \emph{broker}
-com um TEE~\cite{segarra2020mqttz}, não oferece confidencialidade por
-atributos~\cite{singh2015secure} e não tem prova formal~\cite{javadi2026cmap}. O
-contributo pretendido é, por isso, a \emph{integração} especificada destes
-mecanismos em camadas comutáveis e a medição, na segunda parte, do custo marginal e
-da proteção de cada uma, isoladamente e em combinação.
+A proposta não supera os trabalhos relacionados em tudo: não oferece
+anonimato~\cite{buccafurri2023mqtta}, não protege o \emph{broker} com um
+TEE~\cite{segarra2020mqttz}, não oferece confidencialidade por
+atributos~\cite{singh2015secure} e não tem prova formal~\cite{javadi2026cmap}. O que
+a distingue é combinar, no mesmo recetor e sem confiar no \emph{broker},
+propriedades que a literatura trata isoladas (Secção~\ref{sec:discussao}).
 
 % ---------------------------------------------------------------------------
 \subsection{Limitações conhecidas}
