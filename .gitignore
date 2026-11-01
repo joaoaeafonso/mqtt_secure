@@ -12,3 +12,5 @@ report/rsl/pesquisas/*/
 report/rsl/dados/registos.csv
 report/rsl/dados/triagem.csv
 report/rsl/dados/revisoes.csv
+# Notas internas da equipa (rastreabilidade e registo de correções): não publicar
+report/rsl/rastreabilidade.md

@@ -1,5 +1,3 @@
-Data das pesquisas: 01-11-2026
-
 Registos devolvidos (= exportados), por base e string:
   IEEE Xplore    principal  1442
   IEEE Xplore    secundaria 32

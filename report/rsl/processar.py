@@ -20,7 +20,6 @@ csv.field_size_limit(10**8)
 AQUI = os.path.dirname(os.path.abspath(__file__))
 PESQ = os.path.join(AQUI, 'pesquisas')
 DADOS = os.path.join(AQUI, 'dados')
-DATA_PESQUISA = '01-11-2026'
 
 # Tipos admitidos (CI2: revista, conferência ou workshop com revisão por pares).
 TIPOS_IEEE = {'IEEE Conferences', 'IEEE Journals', 'IEEE Early Access Articles',
@@ -127,8 +126,7 @@ def main():
         r['destino'] = 'mantido' if tipo_admitido(r) else 'removido: tipo de documento'
     escrever(os.path.join(DADOS, 'registos.csv'), regs, list(regs[0].keys()))
 
-    linhas = [f'Data das pesquisas: {DATA_PESQUISA}', '',
-              'Registos devolvidos (= exportados), por base e string:']
+    linhas = ['Registos devolvidos (= exportados), por base e string:']
     for (base, string), n in sorted(Counter((r['base'], r['string']) for r in regs).items()):
         linhas.append(f'  {base:14s} {string:10s} {n}')
 
