@@ -5,3 +5,10 @@ compile_commands.json
 cmake-build-*/
 tools/loadgen/.venv/
 __pycache__/
+# PDFs de artigos obtidos via b-on (direitos de autor): não publicar
+report/rsl/textos/
+# Exportações das bases e ficheiros com resumos (direitos dos editores): não publicar
+report/rsl/pesquisas/*/
+report/rsl/dados/registos.csv
+report/rsl/dados/triagem.csv
+report/rsl/dados/revisoes.csv

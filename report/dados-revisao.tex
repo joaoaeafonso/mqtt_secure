@@ -1,37 +1,33 @@
 % ===========================================================================
 % Números do processo de revisão sistemática.
 %
-% Estes valores só existem depois de EXECUTAR as pesquisas nas bases de dados
-% e a triagem no Parsifal (ver secção 3). Enquanto não forem preenchidos,
-% aparecem no PDF a vermelho, entre parênteses retos, para não passarem
-% despercebidos. Substitua \preencher{...} pelo número real, por exemplo:
-%     \newcommand{\nIEEE}{412}
+% Gerados por report/rsl/processar.py (pesquisas/contagens.txt) e pela triagem
+% em report/rsl/dados/. Valores ainda por obter aparecem a vermelho no PDF.
 % ===========================================================================
 
 \newcommand{\preencher}[1]{\textcolor{red}{\textbf{[#1]}}}
 
 % Data em que as pesquisas foram executadas
-\newcommand{\dataPesquisa}{\preencher{dd-mm-aaaa}}
+\newcommand{\dataPesquisa}{01-11-2026}
 
 % Registos devolvidos pela string principal, por base de dados
-\newcommand{\nIEEE}{\preencher{n}}
-\newcommand{\nScopus}{\preencher{n}}
-\newcommand{\nACM}{\preencher{n}}
-\newcommand{\nWoS}{\preencher{n}}
-\newcommand{\nScienceDirect}{\preencher{n}}
-\newcommand{\nTotalIdentificados}{\preencher{n}}
+\newcommand{\nIEEE}{1442}
+\newcommand{\nScopus}{2050}
+\newcommand{\nScienceDirect}{214}               % 130 + 84 (duas consultas)
+\newcommand{\nTotalIdentificados}{3706}
 
-% Registos devolvidos pela string secundária (revisões), total
-\newcommand{\nSecundariaTotal}{\preencher{n}}
+% String secundária (revisões): IEEE 32 + Scopus 60
+\newcommand{\nSecundariaTotal}{92}
+\newcommand{\nSecundariaUnicos}{73}
 
 % Triagem (diagrama PRISMA)
-\newcommand{\nDuplicados}{\preencher{n}}
-\newcommand{\nTriados}{\preencher{n}}            % títulos e resumos lidos
-\newcommand{\nExcluidosTA}{\preencher{n}}        % excluídos por título/resumo
-\newcommand{\nTextoIntegral}{\preencher{n}}      % avaliados em texto integral
-\newcommand{\nExcluidosTI}{\preencher{n}}        % excluídos no texto integral / qualidade
-\newcommand{\nIncluidos}{20}                     % estudos primários incluídos (Tabela 11)
+\newcommand{\nDuplicados}{1216}
+\newcommand{\nRemovidosTipo}{40}
+\newcommand{\nTriados}{2450}                     % títulos e resumos lidos
+\newcommand{\nExcluidosTA}{1729}        % excluídos por título/resumo
+\newcommand{\nElegiveis}{721}          % elegíveis após a triagem
+\newcommand{\nTextoIntegral}{20}                 % analisados em texto integral (seleção intencional)
+\newcommand{\nExcluidosTI}{1}                    % excluídos no texto integral (CI4)
+\newcommand{\nIncluidos}{19}                     % estudos primários analisados (Tabela 9)
 \newcommand{\nSecundarios}{5}                    % revisões relacionadas analisadas (Secção 4)
 
-% Concordância entre revisores na triagem (coeficiente kappa de Cohen)
-\newcommand{\kappaTriagem}{\preencher{0,00}}

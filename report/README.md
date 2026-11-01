@@ -21,7 +21,7 @@ carregar a pasta `report/` inteira e usar o compilador pdfLaTeX.
 | `main.tex` | capa (campos a preencher no topo), ordem das secções |
 | `preambulo.tex` | pacotes, cores, macros (`\Sim`, `\Parc`, `\Nr`, `\Nao`) |
 | `dados-revisao.tex` | **números do processo de revisão, a preencher** |
-| `referencias.bib` | 45 referências verificadas (autores, local, ano, páginas, DOI) |
+| `referencias.bib` | 42 referências verificadas (autores, local, ano, páginas, DOI) |
 | `seccoes/` | resumo, glossário, secções 1–9 (a 7 é o plano da segunda parte), anexos A (strings) e B (extração) |
 | `figuras/` | `iscte-logo.png` (logótipo horizontal do sítio do Iscte) |
 
@@ -31,8 +31,8 @@ carregar a pasta `report/` inteira e usar o compilador pdfLaTeX.
    Parsifal; preencher em `dados-revisao.tex` as contagens por base, duplicados,
    triagem, texto integral, kappa e data. Tudo o que falta aparece a vermelho no PDF.
 2. **Confirmar a extração na leitura integral**: a classificação das propriedades
-   (Tabelas 12 e 16, Anexo B) foi feita a partir dos resumos dos estudos. As células
+   (Tabelas 10 e 13, Anexo B) foi feita a partir dos resumos dos estudos. As células
    "não reportado" (–) têm de ser confirmadas na terceira passagem de leitura;
    se um estudo tratar, por exemplo, anti-repetição, corrigir a célula e os
-   números da Figura 6 e das Secções 5.3 e 8.1.
-3. Se a triagem for feita por um só revisor, adaptar o texto do kappa (Secção 3.7).
+   números da Figura 5 e das Secções 5.3, 5.4 e 8.1.
+3. Se a triagem for feita por um só revisor, adaptar o texto do kappa (Secção 3.5).

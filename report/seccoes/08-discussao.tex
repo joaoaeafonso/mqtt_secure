@@ -3,42 +3,52 @@
 
 \subsection{Lacunas do estado da arte}
 
-A comparação das Secções~\ref{sec:resultados} e~\ref{sec:proposta} evidencia cinco
-lacunas.
+A comparação dos \nIncluidos{} estudos analisados evidencia cinco lacunas. São
+lacunas \emph{nos estudos analisados}: os estudos analisados vêm de uma fase
+exploratória e não de um critério de seleção definido \emph{a priori}
+(Secção~\ref{sec:selecao}), pelo que não se afirma que nenhum dos
+restantes estudos elegíveis as resolva.
 
 \begin{enumerate}[label=\textbf{L\arabic*.}, leftmargin=*]
-  \item \textbf{A autenticidade raramente é acompanhada de validade temporal nem
-    de anti-repetição.} Nenhum dos mecanismos analisados reporta a verificação de
-    carimbos temporais ou a proteção contra repetição como propriedade garantida. No MQTT, onde os duplicados legítimos do QoS~1 coexistem
-    com repetições maliciosas, a ausência destes mecanismos permite reinjetar
-    mensagens autênticas indefinidamente.
-  \item \textbf{A mensagem não é ligada ao seu contexto.} A ligação criptográfica ao
-    tópico, a proteção do modo contra a redução do nível de proteção e a restrição
-    dos tópicos em que cada chave pode publicar não aparecem nos estudos
-    analisados como mecanismos explícitos, apesar de corresponderem a ameaças
-    concretas (mudança de tópico, \emph{downgrade}, dispositivo comprometido).
-  \item \textbf{O \emph{broker} continua, em regra, a ser de confiança.} Só seis dos
-    17 mecanismos dispensam, total ou parcialmente, a confiança no \emph{broker}; a
-    maioria das soluções de autenticação e autorização reforça o \emph{broker} em
-    vez de o tornar irrelevante para a segurança do conteúdo.
-  \item \textbf{O não repúdio está ausente.} As soluções baseiam-se em segredos
-    partilhados (palavras-passe, chaves simétricas, ABE), o que não impede quem
-    detém o segredo --- incluindo o recetor --- de forjar mensagens em nome do
-    remetente.
+  \item \textbf{A frescura e a deteção de duplicados não aparecem combinadas.}
+    Malina et al.\ e Van Glabbeek et al.\ assinam um carimbo temporal e
+    apresentam-no como proteção contra repetição, mas não definem a janela de
+    aceitação nem eliminam duplicados dentro dela~\cite[§5.2]{malina2019secure},
+    \cite[§3.4]{vanglabbeek2022flexible}. O ENTRUST deteta duplicados com um
+    contador por publicador, mas o seu campo temporal indica quando chega a
+    próxima mensagem, e não a idade máxima de cada
+    mensagem~\cite[§5.3, §6]{dahlmanns2021entrust}.
+  \item \textbf{A ligação da mensagem ao contexto é incompleta.} Malina et al.\
+    assinam o tópico e o nível de segurança~\cite[§4.5]{malina2019secure}, e o
+    ENTRUST usa uma chave por tópico~\cite[§5]{dahlmanns2021entrust}. Nenhum dos
+    estudos analisados aplica, no recetor, uma restrição entre a credencial
+    autenticada e os tópicos em que pode publicar, nem uma política local que
+    recuse níveis de proteção mais fracos.
+  \item \textbf{O \emph{broker} continua, em regra, a ser de confiança.} Só quatro
+    dos 16 mecanismos dispensam, total ou parcialmente, essa confiança, e vários
+    assumem-na explicitamente~\cite[§III-B]{singh2015secure},
+    \cite[§IV-A]{calabretta2018mqttauth}, \cite[§4.6]{malina2019secure}.
+  \item \textbf{O não repúdio é raro e depende de terceiros confiáveis.} Só Malina
+    et al.\ e Van Glabbeek et al.\ o oferecem, com um \emph{broker} que decifra ou
+    é honesto mas curioso e, no segundo caso, uma CA totalmente
+    confiável~\cite[§3.1]{vanglabbeek2022flexible}. As restantes soluções usam
+    segredos partilhados, pelo que quem os detém, incluindo o recetor, pode forjar
+    mensagens em nome do remetente.
   \item \textbf{Custo e benefício não são medidos em conjunto.} As avaliações
-    medem o custo do mecanismo, mas raramente o relacionam, no mesmo ensaio, com os
-    ataques que o mecanismo impede; e os mecanismos não são comparáveis entre si
-    por usarem plataformas, cargas e métricas diferentes.
+    medem o custo, mas não o relacionam, no mesmo ensaio, com os ataques impedidos,
+    e usam plataformas e métricas que não são comparáveis entre si.
 \end{enumerate}
 
-A arquitetura proposta responde diretamente a L1, L2, L3 e L4, e o seu desenho em
+Nenhuma destas lacunas pede um mecanismo criptográfico novo: os elementos
+existem, isolados, na literatura. A arquitetura proposta responde a L1, L2 e L4
+combinando-os no mesmo recetor e sem confiar no \emph{broker} (L3), e o desenho em
 camadas comutáveis foi pensado para que a segunda parte do projeto responda a L5
 (Secção~\ref{sec:plano}).
 
 \subsection{Ameaças à validade}
 
-Seguindo~\cite{kitchenham2007}, identificam-se as principais ameaças à validade
-desta revisão e as medidas de mitigação adotadas (Tabela~\ref{tab:validade}).
+A Tabela~\ref{tab:validade} resume as ameaças à validade da revisão, seguindo
+Kitchenham e Charters~\cite{kitchenham2007}.
 
 \begin{table}[ht]
   \centering
@@ -51,17 +61,26 @@ desta revisão e as medidas de mitigação adotadas (Tabela~\ref{tab:validade}).
     \midrule
     Construção & A \emph{string} pode não captar estudos que usem outra
       terminologia & Grupos de sinónimos; refinamento após a leitura das revisões;
-      inclusão de MQTT-SN e de termos de deteção \\
-    Seleção & Enviesamento na aplicação dos critérios & Dois revisores
-      independentes; kappa de Cohen (Eq.~\ref{eq:kappa}); resolução das
-      divergências por discussão \\
+      inclusão de MQTT-SN e de termos de deteção; os estudos já conhecidos foram
+      todos devolvidos pelas pesquisas \\
+    Seleção & Enviesamento na aplicação dos critérios na triagem, feita por um só
+      revisor, sem medida de concordância & Critérios operacionalizados com exemplos;
+      regra conservadora (na dúvida, o registo segue); decisão e critério de cada
+      registo publicados no repositório, para verificação independente \\
+    Síntese & Só \nIncluidos{} dos \nElegiveis{} estudos elegíveis foram analisados em
+      texto integral, identificados numa fase exploratória e não escolhidos por um
+      critério \emph{a priori}; as lacunas podem estar tratadas em estudos não
+      analisados & Desvio declarado; todos confirmados como elegíveis; lacunas
+      formuladas \enquote{nos estudos analisados}; lista completa da triagem no
+      repositório~\cite{mqttsecure2026repo} \\
     Extração & Subjetividade na classificação das propriedades; um estudo pode
-      garantir uma propriedade sem a descrever & Formulário fixo; símbolo
-      \enquote{não reportado} distinto de \enquote{ausente por desenho};
-      confirmação na leitura integral \\
-    Externa & Bases de dados e língua limitam a cobertura; enviesamento de
-      publicação & Cinco bases de dados; inglês e português; estudos de revista,
-      conferência e \emph{workshop} \\
+      garantir uma propriedade sem a descrever & Leitura do texto integral;
+      \enquote{não reportado} distinto de \enquote{ausente por desenho}; secção e
+      página de cada célula registadas no repositório \\
+    Externa & Só três bases de dados; ACM DL e Web of Science não pesquisadas;
+      enviesamento de publicação & O Scopus indexa as atas ACM relevantes (p.\ ex.\
+      ARES, SaT-CPS, ICPE); inglês e português; revista, conferência e
+      \emph{workshop} \\
     Conclusão & Os números por propriedade dependem da granularidade das
       categorias & Taxonomia e critérios publicados; dados de extração no
       Anexo~\ref{anx:extracao} \\
@@ -69,7 +88,9 @@ desta revisão e as medidas de mitigação adotadas (Tabela~\ref{tab:validade}).
   \end{tabularx}
 \end{table}
 
-A ameaça mais relevante é a da extração: as conclusões L1, L2 e L4 assentam em
-propriedades \emph{não reportadas}, o que não equivale a propriedades
-\emph{ausentes}. Por isso, a Tabela~\ref{tab:comparacao} distingue explicitamente
-os dois casos e a discussão fala em propriedades \enquote{não reportadas}.
+A ameaça mais relevante é a da síntese: com \nElegiveis{} estudos elegíveis e
+\nIncluidos{} analisados, as percentagens da Secção~\ref{sec:resultados} descrevem o
+conjunto analisado, e não todo o campo. Na extração, a leitura integral alterou
+várias células face à leitura dos resumos (por exemplo, o contador anti-repetição
+do ENTRUST e o não repúdio de Malina et al.), o que confirma que \enquote{não
+reportado no resumo} não deve ser lido como \enquote{ausente}.

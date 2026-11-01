@@ -1,61 +1,37 @@
 \section{Trabalhos relacionados: revisões existentes}
 \label{sec:relacionados}
 
-A \emph{string} secundária devolveu \nSecundariaTotal{} registos, dos quais foram
-selecionadas para leitura as \nSecundarios{} revisões mais diretamente relacionadas
-com a segurança do MQTT. Esta secção resume-as, compara-as entre si e com a presente
-revisão (Tabela~\ref{tab:revisoes}) e justifica a necessidade de uma nova revisão.
+A \emph{string} secundária devolveu \nSecundariaTotal{} registos
+(\nSecundariaUnicos{} únicos). Destes, e das revisões excluídas por CE4 na triagem
+da \emph{string} principal, selecionaram-se as quatro mais diretamente
+relacionadas com a segurança do MQTT; a quinta, de Hintaw et al., foi acrescentada
+por \emph{snowballing} (Secção~\ref{sec:selecao}).
 
-% ---------------------------------------------------------------------------
-\subsection{Revisões analisadas}
-
-\paragraph{Perrone et al.\ (2017)~\cite{perrone2017mirai}.} Escrito na sequência
-dos ataques DDoS da botnet Mirai, analisa o MQTT enquanto protocolo concebido para
-dispositivos de baixa capacidade e descreve as soluções e melhorias de segurança
-habitualmente sugeridas e aplicadas em instalações reais. Os próprios autores
-caracterizam o levantamento de temas de investigação como \enquote{conciso, embora
-não exaustivo}.
-
-\paragraph{Nebbione e Calzarossa (2020)~\cite{nebbione2020security}.} Revisão
-abrangente da segurança dos protocolos da camada de aplicação da IoT, tanto de
-troca de mensagens (onde se inclui o MQTT) como de descoberta de serviços. Analisa
-as principais ameaças e as vulnerabilidades publicadas (CVE) de produtos e
-serviços, e boas práticas de mitigação. Conclui que a falta de serviços de
-segurança nos próprios protocolos, os erros de configuração e as limitações dos
-dispositivos tornam a segurança na camada de aplicação particularmente difícil.
-
-\paragraph{Hintaw et al.\ (2023)~\cite{hintaw2023mqtt}.} Centrado no MQTT,
-organiza os problemas de segurança decorrentes do desenho do protocolo em negação
-de serviço, falsificação de identidade, divulgação de informação, elevação de
-privilégios e adulteração de dados, provocados por atacantes internos e externos,
-e revê as técnicas propostas para os tratar. Destaca como desafio em aberto o custo
-de processamento que a segurança acrescenta a dispositivos alimentados por bateria.
-
-\paragraph{Lakshminarayana et al.\ (2024)~\cite{lakshminarayana2024securing}.}
-Publicado na \emph{IEEE Communications Surveys \& Tutorials}, propõe uma
-classificação das vulnerabilidades do MQTT, categoriza os ataques segundo as
-características que explicam a sua execução e discute em detalhe os mecanismos de
-defesa, com ênfase em técnicas de identificação de vulnerabilidades e de deteção e
-prevenção de ataques, terminando com lições aprendidas e direções de investigação.
-
-\paragraph{Laghari et al.\ (2024)~\cite{laghari2024securing}.} Analisa a segurança
-do \enquote{ecossistema} MQTT --- ataques prevalentes, consequências, estratégias de
-mitigação e investigação futura --- e apresenta uma taxonomia de ataques. Os autores
-apontam às revisões anteriores uma discussão ampla mas superficial dos ataques e
-contramedidas e a omissão de componentes e papéis relevantes na construção de
-aplicações MQTT.
-
-% ---------------------------------------------------------------------------
-\subsection{Comparação}
-
-A Tabela~\ref{tab:revisoes} compara as revisões segundo o âmbito, o tipo de
-análise e o que oferecem para lá do levantamento. As células assinaladas com
-\Nr{} correspondem a aspetos que a revisão não reporta.
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Perrone et al.\ (2017)}~\cite{perrone2017mirai}, escrito após os
+    ataques da botnet Mirai, descreve as soluções de segurança habitualmente usadas
+    em instalações MQTT reais e fecha com um levantamento de temas de investigação
+    que os próprios autores descrevem como conciso e não exaustivo.
+  \item \textbf{Nebbione e Calzarossa (2020)}~\cite{nebbione2020security} revêem a
+    segurança dos protocolos da camada de aplicação da IoT, incluindo o MQTT, as
+    vulnerabilidades publicadas (CVE) e boas práticas de mitigação.
+  \item \textbf{Hintaw et al.\ (2023)}~\cite{hintaw2023mqtt} organizam os problemas
+    de segurança do MQTT em negação de serviço, falsificação de identidade,
+    divulgação de informação, elevação de privilégios e adulteração, e apontam o
+    custo da segurança em dispositivos a bateria como desafio em aberto.
+  \item \textbf{Lakshminarayana et al.\ (2024)}~\cite{lakshminarayana2024securing}
+    classificam as vulnerabilidades e os ataques ao MQTT e discutem as defesas, com
+    ênfase na identificação de vulnerabilidades e na deteção de ataques.
+  \item \textbf{Laghari et al.\ (2024)}~\cite{laghari2024securing} apresentam uma
+    taxonomia de ataques ao ecossistema MQTT e apontam às revisões anteriores uma
+    discussão ampla mas superficial.
+\end{itemize}
 
 \begin{table}[ht]
   \centering
   \caption{Comparação das revisões relacionadas com a presente revisão.
-    \Sim{} abordado; \Parc{} parcialmente; \Nr{} não reportado.}
+    \Sim{} abordado; \Parc{} parcialmente; \Nr{} não reportado. $^{*}$Classificada
+    a partir do resumo: o texto integral não estava acessível.}
   \label{tab:revisoes}
   \small
   \setlength{\tabcolsep}{3pt}
@@ -71,9 +47,9 @@ análise e o que oferecem para lá do levantamento. As células assinaladas com
     \midrule
     Perrone et al.~\cite{perrone2017mirai}              & 2017 & \Sim  & \Nr   & \Sim & \Nr & \Nr & \Nr \\
     Nebbione e Calzarossa~\cite{nebbione2020security}   & 2020 & \Parc & \Sim  & \Sim & \Nr & \Nr & \Nr \\
-    Hintaw et al.~\cite{hintaw2023mqtt}                 & 2023 & \Sim  & \Sim  & \Sim & \Nr & \Nr & \Nr \\
+    Hintaw et al.~\cite{hintaw2023mqtt}$^{*}$          & 2023 & \Sim  & \Parc & \Sim & \Nr & \Nr & \Nr \\
     Lakshminarayana et al.~\cite{lakshminarayana2024securing} & 2024 & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr \\
-    Laghari et al.~\cite{laghari2024securing}           & 2024 & \Sim  & \Sim  & \Sim & \Nr & \Nr & \Nr \\
+    Laghari et al.~\cite{laghari2024securing}           & 2024 & \Sim  & \Sim  & \Sim & \Nr & \Parc & \Nr \\
     \midrule
     \rowcolor{fundotab}
     \textbf{Este trabalho}                              & 2026 & \Sim  & \Parc & \Sim & \Sim & \Sim & \Sim \\
@@ -81,28 +57,11 @@ análise e o que oferecem para lá do levantamento. As células assinaladas com
   \end{tabular}
 \end{table}
 
-% ---------------------------------------------------------------------------
-\subsection{Posicionamento desta revisão}
-
-As revisões existentes estão organizadas sobretudo em torno dos \emph{ataques}:
-classificam vulnerabilidades e associam-lhes contramedidas. Esta revisão
-distingue-se em quatro pontos:
-
-\begin{enumerate}[leftmargin=*]
-  \item \textbf{Protocolo explícito e reprodutível.} Perguntas de investigação,
-    PICOC, \emph{strings} por base de dados, critérios de inclusão, exclusão e
-    qualidade, concordância entre revisores e diagrama PRISMA são relatados
-    (Secção~\ref{sec:metodologia}), o que permite repetir e atualizar a revisão.
-  \item \textbf{Comparação por propriedade de segurança.} Os estudos são comparados
-    segundo as propriedades que garantem à \emph{mensagem} --- incluindo validade
-    temporal, anti-repetição e não repúdio --- e segundo a confiança que depositam no
-    \emph{broker}, e não apenas segundo os ataques que mitigam
-    (Secção~\ref{sec:comparacao}).
-  \item \textbf{Cobertura atualizada}, até 2026, incluindo trabalhos sobre
-    anonimato~\cite{buccafurri2023mqtta}, deteção distribuída de
-    intrusões~\cite{alotaibi2024secure} e autenticação sem
-    certificados~\cite{javadi2026cmap}.
-  \item \textbf{Ligação a uma proposta concreta.} As lacunas identificadas
-    fundamentam uma arquitetura (Secção~\ref{sec:proposta}) cuja implementação de
-    referência está disponível publicamente~\cite{mqttsecure2026repo}.
-\end{enumerate}
+As revisões existentes organizam-se em torno dos \emph{ataques}
+(Tabela~\ref{tab:revisoes}). Só Laghari et al.\ descrevem a pesquisa e a seleção,
+e apenas das revisões que comparam, com uma única palavra-chave em três
+fontes~\cite[§I]{laghari2024securing}. Esta revisão distingue-se por relatar um
+protocolo explícito e reprodutível, por comparar os estudos segundo as propriedades que garantem à
+\emph{mensagem} (incluindo validade temporal, anti-repetição e não repúdio) e a
+confiança que depositam no \emph{broker}, por cobrir trabalhos até 2026 e por
+ligar as lacunas encontradas a uma proposta concreta.

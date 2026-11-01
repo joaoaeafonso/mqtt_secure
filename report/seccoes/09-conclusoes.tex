@@ -1,58 +1,36 @@
 \section{Conclusões e trabalho futuro}
 \label{sec:conclusoes}
 
-\subsection{Conclusões}
-
-Este trabalho apresentou uma revisão sistemática da literatura sobre mecanismos de
-segurança para comunicações IoT baseadas em MQTT, conduzida segundo um protocolo
-explícito --- perguntas de investigação, PICOC, \emph{strings} de pesquisa por base
-de dados, critérios de inclusão, exclusão e qualidade, leitura em três passagens e
-formulário de extração --- e relatada com o diagrama PRISMA. Foram analisados
-\nIncluidos{} estudos primários (2015--2026) e \nSecundarios{} revisões
-relacionadas.
-
-As principais conclusões são as seguintes:
+Este trabalho apresentou uma revisão sistemática da literatura sobre segurança em
+comunicações IoT baseadas em MQTT, com \nTriados{} registos triados e \nIncluidos{} estudos primários (2015--2026)
+e \nSecundarios{} revisões relacionadas analisados em texto integral. As principais conclusões são:
 
 \begin{itemize}[leftmargin=*]
-  \item O MQTT delega a segurança na implementação, e o TLS, por terminar no
-    \emph{broker}, não protege as mensagens de um \emph{broker} comprometido nem de
-    clientes com acesso legítimo, como mostram os estudos de análise de ameaças.
-  \item A literatura organiza-se em oito categorias. A proteção leve fim-a-fim da
-    mensagem é a mais numerosa, e a confidencialidade, a autenticação e a
-    integridade são as propriedades mais tratadas.
-  \item A validade temporal e a anti-repetição, a ligação da mensagem ao tópico, a política
-    contra a redução do nível de proteção, a restrição chave--tópico e o não repúdio
-    são pouco ou nada reportados, e a maioria das soluções continua a confiar no
+  \item O TLS, por terminar no \emph{broker}, não protege as mensagens de um
+    \emph{broker} comprometido nem de clientes com acesso legítimo.
+  \item A proteção leve fim-a-fim é a categoria mais numerosa, e a
+    confidencialidade, a autenticação e a integridade são as propriedades mais
+    tratadas.
+  \item A validade temporal, a deteção de duplicados, a ligação ao tópico e o não
+    repúdio aparecem em poucos estudos e nunca combinados; a restrição
+    chave--tópico no recetor e a política contra a redução do nível de proteção não
+    aparecem nos estudos analisados; e a maioria das soluções confia no
     \emph{broker}.
-  \item As avaliações medem o custo dos mecanismos, mas raramente o relacionam com
-    os ataques efetivamente impedidos.
+  \item As avaliações medem o custo dos mecanismos, mas não o relacionam com os
+    ataques impedidos.
 \end{itemize}
 
-Com base nestas lacunas, propôs-se uma arquitetura de segurança em camadas
-independentes e comutáveis, que combina defesa no transporte, um envelope fim-a-fim
-formalmente especificado (AES-256-GCM, GMAC ou Ed25519, com o tópico e o cabeçalho
-nos dados associados, validade temporal, janela anti-repetição, política de modos e
-restrição chave--tópico) e limitação de tráfego antes de qualquer operação
-criptográfica. A proposta não pretende substituir trabalhos com objetivos distintos,
-como o anonimato ou a proteção do \emph{broker} por TEE, mas combinar numa só
-camada propriedades que a literatura trata em separado.
+Com base nestas lacunas, propôs-se, não um mecanismo novo, mas a integração destes
+elementos numa arquitetura em camadas independentes e
+comutáveis, com defesa no transporte, um envelope fim-a-fim (AES-256-GCM ou ChaCha20-Poly1305, GMAC ou
+Ed25519, com tópico e cabeçalho nos dados associados, validade temporal,
+anti-repetição, política de modos e restrição chave--tópico) e limitação de
+tráfego antes da criptografia.
 
-\subsection{Trabalho futuro}
-
-\begin{itemize}[leftmargin=*]
-  \item \textbf{Avaliação experimental (segunda parte do projeto)}: executar o plano
-    da Secção~\ref{sec:plano} num Raspberry Pi, medir o custo e os ataques impedidos
-    por cada configuração e escolher, pela fronteira de Pareto, a que dá a maior
-    proteção com o menor impacto no desempenho, respondendo à lacuna L5.
-  \item \textbf{Verificação formal} das propriedades do envelope, à semelhança
-    de~\cite{javadi2026cmap}.
-  \item \textbf{Acordo de chaves por dispositivo} (por exemplo, ECDH autenticado),
-    eliminando chaves pré-partilhadas, e persistência do estado anti-repetição.
-  \item \textbf{Cifras para nós sem AES em \emph{hardware}}, como o
-    ChaCha20-Poly1305~\cite{rfc8439, sadio2019lightweight}, e cifras resistentes à
-    reutilização de \emph{nonces} para chaves de longa duração.
-  \item \textbf{Integração com deteção de intrusões}~\cite{vaccari2020mqttset,
-    alotaibi2024secure}, usando as rejeições de cada camada como sinal.
-  \item \textbf{Atualização periódica da revisão}, reaplicando o protocolo da
-    Secção~\ref{sec:metodologia}.
-\end{itemize}
+Como trabalho futuro, fica sobretudo a segunda parte do projeto
+(Secção~\ref{sec:plano}): medir num Raspberry Pi o custo e os ataques impedidos por
+cada configuração e escolher a melhor pela fronteira de Pareto. Seguem-se a
+análise em texto integral dos restantes estudos elegíveis, a verificação formal do
+envelope, à semelhança de~\cite{javadi2026cmap}, um acordo de
+chaves por dispositivo e a integração com deteção de
+intrusões~\cite{vaccari2020mqttset, alotaibi2024secure}.

@@ -1,7 +1,10 @@
 \section{\emph{Strings} de pesquisa por base de dados}
 \label{anx:strings}
 
-Todas as pesquisas foram restringidas a publicações de 2014 a 2026. Os grupos G1 a
+Pesquisas executadas em \dataPesquisa{}, restringidas a publicações de 2014 a
+2026. O ACM Digital Library e a Web of Science não foram pesquisados
+(Secção~\ref{sec:string}); a \emph{string} secundária não pôde ser executada no
+ScienceDirect por exceder o limite de operadores booleanos. Os grupos G1 a
 G3 são os da Tabela~\ref{tab:grupos}; nas \emph{strings} secundárias acrescenta-se,
 com \texttt{AND}, o grupo G4.
 
@@ -19,38 +22,17 @@ OR "All Metadata":"publish/subscribe" OR "All Metadata":"publish-subscribe"
 OR "All Metadata":"machine-to-machine" OR "All Metadata":M2M)\\
 Filtro: Year 2014--2026; Conferences, Journals.}
 
-\subsection*{Scopus}
-\str{TITLE-ABS-KEY ( ( "MQTT" OR "MQTT-SN" OR "MQ Telemetry Transport"
-OR "Message Queuing Telemetry Transport" OR "Message Queue Telemetry Transport" )
-AND ( "security" OR "secure" OR "authentication" OR "authorization" OR "access control"
+\subsection*{Scopus (\emph{Advanced document search})}
+\str{TITLE-ABS-KEY(("MQTT" OR "MQTT-SN" OR "MQ Telemetry Transport"
+OR "Message Queuing Telemetry Transport" OR "Message Queue Telemetry Transport")
+AND ("security" OR "secure" OR "authentication" OR "authorization" OR "access control"
 OR "encryption" OR "confidentiality" OR "integrity" OR "privacy" OR attack* OR vulnerabilit*
-OR "intrusion" )
-AND ( "Internet of Things" OR "IoT" OR "IIoT" OR "publish/subscribe" OR "publish-subscribe"
-OR "machine-to-machine" OR "M2M" ) )
-AND PUBYEAR > 2013 AND PUBYEAR < 2027
-AND ( LIMIT-TO ( DOCTYPE , "ar" ) OR LIMIT-TO ( DOCTYPE , "cp" ) )
-AND ( LIMIT-TO ( LANGUAGE , "English" ) OR LIMIT-TO ( LANGUAGE , "Portuguese" ) )}
-
-\subsection*{ACM Digital Library (pesquisa avançada, campos \emph{Title}, \emph{Abstract}, \emph{Keywords})}
-\str{[[Title: "mqtt"] OR [Abstract: "mqtt"] OR [Keywords: "mqtt"]
-OR [Abstract: "message queuing telemetry transport"] OR [Abstract: "mq telemetry transport"]]
-AND [[Abstract: security] OR [Abstract: secure] OR [Abstract: authentication]
-OR [Abstract: authorization] OR [Abstract: "access control"] OR [Abstract: encryption]
-OR [Abstract: confidentiality] OR [Abstract: integrity] OR [Abstract: privacy]
-OR [Abstract: attack*] OR [Abstract: vulnerabilit*] OR [Abstract: intrusion]]
-AND [[Abstract: "internet of things"] OR [Abstract: iot] OR [Abstract: iiot]
-OR [Abstract: "publish/subscribe"] OR [Abstract: "publish-subscribe"]
-OR [Abstract: "machine-to-machine"] OR [Abstract: m2m]]\\
-Filtro: Publication Date 2014--2026.}
-
-\subsection*{Web of Science (Core Collection, campo \emph{Topic})}
-\str{TS=( ("MQTT" OR "MQTT-SN" OR "MQ Telemetry Transport" OR "Message Queuing Telemetry Transport"
-OR "Message Queue Telemetry Transport")
-AND (security OR secure OR authentication OR authorization OR "access control" OR encryption
-OR confidentiality OR integrity OR privacy OR attack* OR vulnerabilit* OR intrusion)
-AND ("Internet of Things" OR IoT OR IIoT OR "publish/subscribe" OR "publish-subscribe"
-OR "machine-to-machine" OR M2M) )\\
-Filtro: PY=(2014-2026); Document Types: Article, Proceedings Paper.}
+OR "intrusion")
+AND ("Internet of Things" OR "IoT" OR "IIoT" OR "publish/subscribe" OR "publish-subscribe"
+OR "machine-to-machine" OR "M2M"))
+AND PUBYEAR > 2013 AND PUBYEAR < 2027 AND DOCTYPE(ar OR cp)
+AND LANGUAGE(english OR portuguese)\\
+Na \emph{string} secundária, \texttt{DOCTYPE(ar OR cp OR re)}, para incluir as revisões.}
 
 \subsection*{ScienceDirect (campo \emph{Title, abstract or author-specified keywords})}
 O ScienceDirect não suporta o carácter universal \texttt{*} e limita o número de
@@ -63,6 +45,6 @@ OR authorization OR encryption) AND ("Internet of Things" OR IoT)\\[4pt]
 OR intrusion OR privacy) AND ("Internet of Things" OR IoT)\\
 Filtro: Years 2014--2026; Article types: Research articles.}
 
-\subsection*{\emph{String} secundária (revisões), em todas as bases}
+\subsection*{\emph{String} secundária (revisões), no IEEE Xplore e no Scopus}
 \str{<\emph{string} principal> AND ("systematic literature" OR "systematic review"
 OR "literature review" OR "survey")}

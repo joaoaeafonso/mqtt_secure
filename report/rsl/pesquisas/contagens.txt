@@ -1,0 +1,22 @@
+Data das pesquisas: 01-11-2026
+
+Registos devolvidos (= exportados), por base e string:
+  IEEE Xplore    principal  1442
+  IEEE Xplore    secundaria 32
+  ScienceDirect  principal  214
+  Scopus         principal  2050
+  Scopus         secundaria 60
+
+String principal:
+  identificados           3706
+  removidos por tipo      40
+  duplicados removidos    1216
+  únicos para triagem     2450
+  sem resumo              0
+
+String secundaria:
+  identificados           92
+  removidos por tipo      0
+  duplicados removidos    19
+  únicos para triagem     73
+  sem resumo              0

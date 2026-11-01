@@ -3,101 +3,58 @@
 
 \subsection{Contexto}
 
-A Internet das Coisas (IoT) liga sensores, atuadores e serviços de
-\emph{back-end} que trocam pequenas mensagens, com frequência e, muitas vezes, a
-partir de dispositivos com recursos muito limitados. Entre os protocolos da camada
-de aplicação usados neste domínio~\cite{dizdarevic2019survey}, o
-\emph{Message Queuing Telemetry Transport} (MQTT) impôs-se pela sua simplicidade:
-normalizado pela OASIS nas versões 3.1.1~\cite{oasis-mqtt311} e
-5.0~\cite{oasis-mqtt5}, segue o paradigma publicação/subscrição, no qual os
-clientes nunca comunicam diretamente uns com os outros. Um \emph{publisher}
-envia mensagens para um \emph{tópico} (por exemplo,
-\texttt{fabrica/sala1/temperatura}), e um intermediário, o \emph{broker}, entrega-as
-a todos os clientes cuja subscrição corresponda a esse tópico. Implementações
-abertas como o Eclipse Mosquitto~\cite{light2017mosquitto} tornaram o protocolo
-omnipresente, de casas inteligentes a ambientes industriais e médicos.
+O \emph{Message Queuing Telemetry Transport} (MQTT), normalizado pela OASIS nas
+versões 3.1.1~\cite{oasis-mqtt311} e 5.0~\cite{oasis-mqtt5}, é um dos protocolos
+de mensagens mais usados na Internet das Coisas (IoT)~\cite{vanglabbeek2022flexible}. Segue o paradigma
+publicação/subscrição: um \emph{publisher} envia mensagens para um \emph{tópico}
+(por exemplo, \texttt{fabrica/sala1/temperatura}) e um intermediário, o
+\emph{broker}, entrega-as a todos os clientes subscritos. Os clientes nunca
+comunicam diretamente uns com os outros. Existem implementações abertas e conformes
+à norma, como o Eclipse Mosquitto~\cite{light2017mosquitto}.
 
 \subsection{Problema}
 
-A especificação do MQTT trata a segurança como responsabilidade da
-implementação: oferece um campo de nome de utilizador e palavra-passe no pedido de
-ligação e recomenda o uso de TLS, mas não define proteção da mensagem em si.
-Daqui resultam três problemas que estruturam este trabalho.
+A especificação deixa a segurança à implementação, que a obtém tipicamente com
+TLS~\cite[§5]{oasis-mqtt311}; oferece nome de utilizador e palavra-passe na
+ligação, mas não protege a mensagem em si. Daqui
+resultam três problemas.
 
 \begin{enumerate}[label=\textbf{P\arabic*.}, leftmargin=*]
   \item \textbf{O \emph{broker} é um ponto de confiança total.} O TLS protege
     apenas cada salto cliente--\emph{broker}~\cite{rfc8446}. No \emph{broker}, as
-    mensagens existem em claro: quem o comprometer, ou qualquer cliente a quem
-    uma lista de controlo de acessos mal configurada permita subscrever o filtro
-    \texttt{\#}, vê e pode reencaminhar todo o tráfego~\cite{andy2017attack,
-    segarra2020mqttz}.
-  \item \textbf{Uma mensagem autêntica pode ser repetida ou desviada.} Mesmo uma
-    mensagem criptograficamente autêntica pode ser capturada e repetida mais tarde,
-    ou publicada num tópico diferente daquele para que foi criada. A autenticação
-    não impede estes ataques: são precisos, em separado, um carimbo temporal
-    autenticado (validade temporal), números de sequência (anti-repetição) e a
-    ligação criptográfica ao tópico.
-  \item \textbf{Comprometimento de dispositivos.} Num parque com milhares de
-    dispositivos, alguns acabarão comprometidos. Se uma chave válida puder
-    publicar em qualquer tópico, um único dispositivo comprometido pode fazer-se
-    passar por todos os outros, e o incidente de botnets como a
-    Mirai~\cite{kolias2017mirai} mostra a escala que estes ataques podem atingir.
+    mensagens existem em claro~\cite{segarra2020mqttz}: quem o comprometer vê todo o
+    tráfego, e um cliente autorizado a subscrever o filtro \texttt{\#} recebe as
+    mensagens de todos os tópicos que não começam por
+    \texttt{\$}~\cite[§4.7]{oasis-mqtt311}.
+  \item \textbf{Uma mensagem autêntica pode ser repetida ou desviada.} A
+    autenticação não impede que uma mensagem válida seja capturada e repetida mais
+    tarde, nem publicada noutro tópico. São precisos, em separado, validade
+    temporal, anti-repetição e ligação ao tópico.
+  \item \textbf{Comprometimento de dispositivos.} Se uma chave válida puder
+    publicar em qualquer tópico, um único dispositivo comprometido faz-se passar
+    por todos os outros.
 \end{enumerate}
 
-A literatura propõe numerosas soluções parciais, desde esquemas de autenticação
-e autorização a cifras baseadas em atributos e ambientes de execução confiáveis,
-mas é difícil perceber que propriedades cada uma garante, que ameaças deixa por
-tratar e como se combinam. É este o problema que a revisão endereça:
-\emph{que mecanismos de segurança propõe o estado da arte para comunicações
-baseadas em MQTT, que propriedades garantem e que lacunas persistem?}
+A pergunta que a revisão procura responder é: \emph{que mecanismos de segurança
+propõe o estado da arte para comunicações baseadas em MQTT, que propriedades
+garantem e que lacunas persistem?}
 
-\subsection{Objetivos}
+\subsection{Objetivos e estrutura}
 
 \begin{enumerate}[label=\textbf{O\arabic*.}, leftmargin=*]
-  \item Conduzir uma revisão sistemática da literatura, segundo um protocolo
-    explícito e reprodutível~\cite{kitchenham2007, page2021prisma}, sobre
-    mecanismos de segurança para o MQTT.
-  \item Classificar as soluções encontradas numa taxonomia e compará-las segundo
-    um conjunto comum de propriedades de segurança e de avaliação.
-  \item Comparar a presente revisão com as revisões já publicadas sobre o tema.
-  \item Identificar as lacunas do estado da arte e, a partir delas, propor uma
-    arquitetura de segurança em camadas, descrita formalmente.
-  \item Definir o objetivo e o plano experimental da segunda parte do projeto:
-    medir, num dispositivo restrito (Raspberry Pi), o custo de desempenho e o
-    benefício de segurança de cada camada, para identificar a configuração com a
-    maior proteção e o menor impacto no desempenho.
+  \item Conduzir uma revisão sistemática da literatura com um protocolo explícito e
+    reprodutível~\cite{kitchenham2007, page2021prisma}.
+  \item Classificar as soluções numa taxonomia, compará-las por propriedade de
+    segurança e compará-las com as revisões já publicadas.
+  \item Propor, a partir das lacunas, uma arquitetura de segurança em camadas.
+  \item Definir o plano da segunda parte do projeto: medir, num Raspberry Pi, o
+    custo e o benefício de cada camada.
 \end{enumerate}
 
-\subsection{Contributos}
-
-\begin{itemize}[leftmargin=*]
-  \item Um protocolo de revisão completo (perguntas, PICOC, \emph{strings} por base
-    de dados, critérios de inclusão, exclusão e qualidade, formulário de
-    extração), reutilizável e reprodutível (Secção~\ref{sec:metodologia}).
-  \item Uma comparação de \nIncluidos{} estudos primários e de \nSecundarios{}
-    revisões relacionadas, com uma matriz de propriedades de segurança
-    (Secções~\ref{sec:relacionados} e~\ref{sec:resultados}).
-  \item A formalização de mecanismos que a literatura raramente combina: ligação
-    da mensagem ao tópico, janela anti-repetição, política do recetor contra a
-    redução do nível de proteção e restrição chave--tópico
-    (Secção~\ref{sec:proposta}).
-  \item Uma arquitetura modular cuja implementação de referência é disponibilizada
-    num repositório público~\cite{mqttsecure2026repo}, com documentação técnica
-    completa.
-\end{itemize}
-
-\subsection{Estrutura do documento}
-
-A Secção~\ref{sec:enquadramento} apresenta os fundamentos: o protocolo MQTT, os
-seus mecanismos nativos de segurança, as primitivas criptográficas relevantes e o
-modelo de ameaças. A Secção~\ref{sec:metodologia} descreve o protocolo da revisão
-sistemática. A Secção~\ref{sec:relacionados} analisa as revisões já publicadas e
-justifica a presente. A Secção~\ref{sec:resultados} apresenta os resultados: a
-caracterização estatística dos estudos, a taxonomia, a comparação detalhada e as
-respostas às perguntas de investigação. A Secção~\ref{sec:proposta} propõe a
-arquitetura em camadas e posiciona-a face aos trabalhos relacionados. A
-Secção~\ref{sec:plano} define o objetivo e o plano experimental da segunda parte
-do projeto. A Secção~\ref{sec:discussao} discute as lacunas e as ameaças à validade, e a
-Secção~\ref{sec:conclusoes} conclui e aponta o trabalho futuro. Os anexos contêm as
-\emph{strings} de pesquisa adaptadas a cada base de dados e a extração de dados por
-estudo.
+A Secção~\ref{sec:enquadramento} apresenta os fundamentos, a
+Secção~\ref{sec:metodologia} o protocolo da revisão, a
+Secção~\ref{sec:relacionados} as revisões existentes e a
+Secção~\ref{sec:resultados} os resultados. A Secção~\ref{sec:proposta} propõe a
+arquitetura, a Secção~\ref{sec:plano} planeia a segunda parte, a
+Secção~\ref{sec:discussao} discute as lacunas e as ameaças à validade, e a
+Secção~\ref{sec:conclusoes} conclui.

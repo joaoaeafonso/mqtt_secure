@@ -1,32 +1,27 @@
 \section*{Resumo}
 \addcontentsline{toc}{section}{Resumo}
 
-O protocolo MQTT tornou-se o padrão \emph{de facto} para a troca de mensagens na
-Internet das Coisas, mas a sua especificação deixa a segurança quase inteiramente
-ao critério de quem o implementa. Como todas as mensagens atravessam um
-\emph{broker}, a proteção do canal com TLS não basta: termina no próprio
-\emph{broker}, que passa a ver, guardar e reencaminhar todo o conteúdo, e não
-impede a repetição de mensagens, a injeção por clientes legítimos nem o abuso de
-uma chave comprometida. Este trabalho apresenta uma revisão sistemática da
-literatura sobre mecanismos de segurança para comunicações baseadas em MQTT,
-conduzida segundo um protocolo explícito: perguntas de investigação, critérios
-PICOC, \emph{strings} de pesquisa com grupos de sinónimos, critérios de inclusão,
-exclusão e qualidade, leitura em três passagens e formulário de extração de dados.
-Analisam-se \nIncluidos{} estudos primários publicados entre 2015 e 2026 e cinco revisões
-relacionadas, classificados numa taxonomia de oito categorias e comparados segundo
-as propriedades de segurança que garantem. A comparação mostra que a literatura
-trata sobretudo confidencialidade, autenticação e integridade, mas raramente
-reporta, em conjunto, a ligação criptográfica da mensagem ao tópico, a validade
-temporal e a proteção contra repetição, a política do recetor contra a redução do nível de proteção e a
-restrição dos tópicos em que cada chave pode publicar. Com base nestas lacunas,
-propõe-se uma arquitetura de segurança em camadas, composta por camadas
-independentes e comutáveis entre a aplicação e o transporte, que combina defesa no
-transporte, um envelope fim-a-fim com AES-256-GCM ou Ed25519 e limitação de
-tráfego antes de qualquer operação criptográfica. Por fim, define-se o objetivo e o
-plano da segunda parte do projeto: implementar a arquitetura e medir, num
-dispositivo restrito (Raspberry Pi), o custo de desempenho e os ataques impedidos
-por cada camada e combinação de camadas, para identificar a configuração que
-oferece a maior proteção com o menor impacto no desempenho.
+O MQTT é um dos protocolos de mensagens mais usados na Internet das Coisas, mas deixa a
+segurança à implementação. Como todas as mensagens atravessam um \emph{broker}, o
+TLS não basta: termina no próprio \emph{broker}, que vê todo o conteúdo, e não
+impede a repetição de mensagens nem o abuso de uma chave comprometida. Este trabalho
+apresenta uma revisão sistemática da literatura sobre mecanismos de segurança para
+o MQTT, conduzida segundo um protocolo explícito (perguntas de investigação, PICOC,
+\emph{strings} de pesquisa, critérios de inclusão e exclusão, e extração de
+dados). As pesquisas no IEEE Xplore, no Scopus e no ScienceDirect devolveram
+\nTriados{} registos únicos, triados por título e resumo; \nIncluidos{} estudos
+primários (2015--2026) e cinco revisões relacionadas foram analisados em texto
+integral, classificados numa taxonomia de oito categorias e comparados pelas
+propriedades de segurança que garantem. A literatura trata sobretudo
+confidencialidade, autenticação e integridade. A validade temporal, a deteção de
+duplicados, a ligação ao tópico e o não repúdio existem, mas isolados em poucos
+estudos, e a maioria das soluções confia no \emph{broker}. Daqui resulta a
+proposta: propõe-se uma arquitetura em
+camadas comutáveis, com defesa no transporte, um envelope fim-a-fim com AES-256-GCM
+(ou ChaCha20-Poly1305) ou Ed25519 e limitação de tráfego antes de qualquer operação criptográfica, e
+planeia-se a segunda parte do projeto: medir, num Raspberry Pi, o custo e os
+ataques impedidos por cada camada, para escolher a configuração com a maior
+proteção e o menor impacto no desempenho.
 
 \vspace{0.6cm}
 \noindent\textbf{Palavras-chave:} MQTT; Internet das Coisas; segurança fim-a-fim;
