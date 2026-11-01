@@ -31,6 +31,12 @@
 
 \hypersetup{pdftitle={\Titulo: \Subtitulo}, pdfsubject={SRSI -- Projeto, Parte 1}}
 
+% Páginas só com tabelas/figuras começam no topo (por omissão o LaTeX centra-as)
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
 \begin{document}
 
 % ------------------------------------------------------------- capa -------

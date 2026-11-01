@@ -31,10 +31,9 @@ carregar a pasta `report/` inteira e usar o compilador pdfLaTeX.
 | Ficheiro | Conteúdo |
 |---|---|
 | `processar.py` | junta as exportações das bases, remove tipos não admitidos e duplicados, escreve `pesquisas/contagens.txt` e os CSV de `dados/` |
-| `pesquisas/contagens.txt` | registos devolvidos por base e consulta (data das pesquisas: 01-11-2026) |
+| `pesquisas/contagens.txt` | registos devolvidos por base e consulta |
 | `dados/decisoes-triagem.csv` | decisão (I/E/D) e critério de cada um dos 2450 registos do `processar.py` (um só revisor); D marca 5 duplicados por título identificados depois da triagem |
 | `dados/revisoes-decisoes.csv` | decisão e critério (RV1, RV2) de cada uma das 121 revisões candidatas |
-| `rastreabilidade.md` | para cada afirmação e cada célula das tabelas, a secção, a página e o excerto da fonte; fundamento de cada pontuação de qualidade |
 
 As exportações das bases e os PDFs dos estudos (`pesquisas/*/`, `textos/`) e os CSV
 com resumos não são publicados, por direitos de autor.
