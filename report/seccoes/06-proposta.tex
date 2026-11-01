@@ -3,7 +3,7 @@
 
 Esta secção propõe uma arquitetura que responde às lacunas identificadas; a sua
 avaliação experimental é objeto da segunda parte do projeto
-(Secção~\ref{sec:plano}), na qual a arquitetura será implementada.
+(Secção~\ref{sec:plano}), na qual a implementação da arquitetura será concluída.
 
 % ---------------------------------------------------------------------------
 \subsection{Princípios de desenho}
@@ -45,18 +45,17 @@ para descartar inundações antes de qualquer operação criptográfica.
       seta/.style={-{Stealth[length=2mm]}, thick, iscte},
       nota/.style={font=\scriptsize, text=cinza, align=left, text width=7.4cm}]
     \node[ext] (app) {Aplicação};
-    \node[camada, below=0.35cm of app] (pers) {Persistência (opcional)};
-    \node[camada, below=0.35cm of pers] (sec) {\textbf{Segurança da mensagem}};
+    \node[camada, below=0.35cm of app] (sec) {\textbf{Segurança da mensagem}};
     \node[camada, below=0.6cm of sec] (lim) {Limitação de tráfego};
     \node[ext, below=0.35cm of lim] (mqtt) {Transporte MQTT\\\scriptsize TLS / mTLS};
     \node[ext, below=0.6cm of mqtt, fill=iscte!10] (brk) {\emph{Broker}\\\scriptsize autenticação, ACL, limites};
-    \foreach \a/\b in {app/pers, pers/sec, sec/lim, lim/mqtt}
+    \foreach \a/\b in {app/sec, sec/lim, lim/mqtt}
       \draw[seta] ([xshift=-0.6cm]\a.south) -- ([xshift=-0.6cm]\b.north);
-    \foreach \a/\b in {pers/app, sec/pers, lim/sec, mqtt/lim}
+    \foreach \a/\b in {sec/app, lim/sec, mqtt/lim}
       \draw[seta, acento] ([xshift=0.6cm]\a.north) -- ([xshift=0.6cm]\b.south);
     \draw[seta, <->] (mqtt) -- (brk);
-    \node[font=\scriptsize, text=iscte, left=0.1cm of pers.west, anchor=east] {saída $\downarrow$};
-    \node[font=\scriptsize, text=acento, right=0.1cm of pers.east, anchor=west] {$\uparrow$ entrada};
+    \node[font=\scriptsize, text=iscte, left=0.1cm of app.west, anchor=east] {saída $\downarrow$};
+    \node[font=\scriptsize, text=acento, right=0.1cm of app.east, anchor=west] {$\uparrow$ entrada};
     \node[nota, right=0.9cm of sec] (n1) {Envelope fim-a-fim: AES-256-GCM ou ChaCha20-Poly1305, GMAC ou
       Ed25519; tópico nos dados associados; validade temporal; janela anti-repetição;
       política de modos; restrição chave--tópico.};
@@ -91,12 +90,19 @@ e limites de tamanho de pacote e de ligações. Esta camada restringe quem fala 
 \label{sec:envelope}
 
 A camada de segurança substitui o conteúdo de cada mensagem por um
-\emph{envelope}: um cabeçalho fixo de 25 octetos (identificador do formato, versão,
-modo, identificador de chave, número de sequência, instante em milissegundos e
-comprimento do \emph{nonce}), seguido do \emph{nonce} e do corpo.
+\emph{envelope}: um cabeçalho fixo de 25 octetos, com o identificador do formato (2),
+a versão (1), o modo $\mu$ (1), o identificador de chave (4), o número de sequência
+(8), o instante em milissegundos (8) e o comprimento do \emph{nonce} (1), seguido do
+\emph{nonce} e do corpo. O \emph{nonce} é aleatório, de 96 bits, gerado por um
+gerador criptográfico em cada mensagem; por isso, a rotação de chaves por época terá de
+ocorrer antes do limite de $2^{32}$ cifras por chave (Secção~\ref{sec:primitivas}). O
+campo de comprimento permite um \emph{nonce} vazio no modo de assinatura, que não o
+usa.
 
 \paragraph{Dados associados e ligação ao tópico.} Sendo $\mathit{cab}$ o cabeçalho,
-$N$ o \emph{nonce} e $\tau$ o tópico MQTT, os dados associados são
+$N$ o \emph{nonce}, $\tau$ o tópico MQTT, $|\tau|$ o seu comprimento em octetos e
+$\operatorname{u16}(\cdot)$ a codificação de um inteiro em 2 octetos, os dados
+associados são
 \begin{equation}
   A = \mathit{cab} \,\|\, N \,\|\, \operatorname{u16}(|\tau|) \,\|\, \tau .
   \label{eq:aad}
@@ -106,15 +112,17 @@ republicada noutro tópico falha a verificação, e nenhum campo do cabeçalho p
 alterado.
 
 \paragraph{Modos de proteção.} O remetente escolhe um de três modos, indicado no
-cabeçalho:
+cabeçalho (Eqs.~\eqref{eq:modo-cifra}--\eqref{eq:modo-sign}, que instanciam a
+Eq.~\eqref{eq:aead-enc}):
 \begin{align}
   \textbf{cifra:}\quad & \mathit{corpo} = C \,\|\, T, & (C, T) &= \operatorname{AES\text{-}GCM.Enc}(K, N, P, A); \label{eq:modo-cifra}\\
-  \textbf{autenticação:}\quad & \mathit{corpo} = P \,\|\, T, & T &= \operatorname{AES\text{-}GCM.Enc}(K, N, \varnothing, A \,\|\, P); \label{eq:modo-auth}\\
-  \textbf{assinatura:}\quad & \mathit{corpo} = P \,\|\, \sigma, & \sigma &= \operatorname{Ed25519.Sign}(\mathit{sk}, A \,\|\, P),\ N = \varnothing. \label{eq:modo-sign}
+  \textbf{autenticação:}\quad & \mathit{corpo} = P \,\|\, T, & (\varnothing, T) &= \operatorname{AES\text{-}GCM.Enc}(K, N, \varnothing, A \,\|\, P); \label{eq:modo-auth}\\
+  \textbf{assinatura:}\quad & \mathit{corpo} = P \,\|\, \mathit{sig}, & \mathit{sig} &= \operatorname{Ed25519.Sign}(\mathit{sk}, A \,\|\, P),\ N = \varnothing. \label{eq:modo-sign}
 \end{align}
 O modo de cifra garante confidencialidade e integridade; o de autenticação (GMAC)
-garante integridade com o conteúdo legível; o de assinatura acrescenta prova de
-origem, porque o recetor só guarda chaves públicas. Nos modos de cifra e de
+garante integridade com o conteúdo legível; o de assinatura troca a
+confidencialidade pela prova de origem, porque deixa o conteúdo legível e o recetor
+só guarda chaves públicas. Nenhum modo dá, sozinho, as duas propriedades. Nos modos de cifra e de
 autenticação, o AES-256-GCM poderá ser substituído pelo
 ChaCha20-Poly1305~\cite[§2.8]{rfc8439}, a alternativa para processadores sem AES
 em \emph{hardware}. O algoritmo será um atributo da chave identificada no
@@ -124,9 +132,9 @@ por mensagem é de 53 octetos nos modos de cifra e de autenticação (cabeçalho
 de 12 e etiqueta de 16) e de 89 no modo de assinatura (cabeçalho e assinatura de 64).
 
 \paragraph{Política do recetor contra a redução do nível de proteção.} Cada recetor
-mantém o conjunto $\mathcal{A} \subseteq \{\text{cifra}, \text{autenticação},
+mantém o conjunto $\mathcal{M} \subseteq \{\text{cifra}, \text{autenticação},
 \text{assinatura}\}$ dos modos que aceita e rejeita qualquer envelope cujo modo
-$\mu \notin \mathcal{A}$. Como $\mu$ faz parte de $A$, não pode ser alterado sem
+$\mu \notin \mathcal{M}$. Como $\mu$ faz parte de $A$, não pode ser alterado sem
 invalidar a etiqueta.
 
 % ---------------------------------------------------------------------------
@@ -146,7 +154,7 @@ princípio D4.
     \textbf{\#} & \textbf{Verificação} & \textbf{Justificação da posição} & \textbf{Rejeição} \\
     \midrule
     1 & Formato do envelope & Descarta conteúdo não protegido (por exemplo, injeções em claro) & mensagem malformada \\
-    2 & Modo $\mu \in \mathcal{A}$ & Barato; o modo está em $A$, pelo que mentir sobre ele só pode falhar & modo não aceite \\
+    2 & Modo $\mu \in \mathcal{M}$ & Barato; o modo está em $A$, pelo que mentir sobre ele só pode falhar & modo não aceite \\
     3 & Validade temporal, Eq.~\eqref{eq:validade} & Barato; o instante está em $A$, pelo que alterá-lo invalida a etiqueta & mensagem expirada \\
     4 & Chave conhecida e verificação criptográfica & A partir daqui a mensagem é autêntica; a falha é sempre a mesma, sem revelar a causa (sem oráculo) & falha de autenticação \\
     5 & Restrição chave--tópico, Eq.~\eqref{eq:ligacao} & Só depois da autenticação: entrada não autenticada não pode sondar a política & permissão negada \\
@@ -158,13 +166,16 @@ princípio D4.
 % ---------------------------------------------------------------------------
 \subsection{Validade temporal e anti-repetição}
 
-Usa-se a Eq.~\eqref{eq:validade} com $\Delta_a = 60$~s e $\Delta_s = 5$~s como
+Usa-se a Eq.~\eqref{eq:validade} com $\Delta_{\mathrm{id}} = 60$~s e $\Delta_{\mathrm{rel}} = 5$~s como
 valores por omissão, que deverão ser ajustáveis por fluxo (uma ordem a um atuador pode exigir uma
 validade mais curta do que uma leitura de telemetria), e a
-janela da Eq.~\eqref{eq:janela} com $w = 64$, por identificador de chave. Os dois
+janela da Eq.~\eqref{eq:janela} com $w = 64$, o valor recomendado na RFC~4303~\cite[§3.4.3]{rfc4303},
+por identificador de chave. Os valores de $\Delta_{\mathrm{id}}$ e $\Delta_{\mathrm{rel}}$ são iniciais, sem
+fundamentação empírica, e serão calibrados na segunda parte, a partir da latência
+medida e do desvio de relógio observado no laboratório. Os dois
 mecanismos são complementares: a validade temporal sozinha deixa passar repetições
-com menos de $\Delta_a$; a janela sozinha perde o estado num reinício do recetor,
-caso em que a validade temporal limita a exposição a $\Delta_a$. O número de
+com menos de $\Delta_{\mathrm{id}}$; a janela sozinha perde o estado num reinício do recetor,
+caso em que a validade temporal limita a exposição a $\Delta_{\mathrm{id}}$. O número de
 janelas é limitado (princípio D5), e os limites do GCM e do espaço de sequências
 impõem a rotação das chaves. Um duplicado legítimo do QoS~1 é rejeitado pela
 janela como qualquer repetição, o que é o comportamento pretendido: a camada MQTT
@@ -180,15 +191,16 @@ dispositivo comprometido não publique, com a sua chave válida, nos tópicos do
 outros (problema P3), cada chave tem um dono $\operatorname{dono}(k)$ e o recetor
 aplica regras de negação por omissão. Sendo $F_k$ as regras específicas da chave,
 $F_\ast$ os padrões gerais e $\sigma_k$ a substituição
-$\{\texttt{\%u} \mapsto \operatorname{dono}(k),\ \texttt{\%k} \mapsto k\}$:
+$\{\texttt{\%u} \mapsto \operatorname{dono}(k),\ \texttt{\%k} \mapsto \operatorname{id}(k)\}$,
+com $\operatorname{id}(k)$ o identificador da chave:
 \begin{equation}
   \operatorname{autorizada}(k, \tau) \iff
   \exists f \in F_k \cup \sigma_k(F_\ast) :\ \operatorname{corr}(f, \tau),
   \label{eq:ligacao}
 \end{equation}
 com $\operatorname{corr}$ como na Secção~\ref{sec:mqtt}. Por exemplo, com o padrão
-\texttt{+/sensors/\%u/\#}, a chave de \texttt{sensor-7} só pode publicar em
-\texttt{open/sensors/sensor-7/\dots} e \texttt{restricted/sensors/sensor-7/\dots}.
+\texttt{sensors/\%u/\#}, a chave de \texttt{sensor-7} só pode publicar em
+\texttt{sensors/sensor-7} e nos seus subtópicos.
 
 % ---------------------------------------------------------------------------
 \subsection{Gestão de chaves}
@@ -228,7 +240,10 @@ mede.
 
 A Tabela~\ref{tab:proposta-vs} compara a proposta com os trabalhos mais próximos,
 acrescentando três mecanismos: ligação ao tópico (LT), política contra a redução do
-nível de proteção (RN) e restrição chave--tópico (CT).
+nível de proteção (RN) e restrição chave--tópico (CT). As propriedades da proposta
+são as do desenho, ainda por confirmar na segunda parte; C e NR ficam como
+parciais porque dependem do modo escolhido (cifra ou assinatura), e Au porque, nos
+modos AES, as ordens usam uma chave de grupo (Secção~\ref{sec:limitacoes}).
 
 \begin{table}[ht]
   \centering
@@ -247,27 +262,29 @@ nível de proteção (RN) e restrição chave--tópico (CT).
       & \textbf{D} & \textbf{P} & \textbf{BnC} & \textbf{LT} & \textbf{RN} & \textbf{CT} & \textbf{Com.} \\
     \midrule
     \E{01} & Singh et al.~\cite{singh2015secure}
-      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Nr \\
-    \E{05} & Calabretta et al.~\cite{calabretta2018mqttauth}
-      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & \Parc & \Nr & \Nr & \Nr \\
-    \E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr \\
-    \E{08} & Malina et al.~\cite{malina2019secure}
-      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Sim & \Nao & \Sim & \Parc & \Nr & \Parc \\
-    \E{09} & Sadio et al.~\cite{sadio2019lightweight}
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
-    \E{12} & Segarra et al.~\cite{segarra2020mqttz}
+      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
+    \E{04} & Calabretta et al.~\cite{calabretta2018mqttauth}
+      & \Sim & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & \Parc & \Nr & \Parc & \Nr \\
+    \E{05} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
+      & \Sim & \Sim & \Nao & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{06} & Malina et al.~\cite{malina2019secure}
+      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Parc & \Nao & \Sim & \Parc & \Parc & \Parc \\
+    \E{07} & Sadio et al.~\cite{sadio2019lightweight}
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr \\
+    \E{10} & Segarra et al.~\cite{segarra2020mqttz}
       & \Sim & \Nr & \Sim & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & \Nr & \Nr \\
-    \E{13} & Dahlmanns et al.~\cite{dahlmanns2021entrust}
+    \E{11} & Dahlmanns et al.~\cite{dahlmanns2021entrust}
       & \Sim & \Sim & \Sim & \Sim & \Nr & \Sim & \Nr & \Parc & \Nr & \Sim & \Parc & \Nr & \Parc & \Nr \\
-    \E{16} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible}
-      & \Parc & \Sim & \Sim & \Nr & \Parc & \Parc & \Sim & \Nr & \Sim & \Parc & \Nr & \Nr & \Nr & \Parc \\
-    \E{19} & Javadi et al.~\cite{javadi2026cmap}
-      & \Parc & \Parc & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Nr \\
+    \E{12} & Spielvogel et al.~\cite{spielvogel2021tls}
+      & \Parc & \Parc & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & \Nr & \Parc & \Nr & \Nr \\
+    \E{14} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible}
+      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Parc & \Parc & \Sim & \Nr & \Nr & \Parc \\
+    \E{17} & Javadi et al.~\cite{javadi2026cmap}
+      & \Parc & \Parc & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nao & \Nr & \Nr & \Nr & \Nr \\
     \midrule
     \rowcolor{fundotab}
     --- & \textbf{Proposta}
-      & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Sim & \Parc & \Nao & \Sim & \Sim & \Sim & \Sim & \Sim \\
+      & \Parc & \Sim & \Parc & \Sim & \Sim & \Sim & \Parc & \Parc & \Nao & \Sim & \Sim & \Sim & \Sim & \Sim \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -277,10 +294,12 @@ anonimato~\cite{buccafurri2023mqtta}, não protege o \emph{broker} com um
 TEE~\cite{segarra2020mqttz}, não oferece confidencialidade por
 atributos~\cite{singh2015secure} e não tem prova formal~\cite{javadi2026cmap}. O que
 a distingue é combinar, no mesmo recetor e sem confiar no \emph{broker},
-propriedades que a literatura trata isoladas (Secção~\ref{sec:discussao}).
+propriedades que os estudos analisados tratam isoladas ou só em parte
+(Secção~\ref{sec:discussao}).
 
 % ---------------------------------------------------------------------------
 \subsection{Limitações conhecidas}
+\label{sec:limitacoes}
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{Chaves pré-partilhadas}: a distribuição inicial assume um canal

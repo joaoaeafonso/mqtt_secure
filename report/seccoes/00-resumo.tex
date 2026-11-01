@@ -4,19 +4,23 @@
 O MQTT é um dos protocolos de mensagens mais usados na Internet das Coisas, mas deixa a
 segurança à implementação. Como todas as mensagens atravessam um \emph{broker}, o
 TLS não basta: termina no próprio \emph{broker}, que vê todo o conteúdo, e não
-impede a repetição de mensagens nem o abuso de uma chave comprometida. Este trabalho
+impede que uma mensagem válida seja repetida ao nível da aplicação, pelo
+\emph{broker} ou por um cliente, nem o abuso de uma chave comprometida. Este trabalho
 apresenta uma revisão sistemática da literatura sobre mecanismos de segurança para
 o MQTT, conduzida segundo um protocolo explícito (perguntas de investigação, PICOC,
 \emph{strings} de pesquisa, critérios de inclusão e exclusão, e extração de
 dados). As pesquisas no IEEE Xplore, no Scopus e no ScienceDirect devolveram
-\nTriados{} registos únicos, triados por título e resumo; \nIncluidos{} estudos
-primários (2015--2026) e cinco revisões relacionadas foram analisados em texto
-integral, classificados numa taxonomia de oito categorias e comparados pelas
-propriedades de segurança que garantem. A literatura trata sobretudo
-confidencialidade, autenticação e integridade. A validade temporal, a deteção de
-duplicados, a ligação ao tópico e o não repúdio existem, mas isolados em poucos
-estudos, e a maioria das soluções confia no \emph{broker}. Daqui resulta a
-proposta: propõe-se uma arquitetura em
+\nTotalIdentificados{} registos; sem duplicados e tipos não admitidos, \nTriados{}
+foram triados por título e resumo, e \nElegiveis{} considerados elegíveis. Destes, analisou-se em texto integral uma seleção
+intencional de \nIncluidos{} estudos primários (2015--2026), avaliados quanto à
+qualidade, classificados numa taxonomia de oito categorias e comparados pelas
+propriedades de segurança que garantem, a par de cinco revisões relacionadas. Os
+estudos analisados tratam sobretudo confidencialidade, autenticação e integridade.
+A validade temporal, a deteção de duplicados, a ligação ao tópico e o não repúdio
+existem, mas em poucos estudos e, nas mensagens publicadas, nunca a validade
+temporal com a deteção de duplicados; e em oito dos 16 mecanismos a confiança no
+\emph{broker} é assumida (cinco) ou não é tratada (três). Propõe-se, por isso, uma
+arquitetura em
 camadas comutáveis, com defesa no transporte, um envelope fim-a-fim com AES-256-GCM
 (ou ChaCha20-Poly1305) ou Ed25519 e limitação de tráfego antes de qualquer operação criptográfica, e
 planeia-se a segunda parte do projeto: medir, num Raspberry Pi, o custo e os

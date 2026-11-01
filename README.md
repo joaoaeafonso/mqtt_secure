@@ -4,6 +4,12 @@ Layered security architecture for MQTT-based IoT communication, C++23.
 
 Full documentation, including the Software Design Document, is in [`docs/`](docs/README.md).
 
+The Part 1 report (systematic literature review, proposed architecture and the
+Part 2 evaluation plan) is in [`report/`](report/README.md), with the review data in
+[`report/rsl/`](report/rsl/). The report is theoretical by design; the code in this
+repository is the Part 2 prototype. The report's configurations are K0–K11; K11
+(K8 with ChaCha20-Poly1305) is not implemented yet.
+
 ## Quick start
 
 ```bash

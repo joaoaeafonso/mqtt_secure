@@ -3,12 +3,12 @@
 
 A Tabela~\ref{tab:estudos} identifica os \nIncluidos{} estudos primários
 analisados em texto integral (Secção~\ref{sec:selecao}), numerados por ordem
-cronológica (E01--E19), com o tipo de publicação e a categoria que lhes foi
+cronológica (E01--E17), com o tipo de publicação e a categoria que lhes foi
 atribuída na taxonomia da Secção~\ref{sec:taxonomia}.
 
 \begin{table}[ht]
   \centering
-  \caption{Estudos primários incluídos. Tipo: R revista, C conferência, W
+  \caption{Estudos primários analisados. Tipo: R revista, C conferência, W
     \emph{workshop}. Categorias: ver Figura~\ref{fig:taxonomia}.}
   \label{tab:estudos}
   \footnotesize
@@ -19,24 +19,22 @@ atribuída na taxonomia da Secção~\ref{sec:taxonomia}.
     \textbf{ID} & \textbf{Estudo} & \textbf{Ano} & \textbf{Tipo} & \textbf{Cat.} \\
     \midrule
     \E{01} & Singh et al.~\cite{singh2015secure}               & 2015 & C & C4 &
-    \E{11} & Vaccari et al.~\cite{vaccari2020mqttset}          & 2020 & R & C7 \\
+    \E{10} & Segarra et al.~\cite{segarra2020mqttz}            & 2020 & C & C6 \\
     \E{02} & Niruntasukrat et al.~\cite{niruntasukrat2016authorization} & 2016 & W & C3 &
-    \E{12} & Segarra et al.~\cite{segarra2020mqttz}            & 2020 & C & C6 \\
+    \E{11} & Dahlmanns et al.~\cite{dahlmanns2021entrust}      & 2021 & W & C5 \\
     \E{03} & Rizzardi et al.~\cite{rizzardi2016aups}           & 2016 & R & C3 &
-    \E{13} & Dahlmanns et al.~\cite{dahlmanns2021entrust}      & 2021 & W & C5 \\
-    \E{04} & Andy et al.~\cite{andy2017attack}                 & 2017 & C & C1 &
-    \E{14} & Spielvogel et al.~\cite{spielvogel2021tls}        & 2021 & W & C6 \\
-    \E{05} & Calabretta et al.~\cite{calabretta2018mqttauth}   & 2018 & R & C3 &
-    \E{15} & Prantl et al.~\cite{prantl2021performance}        & 2021 & C & C6 \\
-    \E{06} & Hernández Ramos et al.~\cite{hernandez2018fuzzing} & 2018 & R & C1 &
-    \E{16} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & 2022 & R & C5 \\
-    \E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & 2019 & R & C5 &
-    \E{17} & Buccafurri et al.~\cite{buccafurri2023mqtta}      & 2023 & R & C8 \\
-    \E{08} & Malina et al.~\cite{malina2019secure}             & 2019 & C & C5 &
-    \E{18} & Alotaibi et al.~\cite{alotaibi2024secure}         & 2024 & R & C7 \\
-    \E{09} & Sadio et al.~\cite{sadio2019lightweight}          & 2019 & C & C5 &
-    \E{19} & Javadi et al.~\cite{javadi2026cmap}               & 2026 & R & C2 \\
-    \E{10} & Vaccari et al.~\cite{vaccari2020slowite}          & 2020 & R & C1 & & & & & \\
+    \E{12} & Spielvogel et al.~\cite{spielvogel2021tls}        & 2021 & W & C6 \\
+    \E{04} & Calabretta et al.~\cite{calabretta2018mqttauth}   & 2018 & R & C3 &
+    \E{13} & Prantl et al.~\cite{prantl2021performance}        & 2021 & C & C6 \\
+    \E{05} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & 2019 & R & C5 &
+    \E{14} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & 2022 & R & C5 \\
+    \E{06} & Malina et al.~\cite{malina2019secure}             & 2019 & C & C5 &
+    \E{15} & Buccafurri et al.~\cite{buccafurri2023mqtta}      & 2023 & R & C8 \\
+    \E{07} & Sadio et al.~\cite{sadio2019lightweight}          & 2019 & C & C5 &
+    \E{16} & Alotaibi et al.~\cite{alotaibi2024secure}         & 2024 & R & C7 \\
+    \E{08} & Vaccari et al.~\cite{vaccari2020slowite}          & 2020 & R & C1 &
+    \E{17} & Javadi et al.~\cite{javadi2026cmap}               & 2026 & R & C2 \\
+    \E{09} & Vaccari et al.~\cite{vaccari2020mqttset}          & 2020 & R & C7 & & & & & \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -47,8 +45,8 @@ atribuída na taxonomia da Secção~\ref{sec:taxonomia}.
 
 \paragraph{Publicações por ano (QE1).} A Figura~\ref{fig:por-ano} mostra a
 distribuição temporal dos \nElegiveis{} estudos elegíveis após a triagem. O
-interesse surge logo após a normalização do MQTT~3.1.1 (2014) e cresce de forma
-contínua: os anos de 2023 a 2026 reúnem 410 estudos ($56{,}9\,\%$), e o ano de 2026
+interesse surge logo após a normalização do MQTT~3.1.1 (2014) e tem uma tendência
+crescente, com descidas pontuais em 2020, 2022 e 2025: os anos de 2023 a 2026 reúnem 410 estudos ($57{,}0\,\%$), e o ano de 2026
 está contado só até à data das pesquisas. Destes estudos elegíveis, só
 \nIncluidos{} foram analisados em texto integral (Secção~\ref{sec:selecao}); as
 restantes estatísticas desta secção referem-se a esse conjunto.
@@ -66,17 +64,53 @@ restantes estatísticas desta secção referem-se a esse conjunto.
         axis lines*=left, ymajorgrids, grid style={cinza!25},
         enlarge x limits=0.05]
       \addplot[fill=acento!70, draw=iscte] coordinates {
-        (2014,2) (2015,4) (2016,9) (2017,17) (2018,30) (2019,58) (2020,51)
-        (2021,74) (2022,66) (2023,75) (2024,115) (2025,101) (2026,119)};
+        (2014,2) (2015,4) (2016,9) (2017,16) (2018,30) (2019,58) (2020,51)
+        (2021,74) (2022,65) (2023,75) (2024,115) (2025,101) (2026,119)};
     \end{axis}
   \end{tikzpicture}
   \caption{Estudos elegíveis após a triagem, por ano de publicação ($n = \nElegiveis$; 2026 até à data das pesquisas). Destes, \nIncluidos{} foram analisados em texto integral.}
   \label{fig:por-ano}
 \end{figure}
 
-\paragraph{Tipo de publicação (QE2).} Dos \nIncluidos{} estudos analisados, dez ($52{,}6\,\%$) foram publicados
-em revistas, seis ($31{,}6\,\%$) em conferências e três ($15{,}8\,\%$) em
+\paragraph{Tipo de publicação (QE2).} Dos \nIncluidos{} estudos analisados, nove ($52{,}9\,\%$) foram publicados
+em revistas, cinco ($29{,}4\,\%$) em conferências e três ($17{,}6\,\%$) em
 \emph{workshops}.
+
+\paragraph{Qualidade.}\label{sec:qualidade} A Tabela~\ref{tab:qualidade} pontua os
+estudos nos critérios QA1--QA5 da Secção~\ref{sec:selecao}. A pontuação média é de
+3,5 em 5. Os critérios mais fracos são a disponibilização de código ou dados (QA4,
+sete estudos) e o modelo de ameaças explícito (QA1, pontuação 1 em cinco estudos).
+As pontuações mais baixas (2) são as de Malina et al., sem implementação nem
+limitações declaradas, cujas propriedades na Tabela~\ref{tab:comparacao} assentam
+só no desenho descrito, e de Alotaibi et al., sem código, sem limitações
+declaradas e com comparação externa só qualitativa.
+
+\begin{table}[ht]
+  \centering
+  \caption{Avaliação da qualidade dos estudos analisados (1 cumpre; 0,5 em parte; 0
+    não cumpre ou não encontrado). QA1 modelo de ameaças; QA2 avaliação com
+    implementação; QA3 comparação com referência externa; QA4 código ou dados
+    disponíveis; QA5 limitações declaradas.}
+  \label{tab:qualidade}
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \begin{tabular}{@{}lcccccc@{\hspace{1.4em}}lcccccc@{}}
+    \toprule
+    \textbf{ID} & \textbf{QA1} & \textbf{QA2} & \textbf{QA3} & \textbf{QA4} & \textbf{QA5} & \textbf{Tot.} &
+    \textbf{ID} & \textbf{QA1} & \textbf{QA2} & \textbf{QA3} & \textbf{QA4} & \textbf{QA5} & \textbf{Tot.} \\
+    \midrule
+    \E{01} & 0,5 & 1 & 1 & 0 & 0,5 & 3 & \E{10} & 1 & 1 & 1 & 1 & 1 & 5 \\
+    \E{02} & 0,5 & 1 & 0,5 & 0 & 0,5 & 2,5 & \E{11} & 1 & 1 & 1 & 0 & 0,5 & 3,5 \\
+    \E{03} & 0,5 & 1 & 0,5 & 1 & 0,5 & 3,5 & \E{12} & 0,5 & 1 & 1 & 0 & 1 & 3,5 \\
+    \E{04} & 0,5 & 1 & 1 & 1 & 0,5 & 4 & \E{13} & 0 & 1 & 1 & 1 & 1 & 4 \\
+    \E{05} & 0,5 & 1 & 1 & 0 & 1 & 3,5 & \E{14} & 1 & 1 & 1 & 1 & 1 & 5 \\
+    \E{06} & 0,5 & 0,5 & 1 & 0 & 0 & 2 & \E{15} & 1 & 1 & 1 & 0 & 1 & 4 \\
+    \E{07} & 0 & 1 & 1 & 0 & 1 & 3 & \E{16} & 0,5 & 1 & 0,5 & 0 & 0 & 2 \\
+    \E{08} & 0,5 & 1 & 1 & 0 & 0,5 & 3 & \E{17} & 1 & 1 & 1 & 1 & 0,5 & 4,5 \\
+    \E{09} & 0,5 & 1 & 0,5 & 1 & 0,5 & 3,5 & & & & & & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 % ---------------------------------------------------------------------------
 \subsection{Taxonomia das soluções (QF2)}
@@ -99,7 +133,7 @@ objetivo do seu contributo principal (Figura~\ref{fig:taxonomia}).
     \node[ramo, below left=1.0cm and 2.0cm of r] (a) {Compreender ameaças};
     \node[ramo, below=1.0cm of r] (b) {Proteger ligação e \emph{broker}};
     \node[ramo, below right=1.0cm and 2.0cm of r] (c) {Proteger a mensagem e os dados};
-    \node[folha, below=0.35cm of a] (c1) {C1 Análise de vulnerabilidades e ataques (3)};
+    \node[folha, below=0.35cm of a] (c1) {C1 Análise de vulnerabilidades e ataques (1)};
     \node[folha, below=0.2cm of c1] (c7) {C7 Deteção de intrusões (2)};
     \node[folha, below=0.35cm of b] (c2) {C2 Autenticação (1)};
     \node[folha, below=0.2cm of c2] (c3) {C3 Autorização e controlo de acesso (3)};
@@ -114,16 +148,13 @@ objetivo do seu contributo principal (Figura~\ref{fig:taxonomia}).
     \draw[ligacao] (c1) -- (c7); \draw[ligacao] (c2) -- (c3); \draw[ligacao] (c3) -- (c6);
     \draw[ligacao] (c5) -- (c4); \draw[ligacao] (c4) -- (c8);
   \end{tikzpicture}
-  \caption{Taxonomia dos estudos incluídos, com o número de estudos por categoria.}
+  \caption{Taxonomia dos estudos analisados, com o número de estudos por categoria.}
   \label{fig:taxonomia}
 \end{figure}
 
 \subsubsection{C1 --- Análise de vulnerabilidades e ataques}
 
-Andy et al.~\cite{andy2017attack} mostram que, por omissão, o MQTT não cifra os
-dados e demonstram ataques à privacidade, à autenticação e à integridade. Hernández
-Ramos et al.~\cite{hernandez2018fuzzing} propõem uma técnica de \emph{fuzzing}
-baseada em \emph{templates} que encontrou falhas novas em implementações reais. Vaccari et
+Vaccari et
 al.~\cite{vaccari2020slowite} propõem o SlowITe, um ataque de negação de serviço de
 baixa taxa, eficaz contra serviços reais com e sem cifra.
 
@@ -141,7 +172,9 @@ autenticação, protegidas por \emph{nonces} frescos, e não às mensagens publi
 Niruntasukrat et al.~\cite{niruntasukrat2016authorization} adaptam o OAuth~1.0a a
 nós restritos e mostram atrasos de autorização mínimos numa plataforma real.
 Rizzardi et al.~\cite{rizzardi2016aups} estendem o MQTT com gestão de chaves e
-aplicação de políticas (AUPS, em código aberto). Calabretta et
+aplicação de políticas (AUPS, em código aberto): o nó que publica cifra os dados
+com a chave do tópico antes de os enviar, e o \emph{broker} só recebe o
+criptograma~\cite[§IV, passos 5--7]{rizzardi2016aups}. Calabretta et
 al.~\cite{calabretta2018mqttauth} propõem o MQTT-Auth: o AugPAKE garante a
 confidencialidade e dois \emph{tokens} autenticam e autorizam o acesso a cada
 tópico.
@@ -150,24 +183,31 @@ tópico.
 
 Singh et al.~\cite{singh2015secure} propõem o SMQTT e o SMQTT-SN, que acrescentam
 ao MQTT cifra baseada em atributos com política na chave ou no criptograma
-(KP/CP-ABE) sobre criptografia de curvas elípticas (ECC) leve, avaliada em simulação: só os subscritores com
-atributos compatíveis decifram. A ABE resolve a confidencialidade de grupo, mas com
+(KP/CP-ABE) sobre criptografia de curvas elípticas (ECC) leve: só os subscritores
+com atributos compatíveis decifram. Os autores chamam simulação à avaliação, mas
+esta corre numa implementação (Paho e Mosquitto) em três portáteis que fazem de
+dispositivos IoT~\cite[§VII-A]{singh2015secure}. O artigo é ambíguo quanto ao
+\emph{broker}: atribui-lhe a função de gerador de chaves~\cite[§III-B]{singh2015secure},
+mas afirma que um \emph{broker} comprometido não decifra os dados, por o gerador e
+o \emph{broker} serem entidades separadas, embora não o sejam na implementação
+avaliada~\cite[§VI, §VII-A]{singh2015secure}. A ABE resolve a confidencialidade de grupo, mas com
 um custo computacional elevado para dispositivos restritos.
 
 \subsubsection{C5 --- Proteção leve fim-a-fim da mensagem}
 
 É a categoria mais numerosa. Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities}
 enviam valores sob a forma de HMAC (\emph{Value-to-HMAC}), com melhor desempenho do
-que uma cifra simétrica; os próprios autores remetem para outros mecanismos a
+que uma cifra simétrica; as chaves não ficam no \emph{broker}, e só os nós que as
+têm recuperam os valores~\cite[§5]{dinculeana2019vulnerabilities}. Os próprios autores remetem para outros mecanismos a
 autenticação dos clientes, a distribuição de chaves e a proteção contra
 repetição~\cite[§6]{dinculeana2019vulnerabilities}. Malina et
 al.~\cite{malina2019secure} propõem três níveis de segurança, do simples controlo de
 adulteração à autenticação mútua de todas as partes. Todos assinam com Schnorr uma
 entrada que inclui o nível, o tópico, a identidade do publicador, os dados e um
 carimbo temporal~\cite[§4.5, Eq.~6]{malina2019secure}, o que dá não repúdio e liga a
-mensagem ao tópico. Nos níveis 2 e 3 o carimbo serve de proteção contra
-repetição~\cite[§5.2]{malina2019secure}, mas o \emph{broker} decifra o
-conteúdo~\cite[§4.6]{malina2019secure}. Sadio et al.~\cite{sadio2019lightweight} usam
+mensagem ao tópico. O carimbo é apresentado como proteção contra
+repetição~\cite[§4.5]{malina2019secure}, mas o \emph{broker} decifra o
+conteúdo~\cite[§4.6--4.7]{malina2019secure}. Sadio et al.~\cite{sadio2019lightweight} usam
 ChaCha20-Poly1305 fim-a-fim, com um protótipo em Arduino UNO. Dahlmanns et
 al.~\cite{dahlmanns2021entrust} propõem o ENTRUST: um servidor de chaves distribui,
 segundo uma ACL, uma chave por tópico aos clientes autorizados, sem alterar o
@@ -196,8 +236,9 @@ restabelecimento de ligações.
 
 Vaccari et al.~\cite{vaccari2020mqttset} publicam o MQTTset, um conjunto de dados
 de tráfego MQTT legítimo e de ataques para treinar detetores. Alotaibi et
-al.~\cite{alotaibi2024secure} detetam anomalias em tempo real com um enquadramento
-distribuído (H2O), com os melhores resultados obtidos por XGBoost.
+al.~\cite{alotaibi2024secure} propõem detetar anomalias em tempo real com um
+enquadramento distribuído (H2O) e avaliam-no sobre o MQTTset, com os melhores
+resultados obtidos por XGBoost.
 
 \subsubsection{C8 --- Privacidade e anonimato}
 
@@ -209,8 +250,11 @@ e o destino das mensagens, sem alterar a infraestrutura MQTT.
 \subsection{Comparação dos mecanismos (QF3, QF4)}
 \label{sec:comparacao}
 
-A Tabela~\ref{tab:comparacao} compara os 16 estudos que propõem mecanismos
-(C2 a C8); os três estudos de análise (C1) ficam de fora. Cada célula foi
+A Tabela~\ref{tab:comparacao} compara os 16 estudos das categorias C2 a C8; o
+estudo de análise (C1) fica de fora. O estudo de Prantl et al.\ avalia um mecanismo
+existente (o TLS) em vez de propor um novo, mas é incluído porque as propriedades
+que mede são as desse mecanismo; no texto, \enquote{mecanismos} designa estes 16
+estudos. Cada célula foi
 classificada a partir do texto integral, e a secção ou página que a sustenta está
 registada no ficheiro de rastreabilidade do repositório~\cite{mqttsecure2026repo}.
 \enquote{Não reportado} (\Nr) não equivale a \enquote{ausente por desenho}
@@ -223,8 +267,8 @@ registada no ficheiro de rastreabilidade do repositório~\cite{mqttsecure2026rep
     temporal, R anti-repetição, NR não repúdio, D disponibilidade/deteção, P privacidade.
     BnC: funciona com \emph{broker} não confiável. Aval.: E experimental, F formal,
     S simulação, A analítica. Restr.: avaliado ou desenhado para dispositivos
-    restritos. \Sim{} garantido; \Parc{} parcialmente; \Nao{} não, por desenho;
-    \Nr{} não reportado.}
+    restritos. \Sim{} garantido; \Parc{} parcialmente, ou só em algumas opções ou
+    níveis do mecanismo; \Nao{} não, por desenho; \Nr{} não reportado.}
   \label{tab:comparacao}
   \scriptsize
   \setlength{\tabcolsep}{2.6pt}
@@ -236,44 +280,44 @@ registada no ficheiro de rastreabilidade do repositório~\cite{mqttsecure2026rep
       & \textbf{D} & \textbf{P} & \textbf{BnC} & \textbf{Aval.} & \textbf{Restr.} \\
     \midrule
     \multicolumn{15}{@{}l}{\textit{C2 --- Autenticação}} \\
-    \E{19} & Javadi et al.~\cite{javadi2026cmap}            & Autenticação mútua sem certificados (ECC)
-      & \Parc & \Parc & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & F, E, S & \Sim \\
+    \E{17} & Javadi et al.~\cite{javadi2026cmap}            & Autenticação mútua sem certificados (ECC)
+      & \Parc & \Parc & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nao & F, E, S & \Sim \\
     \multicolumn{15}{@{}l}{\textit{C3 --- Autorização e controlo de acesso}} \\
     \E{02} & Niruntasukrat et al.~\cite{niruntasukrat2016authorization} & OAuth 1.0a adaptado
-      & \Nr & \Nr & \Parc & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & E & \Sim \\
+      & \Nr & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & E & \Sim \\
     \E{03} & Rizzardi et al.~\cite{rizzardi2016aups}        & Gestão de chaves e políticas (AUPS)
-      & \Parc & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & A, E & \Sim \\
-    \E{05} & Calabretta et al.~\cite{calabretta2018mqttauth} & AugPAKE e \emph{tokens} por tópico
-      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & A, E & \Sim \\
+      & \Sim & \Nr & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & A, E & \Sim \\
+    \E{04} & Calabretta et al.~\cite{calabretta2018mqttauth} & AugPAKE e \emph{tokens} por tópico
+      & \Sim & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & A, E & \Sim \\
     \multicolumn{15}{@{}l}{\textit{C4 --- Cifra baseada em atributos}} \\
     \E{01} & Singh et al.~\cite{singh2015secure}            & KP/CP-ABE sobre ECC
-      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & S & \Sim \\
+      & \Sim & \Nr & \Nr & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & E & \Sim \\
     \multicolumn{15}{@{}l}{\textit{C5 --- Proteção leve fim-a-fim da mensagem}} \\
-    \E{07} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & Mapeamento \emph{Value-to-HMAC}
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Nr & E & \Sim \\
-    \E{08} & Malina et al.~\cite{malina2019secure}          & Três níveis de segurança (Schnorr)
-      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Sim & \Nao & A & \Sim \\
-    \E{09} & Sadio et al.~\cite{sadio2019lightweight}       & AEAD ChaCha20-Poly1305
-      & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & E & \Sim \\
-    \E{13} & Dahlmanns et al.~\cite{dahlmanns2021entrust}   & Servidor de chaves por tópico (ENTRUST)
+    \E{05} & Dinculeană e Cheng~\cite{dinculeana2019vulnerabilities} & Mapeamento \emph{Value-to-HMAC}
+      & \Sim & \Sim & \Nao & \Nr & \Nr & \Nao & \Nr & \Nr & \Nr & \Sim & E & \Sim \\
+    \E{06} & Malina et al.~\cite{malina2019secure}          & Três níveis de segurança (Schnorr)
+      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Parc & \Nao & A & \Sim \\
+    \E{07} & Sadio et al.~\cite{sadio2019lightweight}       & AEAD ChaCha20-Poly1305
+      & \Sim & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & E & \Sim \\
+    \E{11} & Dahlmanns et al.~\cite{dahlmanns2021entrust}   & Servidor de chaves por tópico (ENTRUST)
       & \Sim & \Sim & \Sim & \Sim & \Nr & \Sim & \Nr & \Parc & \Nr & \Sim & E & \Sim \\
-    \E{16} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & Três opções com assinatura Schnorr
-      & \Parc & \Sim & \Sim & \Nr & \Parc & \Parc & \Sim & \Nr & \Sim & \Parc & E & \Sim \\
+    \E{14} & Van Glabbeek et al.~\cite{vanglabbeek2022flexible} & Três opções com assinatura Schnorr
+      & \Parc & \Sim & \Sim & \Parc & \Parc & \Parc & \Sim & \Nr & \Parc & \Parc & E & \Sim \\
     \multicolumn{15}{@{}l}{\textit{C6 --- Proteção do broker e do transporte}} \\
-    \E{12} & Segarra et al.~\cite{segarra2020mqttz}         & \emph{Broker} em TEE (TrustZone)
-      & \Sim & \Nr & \Sim & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & E & \Nr \\
-    \E{14} & Spielvogel et al.~\cite{spielvogel2021tls}     & Nível de segurança exigido por salto
-      & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & E & \Nr \\
-    \E{15} & Prantl et al.~\cite{prantl2021performance}     & Avaliação do MQTT sobre TLS
+    \E{10} & Segarra et al.~\cite{segarra2020mqttz}         & \emph{Broker} em TEE (TrustZone)
+      & \Sim & \Nr & \Sim & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & E & \Sim \\
+    \E{12} & Spielvogel et al.~\cite{spielvogel2021tls}     & Nível de segurança exigido por salto
+      & \Parc & \Parc & \Parc & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & E & \Sim \\
+    \E{13} & Prantl et al.~\cite{prantl2021performance}     & Avaliação do MQTT sobre TLS
       & \Sim & \Sim & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nao & E & \Sim \\
     \multicolumn{15}{@{}l}{\textit{C7 --- Deteção de intrusões}} \\
-    \E{11} & Vaccari et al.~\cite{vaccari2020mqttset}       & Conjunto de dados para IDS
+    \E{09} & Vaccari et al.~\cite{vaccari2020mqttset}       & Conjunto de dados para IDS
       & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & E & \Nr \\
-    \E{18} & Alotaibi et al.~\cite{alotaibi2024secure}      & IDS distribuído (H2O, XGBoost)
+    \E{16} & Alotaibi et al.~\cite{alotaibi2024secure}      & IDS distribuído (H2O, XGBoost)
       & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Parc & \Nr & \Nr & E & \Nr \\
     \multicolumn{15}{@{}l}{\textit{C8 --- Privacidade e anonimato}} \\
-    \E{17} & Buccafurri et al.~\cite{buccafurri2023mqtta}   & Rede de \emph{bridges} anónima
-      & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Nr & E & \Nr \\
+    \E{15} & Buccafurri et al.~\cite{buccafurri2023mqtta}   & Rede de \emph{bridges} anónima
+      & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Nr & \Sim & \Parc & E & \Nr \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -281,8 +325,10 @@ registada no ficheiro de rastreabilidade do repositório~\cite{mqttsecure2026rep
 \paragraph{Cobertura das propriedades (QE3).} A Figura~\ref{fig:propriedades}
 contabiliza, para os 16 mecanismos, quantos garantem cada propriedade (total ou
 parcialmente). A confidencialidade é a propriedade mais tratada (12 estudos),
-seguida da autorização (7), da autenticação (7) e da integridade (7). Só quatro
-mecanismos funcionam, total ou parcialmente, com um \emph{broker} não confiável. A
+seguida da autenticação (10), da integridade (9) e da autorização (8). Oito
+mecanismos funcionam com um \emph{broker} não confiável, quatro totalmente e quatro
+parcialmente; nos outros oito, cinco assumem-no de confiança e três não tratam a
+questão. A
 validade temporal, a proteção contra repetição e o não repúdio são raros, mas não
 estão ausentes: o ENTRUST deteta duplicados com um contador por
 publicador~\cite{dahlmanns2021entrust}, e Malina et al.\ e Van Glabbeek et al.\
@@ -296,52 +342,71 @@ um limite de idade com a deteção de duplicados dentro desse limite.
     \begin{axis}[
         xbar stacked, bar width=9pt, width=0.8\textwidth, height=6.4cm,
         xmin=0, xmax=18, xtick={0,2,...,18},
-        symbolic y coords={NR,R,V,D,P,BnC,I,Az,Au,C},
+        symbolic y coords={NR,V,D,R,P,BnC,Az,I,Au,C},
         ytick=data, y tick label style={font=\small},
         xlabel={N.º de mecanismos (de 16)}, xlabel style={font=\small},
         legend style={font=\scriptsize, at={(0.98,0.04)}, anchor=south east},
         axis lines*=left, xmajorgrids, grid style={cinza!25}]
       \addplot[fill=acento!80, draw=iscte] coordinates {
-        (7,C) (6,Au) (5,Az) (6,I) (2,BnC) (3,P) (0,D) (0,V) (1,R) (2,NR)};
+        (8,C) (9,Au) (5,Az) (7,I) (4,BnC) (1,P) (0,D) (0,V) (1,R) (2,NR)};
       \addplot[fill=parcial!60, draw=parcial] coordinates {
-        (5,C) (1,Au) (2,Az) (1,I) (2,BnC) (0,P) (3,D) (2,V) (2,R) (0,NR)};
+        (4,C) (1,Au) (3,Az) (2,I) (4,BnC) (3,P) (3,D) (2,V) (2,R) (0,NR)};
       \legend{Garantida, Parcialmente}
     \end{axis}
   \end{tikzpicture}
-  \caption{Número de mecanismos que garantem cada propriedade de segurança
+  \caption{Número de mecanismos que garantem cada propriedade de segurança, e que
+    funcionam com um \emph{broker} não confiável (BnC), por ordem decrescente
     (siglas como na Tabela~\ref{tab:comparacao}).}
   \label{fig:propriedades}
 \end{figure}
 
-\paragraph{Avaliação (QF4).} Catorze dos 16 mecanismos ($87{,}5\,\%$) reportam
-avaliação experimental; um é avaliado só em simulação~\cite{singh2015secure}, um só
-analiticamente, por contagem de operações~\cite{malina2019secure}, e só um apresenta
-uma prova formal de segurança~\cite{javadi2026cmap}. Onze são desenhados ou
-avaliados para dispositivos restritos, do Arduino UNO~\cite{sadio2019lightweight} e
-do Cortex-M3~\cite{dahlmanns2021entrust} ao Raspberry Pi~\cite{javadi2026cmap}. Nenhum dos estudos analisados mede, no mesmo ensaio, o custo de cada mecanismo e os
+\paragraph{Avaliação (QF4).} Quinze dos 16 mecanismos ($93{,}8\,\%$) reportam
+avaliação experimental com uma implementação; um é avaliado só analiticamente, por
+contagem de operações~\cite{malina2019secure}, e só um apresenta
+uma prova formal de segurança, no modelo do oráculo aleatório~\cite{javadi2026cmap};
+Singh et al.\ enunciam lemas de segurança, mas a demonstração remete para os
+esquemas ABE usados, sem prova própria~\cite[§VI]{singh2015secure}. Treze são desenhados ou
+avaliados para dispositivos restritos, do Arduino UNO~\cite{sadio2019lightweight},
+do ESP8266~\cite{spielvogel2021tls, prantl2021performance} e do
+Cortex-M3~\cite{dahlmanns2021entrust} ao Raspberry Pi~\cite{segarra2020mqttz,
+javadi2026cmap}. Nenhum dos estudos analisados mede, no mesmo ensaio, o custo de cada mecanismo e os
 ataques que ele impede.
 
 % ---------------------------------------------------------------------------
 \subsection{Respostas às perguntas de investigação}
 \label{sec:respostas}
 
-\paragraph{QG e QF2.} Compreender as ameaças, proteger a ligação e o
-\emph{broker}, e proteger a mensagem, sendo esta última a frente mais numerosa
-(Secção~\ref{sec:taxonomia}).
+\paragraph{QG e QF2.} Os estudos analisados propõem mecanismos em três frentes:
+compreender as ameaças, proteger a ligação e o \emph{broker}, e proteger a
+mensagem, sendo esta última a mais numerosa (Secção~\ref{sec:taxonomia}). As
+propriedades que garantem resumem-se na resposta a QF3.
 
-\paragraph{QF1.} Escuta e injeção quando o MQTT é usado sem cifra, o que acontece
-por omissão~\cite{andy2017attack}, negação de serviço que a cifra não
-evita~\cite{vaccari2020slowite}, erros de implementação~\cite{hernandez2018fuzzing}
-e o \emph{broker} como ponto de exposição de todo o
-conteúdo~\cite{segarra2020mqttz, dahlmanns2021entrust}.
+\paragraph{QE1 e QE2.} O número de estudos elegíveis tem uma tendência crescente,
+com 57\,\% em 2023--2026 (Figura~\ref{fig:por-ano}); os estudos analisados são, na
+maioria, artigos de revista (Secção~\ref{sec:estatistica}).
+
+\paragraph{QF1.} Negação de serviço de baixa taxa, que a cifra não
+evita~\cite{vaccari2020slowite}; o \emph{broker} como ponto de exposição de todo o
+conteúdo~\cite{segarra2020mqttz, dahlmanns2021entrust}; a impossibilidade de um
+cliente controlar a proteção dos saltos que não são o seu~\cite{spielvogel2021tls};
+e ataques ao próprio \emph{broker}, como os incluídos nos conjuntos de dados para
+deteção de intrusões~\cite{vaccari2020mqttset, alotaibi2024secure}.
 
 \paragraph{QF3 e QE3.} Ver a Figura~\ref{fig:propriedades}: a confidencialidade
-domina, só quatro mecanismos dispensam a confiança no \emph{broker}, e a validade
-temporal, a anti-repetição e o não repúdio aparecem isolados em três estudos.
+domina, oito dos 16 mecanismos dispensam, total ou parcialmente, a confiança no
+\emph{broker}, e a validade temporal, a anti-repetição e o não repúdio das mensagens
+publicadas aparecem em três estudos, sem que nenhum combine a validade temporal com
+a deteção de duplicados.
 
-\paragraph{QF4.} Sobretudo experimental (14 de 16); uma única prova formal.
+\paragraph{QF4.} Sobretudo experimental (15 de 16); uma única prova formal.
 
-\paragraph{QF5.} O custo da segurança em dispositivos a bateria~\cite{hintaw2023mqtt},
-a inadequação do TLS a nós restritos~\cite{sadio2019lightweight, javadi2026cmap},
-a exposição do conteúdo no \emph{broker}~\cite{segarra2020mqttz} e a impossibilidade
-de um cliente impor a proteção dos restantes saltos~\cite{spielvogel2021tls}.
+\paragraph{QF5.} As limitações que os estudos declaram (QA5 na
+Tabela~\ref{tab:qualidade}; Anexo~\ref{anx:extracao}) agrupam-se em três temas: a
+distribuição de chaves e a proteção contra repetição remetidas para outros
+mecanismos~\cite[§6]{dinculeana2019vulnerabilities}, e a gestão de chaves com
+muitos nós~\cite[§V]{sadio2019lightweight}; o custo do desempenho, como a latência do
+anonimato~\cite{buccafurri2023mqtta}, a execução sequencial no
+TEE~\cite{segarra2020mqttz} ou a recomputação das chaves de tópico a cada
+ligação~\cite{vanglabbeek2022flexible}; e a dependência de terceiros confiáveis,
+como um \emph{broker} semiconfiável e uma CA totalmente
+confiável~\cite{vanglabbeek2022flexible}.

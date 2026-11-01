@@ -34,6 +34,7 @@
 \begin{document}
 
 % ------------------------------------------------------------- capa -------
+\pagenumbering{Alph}
 \begin{titlepage}
   \thispagestyle{empty}
   \centering
@@ -74,8 +75,6 @@
 \clearpage
 \tableofcontents
 \clearpage
-\clearpage
-\clearpage
 
 % --------------------------------------------------------- texto ----------
 \pagenumbering{arabic}
@@ -91,7 +90,9 @@
 
 % ---------------------------------------------------- referências ---------
 \clearpage
-\bibliographystyle{IEEEtran}
+\phantomsection
+\addcontentsline{toc}{section}{\refname}
+\bibliographystyle{IEEEtran-pt}
 \bibliography{referencias}
 
 % -------------------------------------------------------- anexos ----------

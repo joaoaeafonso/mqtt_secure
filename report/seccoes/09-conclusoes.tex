@@ -2,8 +2,10 @@
 \label{sec:conclusoes}
 
 Este trabalho apresentou uma revisão sistemática da literatura sobre segurança em
-comunicações IoT baseadas em MQTT, com \nTriados{} registos triados e \nIncluidos{} estudos primários (2015--2026)
-e \nSecundarios{} revisões relacionadas analisados em texto integral. As principais conclusões são:
+comunicações IoT baseadas em MQTT, com \nTriados{} registos triados, \nElegiveis{}
+elegíveis e uma seleção intencional de \nIncluidos{} estudos primários (2015--2026)
+analisados em texto integral, a par de \nSecundarios{} revisões relacionadas (uma só
+pelo resumo). As conclusões referem-se aos estudos analisados:
 
 \begin{itemize}[leftmargin=*]
   \item O TLS, por terminar no \emph{broker}, não protege as mensagens de um
@@ -12,12 +14,13 @@ e \nSecundarios{} revisões relacionadas analisados em texto integral. As princi
     confidencialidade, a autenticação e a integridade são as propriedades mais
     tratadas.
   \item A validade temporal, a deteção de duplicados, a ligação ao tópico e o não
-    repúdio aparecem em poucos estudos e nunca combinados; a restrição
-    chave--tópico no recetor e a política contra a redução do nível de proteção não
-    aparecem nos estudos analisados; e a maioria das soluções confia no
-    \emph{broker}.
-  \item As avaliações medem o custo dos mecanismos, mas não o relacionam com os
-    ataques impedidos.
+    repúdio aparecem em poucos estudos, e nenhum combina a validade temporal com a
+    deteção de duplicados nas mensagens publicadas; a restrição chave--tópico e a
+    política contra a redução do nível de proteção só aparecem em parte, e nunca
+    aplicadas no próprio recetor; e em oito dos 16 mecanismos a confiança no
+    \emph{broker} é assumida (cinco) ou não é tratada (três).
+  \item As avaliações medem o custo dos mecanismos, mas nenhuma o relaciona com
+    ataques executados no mesmo ensaio.
 \end{itemize}
 
 Com base nestas lacunas, propôs-se, não um mecanismo novo, mas a integração destes

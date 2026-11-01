@@ -50,7 +50,7 @@ R0048,An IoT platform integrated into an energy efficient DC lighting grid,2017,
 R0049,An Offline Online Strategy for IoT Using MQTT,2017,10.1109/cscloud.2017.34,IEEE Xplore,E,CE1
 R0050,Architectural design of token based authentication of MQTT protocol in constrained IoT device,2017,10.1109/tssa.2017.8272933,IEEE Xplore; Scopus,I,
 R0051,Attack scenarios and security analysis of MQTT communication protocol in IoT system,2017,10.1109/eecsi.2017.8239179,IEEE Xplore; Scopus,I,
-R0052,Attack scenarios and security analysis of mqtt communication protocol in iot system,2017,10.11591/eecsi.4.1064,Scopus,I,
+R0052,Attack scenarios and security analysis of mqtt communication protocol in iot system,2017,10.11591/eecsi.4.1064,Scopus,D,duplicado de R0051
 R0053,Automated analysis of secure internet of things protocols,2017,10.1145/3134600.3134624,Scopus,I,
 R0054,Building Hardened Internet-of-Things Clients with Language-Theoretic Security,2017,10.1109/spw.2017.36,IEEE Xplore; Scopus,I,
 R0055,"Choice of effective messaging protocols for IoT systems: MQTT, CoAP, AMQP and HTTP",2017,10.1109/syseng.2017.8088251,IEEE Xplore,E,CE1
@@ -65,7 +65,7 @@ R0063,Elliptic curve based cybersecurity schemes for publish-subscribe internet 
 R0064,"Extensions and enhancements to ""the Secure Remote Update Protocol""",2017,10.3390/fi9040059,Scopus,I,
 R0065,Eyrie smart home automation using Internet of Things,2017,10.1109/sai.2017.8252269,IEEE Xplore; Scopus,E,CE1
 R0066,Implementing publish/subscribe pattern for CoAP in fog computing environment,2017,10.1109/iemcon.2017.8117190,IEEE Xplore; Scopus,E,CE6
-R0067,Implementing publish/subscribe pattern for CoAP in fog computing environment,2017,10.1109/iemcon.2017.8117183,IEEE Xplore; Scopus,E,CE6
+R0067,Implementing publish/subscribe pattern for CoAP in fog computing environment,2017,10.1109/iemcon.2017.8117183,IEEE Xplore; Scopus,D,duplicado de R0066
 R0068,Improving MQTT by inclusion of usage control,2017,10.1007/978-3-319-72389-1_43,Scopus,I,
 R0069,Internet of Things: A review to support IoT architecture's design,2017,10.1109/it-dreps.2017.8277803,IEEE Xplore,E,CE4
 R0070,Internet of things' business impact and its application layer protocol in embedded systems,2017,10.1504/ijie.2017.087007,Scopus,E,CE1
@@ -142,7 +142,7 @@ R0140,Enabling IoT connectivity for Modbus networks by using IoT edge gateways,2
 R0141,Enhanced Industrial Message Protocol for Real-time IoT Platforms,2018,10.5573/ieiespc.2018.7.5.378,Scopus,E,CE1
 R0142,Event-driven SOA-based IoT architecture,2018,10.1007/978-981-10-5520-1_24,Scopus,E,CE1
 R0143,Experiments with Protocols and Frameworks Used in IoT,2018,10.1109/iccomm.2018.8484269,IEEE Xplore,E,CE1
-R0144,Experiments with Protocols and Frameworks used in IoT,2018,10.1109/iccomm.2018.8430170,Scopus,E,CE1
+R0144,Experiments with Protocols and Frameworks used in IoT,2018,10.1109/iccomm.2018.8430170,Scopus,D,duplicado de R0143
 R0145,Extended Model of Secure Communication for Embedded Systems with IoT and MQTT,2018,10.23919/ae.2018.8501434,IEEE Xplore; Scopus,I,
 R0146,Flexible Robotic Teleoperation Architecture Under IEC 61499 Standard for Oil & Gas Process,2018,10.1109/etfa.2018.8502520,IEEE Xplore,E,CE1
 R0147,GeoS4S module real-time geospatial applications,2018,,Scopus,E,CE1
@@ -901,7 +901,7 @@ R0899,Towards an effective deep learning-based intrusion detection system in the
 R0900,Trampoline Over the Air: Breaking in IoT Devices Through MQTT Brokers,2022,10.1109/eurosp53844.2022.00019,IEEE Xplore; Scopus,I,
 R0901,Using the MQTT Broker as a Speech-Activated Medium to Control the Operation of Devices in the Smart Office,2022,10.1109/isai-nlp56921.2022.9960287,IEEE Xplore,E,CE1
 R0902,Verify-Pro: A Framework for Server Authentication using Communication Protocol Dialects,2022,10.1109/milcom55135.2022.10017675,IEEE Xplore; Scopus,I,
-R0903,Verify-Pro: A Framework for Server Authentication Using Communication Protocol Dialects,2022,10.1109/milcom55135.2022.10017649,IEEE Xplore; Scopus,I,
+R0903,Verify-Pro: A Framework for Server Authentication Using Communication Protocol Dialects,2022,10.1109/milcom55135.2022.10017649,IEEE Xplore; Scopus,D,duplicado de R0902
 R0904,Virtual Edge Computing Architecture Model for the Real-Time Data Server in the IoT Environment,2022,,Scopus,E,CE1
 R0905,Vulnerability Detection of ICS Protocols via Cross-State Fuzzing,2022,10.1109/tcad.2022.3201471,IEEE Xplore; Scopus,E,CE6
 R0906,Wearable devices for Health Remote Monitor System,2022,10.1109/issi55442.2022.9963458,IEEE Xplore,E,CE1
@@ -970,7 +970,7 @@ R0968,Causal effect analysis-based intrusion detection system for IoT applicatio
 R0969,Challenges and Limitation Analysis of an IoT-Dependent System for Deployment in Smart Healthcare Using Communication Standards Features,2023,10.3390/s23115155,Scopus,E,CE1
 R0970,Characterization of threats in IoT from an MQTT protocol-oriented dataset,2023,10.1007/s40747-023-01000-y,Scopus,I,
 R0971,Cloud-based Digital Twins Storage in Emergency Healthcare,2023,10.1109/sera57763.2023.10197705,IEEE Xplore; Scopus,E,CE1
-R0972,Cloud-Based Digital Twins’ Storage in Emergency Healthcare,2023,10.1007/s44227-023-00011-y,Scopus,E,CE1
+R0972,Cloud-Based Digital Twins’ Storage in Emergency Healthcare,2023,10.1007/s44227-023-00011-y,Scopus,D,duplicado de R0971
 R0973,Communication Protocols in Industry 4.0,2023,10.1109/icseiet58677.2023.10303397,IEEE Xplore,E,CE1
 R0974,Comparative Study on Different Intrusion Detection Datasets Using Machine Learning and Deep Learning Algorithms,2023,10.1007/978-981-99-1051-9_8,Scopus,E,CI1
 R0975,Comparative Study Using IoT to Automate Your Home,2023,10.1109/csitss60515.2023.10334211,IEEE Xplore; Scopus,E,CE1

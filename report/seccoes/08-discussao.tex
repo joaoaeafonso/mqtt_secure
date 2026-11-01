@@ -19,28 +19,46 @@ restantes estudos elegíveis as resolva.
     próxima mensagem, e não a idade máxima de cada
     mensagem~\cite[§5.3, §6]{dahlmanns2021entrust}.
   \item \textbf{A ligação da mensagem ao contexto é incompleta.} Malina et al.\
-    assinam o tópico e o nível de segurança~\cite[§4.5]{malina2019secure}, e o
-    ENTRUST usa uma chave por tópico~\cite[§5]{dahlmanns2021entrust}. Nenhum dos
-    estudos analisados aplica, no recetor, uma restrição entre a credencial
-    autenticada e os tópicos em que pode publicar, nem uma política local que
-    recuse níveis de proteção mais fracos.
-  \item \textbf{O \emph{broker} continua, em regra, a ser de confiança.} Só quatro
-    dos 16 mecanismos dispensam, total ou parcialmente, essa confiança, e vários
-    assumem-na explicitamente~\cite[§III-B]{singh2015secure},
-    \cite[§IV-A]{calabretta2018mqttauth}, \cite[§4.6]{malina2019secure}.
+    assinam o tópico e o nível de segurança, e o subscritor escolhe o nível na
+    subscrição~\cite[§4.5--4.7]{malina2019secure}. O ENTRUST entrega a chave de cada
+    tópico só aos clientes que a ACL do servidor de chaves autoriza, e o subscritor
+    verifica o MAC com essa chave~\cite[§5.2--5.3]{dahlmanns2021entrust}, o que liga a
+    credencial ao tópico, mas ao nível do grupo de quem conhece a chave e não de cada
+    publicador. Malina et al.\ e Calabretta et al.\ restringem os tópicos em que cada
+    publicador escreve, mas no \emph{broker}~\cite[§4.4]{malina2019secure},
+    \cite[§IV-A]{calabretta2018mqttauth}, e Spielvogel et al.\ deixam os clientes
+    exigir um nível mínimo de segurança, que é também o \emph{broker} a
+    aplicar~\cite{spielvogel2021tls}. Estes
+    elementos aparecem, assim, só em parte (Tabela~\ref{tab:proposta-vs}): nenhum dos
+    estudos analisados aplica, no próprio recetor, uma restrição entre cada chave e
+    os tópicos em que o seu dono pode publicar, nem uma política local que recuse
+    modos de proteção mais fracos.
+  \item \textbf{O \emph{broker} continua, em metade dos mecanismos, a ser de
+    confiança.} Oito dos 16 mecanismos dispensam essa confiança, quatro totalmente
+    e quatro em parte; nos outros oito, cinco assumem-na, por desenho ou
+    explicitamente~\cite[§IV-A]{calabretta2018mqttauth}, e três não tratam a
+    questão. Mesmo entre os que a dispensam, a confiança passa muitas vezes para
+    outro terceiro, como um servidor de chaves~\cite[§6]{dahlmanns2021entrust}, uma
+    CA~\cite[§3.1]{vanglabbeek2022flexible} ou um TEE~\cite{segarra2020mqttz}.
   \item \textbf{O não repúdio é raro e depende de terceiros confiáveis.} Só Malina
     et al.\ e Van Glabbeek et al.\ o oferecem, com um \emph{broker} que decifra ou
     é honesto mas curioso e, no segundo caso, uma CA totalmente
-    confiável~\cite[§3.1]{vanglabbeek2022flexible}. As restantes soluções usam
-    segredos partilhados, pelo que quem os detém, incluindo o recetor, pode forjar
-    mensagens em nome do remetente.
+    confiável~\cite[§3.1]{vanglabbeek2022flexible}. As restantes soluções que
+    protegem a mensagem usam segredos partilhados, como chaves de grupo ou de
+    tópico, pelo que quem os detém, incluindo o recetor, pode forjar mensagens em
+    nome do remetente; a ABE de Singh et al.\ cifra para atributos, mas não
+    autentica a origem, e o CMAP de Javadi et al.\ autentica só a
+    ligação.
   \item \textbf{Custo e benefício não são medidos em conjunto.} As avaliações
-    medem o custo, mas não o relacionam, no mesmo ensaio, com os ataques impedidos,
-    e usam plataformas e métricas que não são comparáveis entre si.
+    medem o custo, mas nenhuma executa ataques no mesmo ensaio para os relacionar com
+    esse custo. A exceção parcial é o MQTT-A, que relaciona a latência medida com a
+    fração de \emph{brokers} maliciosos a que resiste, mas por análise e não por
+    ataques executados~\cite[§VIII-C]{buccafurri2023mqtta}. As plataformas e as
+    métricas também não são comparáveis entre estudos.
 \end{enumerate}
 
 Nenhuma destas lacunas pede um mecanismo criptográfico novo: os elementos
-existem, isolados, na literatura. A arquitetura proposta responde a L1, L2 e L4
+existem, isolados ou em parte, nos estudos analisados. A arquitetura proposta responde a L1, L2 e L4
 combinando-os no mesmo recetor e sem confiar no \emph{broker} (L3), e o desenho em
 camadas comutáveis foi pensado para que a segunda parte do projeto responda a L5
 (Secção~\ref{sec:plano}).
@@ -60,25 +78,29 @@ Kitchenham e Charters~\cite{kitchenham2007}.
     \textbf{Tipo} & \textbf{Ameaça} & \textbf{Mitigação} \\
     \midrule
     Construção & A \emph{string} pode não captar estudos que usem outra
-      terminologia & Grupos de sinónimos; refinamento após a leitura das revisões;
-      inclusão de MQTT-SN e de termos de deteção; os estudos já conhecidos foram
-      todos devolvidos pelas pesquisas \\
+      terminologia; no ScienceDirect foi reduzida, por limite de operadores, e no
+      IEEE Xplore abrange todos os metadados & Grupos de sinónimos; inclusão de
+      MQTT-SN e de termos de deteção; redução declarada (Secção~\ref{sec:string});
+      os estudos da fase exploratória foram todos devolvidos pelas pesquisas \\
     Seleção & Enviesamento na aplicação dos critérios na triagem, feita por um só
-      revisor, sem medida de concordância & Critérios operacionalizados com exemplos;
-      regra conservadora (na dúvida, o registo segue); decisão e critério de cada
+      revisor, sem medida de concordância; critérios das revisões relacionadas definidos
+      depois das pesquisas & Regra conservadora (na dúvida, o registo segue); decisão e critério de cada
       registo publicados no repositório, para verificação independente \\
-    Síntese & Só \nIncluidos{} dos \nElegiveis{} estudos elegíveis foram analisados em
-      texto integral, identificados numa fase exploratória e não escolhidos por um
-      critério \emph{a priori}; as lacunas podem estar tratadas em estudos não
-      analisados & Desvio declarado; todos confirmados como elegíveis; lacunas
-      formuladas \enquote{nos estudos analisados}; lista completa da triagem no
-      repositório~\cite{mqttsecure2026repo} \\
-    Extração & Subjetividade na classificação das propriedades; um estudo pode
-      garantir uma propriedade sem a descrever & Leitura do texto integral;
+    Síntese & Só \nIncluidos{} dos \nElegiveis{} estudos elegíveis e 4 das 21
+      revisões que cumprem RV1 e RV2 (mais uma por \emph{snowballing}) foram analisados, identificados numa fase
+      exploratória e não escolhidos por um critério \emph{a priori}; as lacunas podem
+      estar tratadas em estudos não analisados & Desvio declarado; todos confirmados
+      como elegíveis; lacunas formuladas \enquote{nos estudos analisados}; decisões
+      da triagem e das revisões no repositório~\cite{mqttsecure2026repo} \\
+    Extração & Subjetividade na classificação das propriedades e na avaliação da
+      qualidade, feitas por um só revisor; um estudo pode garantir uma propriedade
+      sem a descrever & Leitura do texto integral; critérios de qualidade com níveis
+      definidos (Secção~\ref{sec:selecao});
       \enquote{não reportado} distinto de \enquote{ausente por desenho}; secção e
       página de cada célula registadas no repositório \\
     Externa & Só três bases de dados; ACM DL e Web of Science não pesquisadas;
-      enviesamento de publicação & O Scopus indexa as atas ACM relevantes (p.\ ex.\
+      enviesamento de publicação; três estudos excluídos por não se ter obtido o
+      texto integral & O Scopus indexa as atas ACM relevantes (p.\ ex.\
       ARES, SaT-CPS, ICPE); inglês e português; revista, conferência e
       \emph{workshop} \\
     Conclusão & Os números por propriedade dependem da granularidade das

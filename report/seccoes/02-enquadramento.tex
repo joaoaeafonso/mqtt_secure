@@ -6,7 +6,7 @@
 \label{sec:mqtt}
 
 O MQTT funciona sobre um transporte ordenado e fiável, normalmente TCP (porta 1883)
-ou TLS (porta 8883)~\cite{oasis-mqtt311}. Os clientes não se conhecem entre si, o
+ou TLS (porta 8883)~\cite[§4.2]{oasis-mqtt311}. Os clientes não se conhecem entre si, o
 que torna o protocolo escalável, mas concentra a confiança no \emph{broker}
 (Figura~\ref{fig:mqtt-arquitetura}).
 
@@ -124,7 +124,7 @@ etiqueta $T$. Como $A$ é autenticado sem ser cifrado, permite ligar à mensagem
 metadados que têm de ficar legíveis, como o cabeçalho ou o tópico.
 
 \paragraph{AES-GCM e GMAC.} O AES-GCM (\emph{Advanced Encryption Standard} em modo
-\emph{Galois/Counter}) é a AEAD normalizada pelo NIST~\cite{nist-sp800-38d}; com $P$
+\emph{Galois\slash Counter}) é uma AEAD normalizada pelo NIST~\cite{nist-sp800-38d}; com $P$
 vazio, obtém-se o GMAC (\emph{Galois Message Authentication Code}). A sua
 segurança colapsa se o mesmo par $(K, N)$ for usado duas vezes, o que permite
 falsificar etiquetas~\cite{bock2016nonce}. Com \emph{nonces} aleatórios, o NIST
@@ -144,24 +144,24 @@ a pública, pelo que dá \emph{prova de origem}, a base técnica do não repúdi
 \label{sec:validade}
 
 \paragraph{Validade temporal.} Uma mensagem com carimbo temporal autenticado $t_m$,
-recebida no instante $t$, é aceite por um recetor com tolerância de idade $\Delta_a$
-e de desvio de relógio $\Delta_s$ sse
+recebida no instante $t$, é aceite por um recetor com tolerância de idade $\Delta_{\mathrm{id}}$
+e de desvio de relógio $\Delta_{\mathrm{rel}}$ se e só se
 \begin{equation}
-  t - \Delta_a \;\le\; t_m \;\le\; t + \Delta_s .
+  t - \Delta_{\mathrm{id}} \;\le\; t_m \;\le\; t + \Delta_{\mathrm{rel}} .
   \label{eq:validade}
 \end{equation}
 Isto limita o tempo em que uma mensagem capturada é útil, mas não impede a
-repetição dentro da janela $\Delta_a$.
+repetição dentro da janela $\Delta_{\mathrm{id}}$.
 
 \paragraph{Janela anti-repetição.} O mecanismo do IPsec ESP~\cite[§3.4.3]{rfc4303} mantém,
 por remetente, o maior número de sequência aceite $h$ e um mapa de bits $W$ de
 largura $w$ (64 é o valor recomendado), em que $W_i = 1$ significa que $h - i$ já
-foi recebido. Uma mensagem autêntica com número $s$ é aceite sse
+foi recebido. Uma mensagem autêntica com número $s$ é aceite se e só se
 \begin{equation}
   s > h \quad\vee\quad \big(0 \le h - s < w \;\wedge\; W_{h-s} = 0\big),
   \label{eq:janela}
 \end{equation}
-e o estado é então atualizado. O mecanismo tolera reordenação até $w$ posições. O
+e o estado é então atualizado. O mecanismo tolera reordenação até $w-1$ posições. O
 estado só pode ser atualizado \emph{depois} de verificada a
 autenticidade~\cite[§3.4.3]{rfc4303}; caso contrário, um atacante avança a janela com números forjados.
 
@@ -169,14 +169,17 @@ autenticidade~\cite[§3.4.3]{rfc4303}; caso contrário, um atacante avança a ja
 \subsection{Limitação de tráfego}
 \label{sec:token-bucket}
 
-O balde de testemunhos (\emph{token bucket})~\cite[§3]{rfc2697} limita a taxa média a $\rho$ mensagens
-por segundo, com rajadas até $\beta$. O número de testemunhos no instante $t$, dado
-o último acesso em $t_0$, é
+O balde de testemunhos (\emph{token bucket}) limita a taxa média a $\rho$ mensagens
+por segundo, com rajadas até $\beta$. Usa-se aqui um único balde, com a regra de
+reposição do balde C do \emph{single rate three color marker} da
+RFC~2697~\cite[§3]{rfc2697}, que usa dois baldes e marca os pacotes por cores em vez
+de os rejeitar. O número de testemunhos no instante $t$, sendo $b(t_0)$ o
+número que restou após o último consumo, no instante $t_0$, é
 \begin{equation}
   b(t) = \min\!\big(\beta,\ b(t_0) + \rho\,(t - t_0)\big),
   \label{eq:token-bucket}
 \end{equation}
-e uma mensagem é aceite sse $b(t) \ge 1$, gastando um testemunho. A RFC~2697 conta
+e uma mensagem é aceite se e só se $b(t) \ge 1$, gastando um testemunho. A RFC~2697 conta
 octetos; aqui conta-se uma mensagem por testemunho.
 
 % ---------------------------------------------------------------------------

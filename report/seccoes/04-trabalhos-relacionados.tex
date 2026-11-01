@@ -2,23 +2,36 @@
 \label{sec:relacionados}
 
 A \emph{string} secundária devolveu \nSecundariaTotal{} registos
-(\nSecundariaUnicos{} únicos). Destes, e das revisões excluídas por CE4 na triagem
-da \emph{string} principal, selecionaram-se as quatro mais diretamente
-relacionadas com a segurança do MQTT; a quinta, de Hintaw et al., foi acrescentada
-por \emph{snowballing} (Secção~\ref{sec:selecao}).
+(\nSecundariaUnicos{} únicos), e a triagem da \emph{string} principal excluiu 85
+revisões por CE4; sem repetições, são \nRevCandidatas{} candidatas. A estas
+aplicaram-se, por título e resumo e por um só revisor, dois critérios, definidos
+depois das pesquisas e não no protocolo inicial:
+\textbf{RV1}, ser uma revisão ou levantamento da literatura, e não uma proposta ou
+um sistema; e \textbf{RV2}, ter como objeto principal a segurança do MQTT ou do
+MQTT-SN, ou a segurança dos protocolos de aplicação da IoT com o MQTT entre os
+protocolos analisados. Foram excluídas \nRevNaoRevisao{} candidatas por RV1 e
+\nRevForaObjeto{} por RV2. Das 21 que cumprem ambos, analisaram-se quatro, também
+identificadas na fase exploratória; as outras \nRevElegiveisNaoAnalisadas{} não
+foram analisadas por falta de tempo, e não por um critério de qualidade, o mesmo
+desvio declarado para os estudos primários (Secção~\ref{sec:selecao}). Entre elas
+há revisões claramente pertinentes, como a da proteção do \emph{payload} no MQTT
+(2021), a do \emph{fuzzing} do MQTT (2025) e a da segurança do MQTT-SN (2026). A
+decisão e o critério de cada candidata estão no repositório. A quinta revisão, de
+Hintaw et al., foi acrescentada por \emph{snowballing}.
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{Perrone et al.\ (2017)}~\cite{perrone2017mirai}, escrito após os
     ataques da botnet Mirai, descreve as soluções de segurança habitualmente usadas
     em instalações MQTT reais e fecha com um levantamento de temas de investigação
     que os próprios autores descrevem como conciso e não exaustivo.
-  \item \textbf{Nebbione e Calzarossa (2020)}~\cite{nebbione2020security} revêem a
+  \item \textbf{Nebbione e Calzarossa (2020)}~\cite{nebbione2020security} reveem a
     segurança dos protocolos da camada de aplicação da IoT, incluindo o MQTT, as
     vulnerabilidades publicadas (CVE) e boas práticas de mitigação.
   \item \textbf{Hintaw et al.\ (2023)}~\cite{hintaw2023mqtt} organizam os problemas
     de segurança do MQTT em negação de serviço, falsificação de identidade,
     divulgação de informação, elevação de privilégios e adulteração, e apontam o
-    custo da segurança em dispositivos a bateria como desafio em aberto.
+    custo da segurança em dispositivos a bateria como desafio em aberto (segundo o
+    resumo, por não se ter obtido o texto integral).
   \item \textbf{Lakshminarayana et al.\ (2024)}~\cite{lakshminarayana2024securing}
     classificam as vulnerabilidades e os ataques ao MQTT e discutem as defesas, com
     ênfase na identificação de vulnerabilidades e na deteção de ataques.
@@ -31,7 +44,8 @@ por \emph{snowballing} (Secção~\ref{sec:selecao}).
   \centering
   \caption{Comparação das revisões relacionadas com a presente revisão.
     \Sim{} abordado; \Parc{} parcialmente; \Nr{} não reportado. $^{*}$Classificada
-    a partir do resumo: o texto integral não estava acessível.}
+    a partir do resumo: não se obteve o texto integral. $^{\dagger}$Com o desvio
+    declarado na Secção~\ref{sec:selecao} (seleção intencional dos estudos analisados).}
   \label{tab:revisoes}
   \small
   \setlength{\tabcolsep}{3pt}
@@ -52,16 +66,19 @@ por \emph{snowballing} (Secção~\ref{sec:selecao}).
     Laghari et al.~\cite{laghari2024securing}           & 2024 & \Sim  & \Sim  & \Sim & \Nr & \Parc & \Nr \\
     \midrule
     \rowcolor{fundotab}
-    \textbf{Este trabalho}                              & 2026 & \Sim  & \Parc & \Sim & \Sim & \Sim & \Sim \\
+    \textbf{Este trabalho}                              & 2026 & \Sim  & \Parc & \Sim & \Sim & \Sim$^{\dagger}$ & \Sim \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-As revisões existentes organizam-se em torno dos \emph{ataques}
-(Tabela~\ref{tab:revisoes}). Só Laghari et al.\ descrevem a pesquisa e a seleção,
-e apenas das revisões que comparam, com uma única palavra-chave em três
-fontes~\cite[§I]{laghari2024securing}. Esta revisão distingue-se por relatar um
-protocolo explícito e reprodutível, por comparar os estudos segundo as propriedades que garantem à
+As revisões analisadas organizam-se em torno dos \emph{ataques}
+(Tabela~\ref{tab:revisoes}). Nenhuma relata um protocolo completo: Laghari et al.\
+descrevem a pesquisa das revisões que comparam, com uma única palavra-chave em três
+fontes~\cite[§I]{laghari2024securing}; Nebbione e Calzarossa indicam a abordagem e
+as fontes consultadas, sem \emph{strings} nem critérios~\cite[§3]{nebbione2020security};
+e Lakshminarayana et al.\ apresentam-se como uma revisão sistemática sem descrever o
+processo de seleção~\cite[§I]{lakshminarayana2024securing}. Face a estas revisões, a
+presente distingue-se por relatar uma pesquisa e uma triagem reprodutíveis, por comparar os estudos segundo as propriedades que garantem à
 \emph{mensagem} (incluindo validade temporal, anti-repetição e não repúdio) e a
 confiança que depositam no \emph{broker}, por cobrir trabalhos até 2026 e por
 ligar as lacunas encontradas a uma proposta concreta.

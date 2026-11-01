@@ -20,7 +20,8 @@ OR "All Metadata":attack* OR "All Metadata":vulnerabilit* OR "All Metadata":intr
 AND ("All Metadata":"Internet of Things" OR "All Metadata":IoT OR "All Metadata":IIoT
 OR "All Metadata":"publish/subscribe" OR "All Metadata":"publish-subscribe"
 OR "All Metadata":"machine-to-machine" OR "All Metadata":M2M)\\
-Filtro: Year 2014--2026; Conferences, Journals.}
+Filtro na pesquisa: Year 2014--2026. O tipo de documento foi filtrado depois, pelo
+\emph{script} de processamento (Secção~\ref{sec:string}).}
 
 \subsection*{Scopus (\emph{Advanced document search})}
 \str{TITLE-ABS-KEY(("MQTT" OR "MQTT-SN" OR "MQ Telemetry Transport"
@@ -35,7 +36,7 @@ AND LANGUAGE(english OR portuguese)\\
 Na \emph{string} secundária, \texttt{DOCTYPE(ar OR cp OR re)}, para incluir as revisões.}
 
 \subsection*{ScienceDirect (campo \emph{Title, abstract or author-specified keywords})}
-O ScienceDirect não suporta o carácter universal \texttt{*} e limita o número de
+O ScienceDirect não suporta o caráter universal \texttt{*} e limita o número de
 operadores booleanos por campo; a \emph{string} foi, por isso, dividida em duas
 consultas cujos resultados foram unidos:
 \par\medskip
@@ -43,7 +44,8 @@ consultas cujos resultados foram unidos:
 OR authorization OR encryption) AND ("Internet of Things" OR IoT)\\[4pt]
 (2) ("MQTT" OR "Message Queuing Telemetry Transport") AND (attack OR attacks OR vulnerability
 OR intrusion OR privacy) AND ("Internet of Things" OR IoT)\\
-Filtro: Years 2014--2026; Article types: Research articles.}
+Filtro na pesquisa: Years 2014--2026. O tipo de documento foi filtrado depois, pelo
+\emph{script} de processamento.}
 
 \subsection*{\emph{String} secundária (revisões), no IEEE Xplore e no Scopus}
 \str{<\emph{string} principal> AND ("systematic literature" OR "systematic review"

@@ -5,7 +5,7 @@ O objetivo da segunda parte é \textbf{medir, num Raspberry Pi, quanto custa cad
 camada em desempenho e quanto protege, isoladamente e em combinação, para
 identificar a configuração com a maior proteção e o menor impacto no desempenho.}
 Responde à lacuna L5 (Secção~\ref{sec:discussao}). Para isso, a segunda parte vai
-implementar a arquitetura da Secção~\ref{sec:proposta}, com cada camada ativável
+concluir a implementação da arquitetura da Secção~\ref{sec:proposta}, com cada camada ativável
 de forma independente, e duas ferramentas de medição: \emph{microbenchmarks} das
 camadas e um laboratório de carga com \emph{broker}, \emph{gateway}, sensores
 simulados e um atacante.
@@ -38,15 +38,15 @@ desenvolver deverá executar esta matriz de forma automática.
   \centering
   \caption{Configurações a avaliar. Transporte: TLS~1.3 com autenticação mútua por
     certificado, palavras-passe, ACL e identificador de cliente ligado ao
-    utilizador. VT validade temporal; R anti-repetição; CT restrição chave--tópico;
-    LT limitação de tráfego antes da criptografia.}
+    utilizador. V validade temporal; R anti-repetição; CT restrição chave--tópico;
+    Lim.\ limitação de tráfego antes da criptografia.}
   \label{tab:configuracoes}
   \small
   \setlength{\tabcolsep}{4pt}
   \begin{tabular}{@{}lccccccL{5.0cm}@{}}
     \toprule
-    \textbf{ID} & \textbf{Transporte} & \textbf{Envelope} & \textbf{VT} & \textbf{R}
-      & \textbf{CT} & \textbf{LT} & \textbf{O que acrescenta} \\
+    \textbf{ID} & \textbf{Transporte} & \textbf{Envelope} & \textbf{V} & \textbf{R}
+      & \textbf{CT} & \textbf{Lim.} & \textbf{O que acrescenta} \\
     \midrule
     K0  & --- & --- & --- & --- & --- & --- & referência, sem proteção \\
     K1  & \Sim & --- & --- & --- & --- & --- & proteção de cada salto; quem fala com o \emph{broker} \\
@@ -57,7 +57,7 @@ desenvolver deverá executar esta matriz de forma automática.
     K6  & \Sim & AES-GCM & \Sim & \Sim & --- & --- & envelope completo \\
     K7  & \Sim & AES-GCM & \Sim & \Sim & \Sim & --- & + contenção de um dispositivo comprometido \\
     K8  & \Sim & AES-GCM & \Sim & \Sim & \Sim & \Sim & + proteção contra inundação \\
-    K9  & \Sim & Ed25519 & \Sim & \Sim & \Sim & \Sim & + não repúdio (prova de origem) \\
+    K9  & \Sim & Ed25519 & \Sim & \Sim & \Sim & \Sim & troca a confidencialidade face ao \emph{broker} pelo não repúdio \\
     \addlinespace
     K10 & --- & AES-GCM & \Sim & \Sim & \Sim & --- & envelope completo sem TLS \\
     K11 & \Sim & ChaCha20 & \Sim & \Sim & \Sim & \Sim & K8 com ChaCha20-Poly1305 \\
@@ -68,17 +68,20 @@ desenvolver deverá executar esta matriz de forma automática.
 % ---------------------------------------------------------------------------
 \subsection{Plataforma experimental}
 
-Os \emph{microbenchmarks} medirão o custo de cada camada num Raspberry~Pi~5, sem
+A avaliação terá dois níveis. No \textbf{nível~1}, os \emph{microbenchmarks} medirão o custo de cada camada num Raspberry~Pi~5, sem
 rede, para mensagens de 16~B a 64~KiB, também com a aceleração AES desativada
 (\texttt{OPENSSL\_armcap=0}), porque muitos dispositivos IoT não a
 têm~\cite{sadio2019lightweight}; nesse caso medir-se-á também o ChaCha20-Poly1305
-(K11). O laboratório de carga acrescentará o TLS, o \emph{broker}, a rede e os
+(K11). No \textbf{nível~2}, o laboratório de carga acrescentará o TLS, o \emph{broker}, a rede e os
 ataques: o \emph{broker} e o \emph{gateway} no Raspberry~Pi, os sensores e o
 atacante noutras máquinas da rede local. Ambos serão repetidos num computador de
 secretária como referência.
 
 % ---------------------------------------------------------------------------
 \subsection{Métricas}
+
+A Tabela~\ref{tab:metricas} define as métricas de custo e de benefício e o nível em
+que cada uma é medida.
 
 \begin{table}[ht]
   \centering
@@ -101,7 +104,7 @@ secretária como referência.
     Energia (opcional) & consumo do Raspberry Pi, com medidor USB & 2 \\
     \midrule
     \multicolumn{3}{@{}l}{\textit{Benefício}} \\
-    Ataques impedidos & para cada ataque $a \in \mathcal{A}$, $b_a(c) = 1$ se a
+    Ataques impedidos & para cada ataque $a \in \mathcal{A}$, $\pi_a(c) = 1$ se a
       configuração $c$ o impede & 1, 2 \\
     Fuga de informação & fração das mensagens legítimas legível por um subscritor
       de \texttt{\#} & 1, 2 \\
@@ -110,9 +113,11 @@ secretária como referência.
 \end{table}
 
 O conjunto de ataques $\mathcal{A}$, a executar pelo atacante do laboratório, cobre
-as ameaças da Tabela~\ref{tab:stride}: escuta, injeção, adulteração, repetição,
-republicação noutro tópico, usurpação de identidade, publicação com a chave de
-outro dispositivo, redução do nível de proteção e inundação. A Tabela~\ref{tab:ataques}
+as ameaças da Tabela~\ref{tab:stride}: escuta, injeção e adulteração, republicação
+noutro tópico, publicação noutro tópico com uma chave válida, repetição dentro da
+validade, entrega de uma mensagem antiga nunca recebida, redução do nível de
+proteção, falsificação pelo recetor, usurpação de identidade, inundação de
+mensagens e ocupação de ligações. A Tabela~\ref{tab:ataques}
 indica, para cada ataque, a camada que o deverá impedir e o que é preciso observar
 para atribuir a rejeição a essa camada. São expectativas do desenho, a confirmar
 ou refutar nos ensaios.
@@ -164,20 +169,27 @@ ou refutar nos ensaios.
 \paragraph{Proteção.} A proteção de uma configuração $c$ é a fração ponderada dos
 ataques que impede,
 \begin{equation}
-  S(c) = \frac{\sum_{a \in \mathcal{A}} w_a\, b_a(c)}{\sum_{a \in \mathcal{A}} w_a},
+  S(c) = \frac{\sum_{a \in \mathcal{A}} \omega_a\, \pi_a(c)}{\sum_{a \in \mathcal{A}} \omega_a},
   \qquad 0 \le S(c) \le 1,
   \label{eq:protecao}
 \end{equation}
-com pesos $w_a = 1$ por omissão.
+com pesos $\omega_a = 1$ por omissão.
 
 \paragraph{Custo.} Cada métrica de custo $m$ é normalizada pela configuração de
-referência e agregada com pesos $v_m$ que somam 1:
+referência K0 e agregada com pesos $v_m$ que somam 1:
 \begin{equation}
-  C(c) = \sum_{m} v_m\, \frac{m(c)}{m(\mathrm{K0})},
+  \operatorname{custo}(c) = \sum_{m} v_m\, r_m(c), \qquad
+  r_m(c) = \begin{cases}
+    m(c) / m(\mathrm{K0}) & \text{se valores maiores de } m \text{ são piores,}\\
+    m(\mathrm{K0}) / m(c) & \text{se valores maiores são melhores (débito),}
+  \end{cases}
   \label{eq:custo}
 \end{equation}
-com maior peso para o processador por mensagem e a latência p99, os recursos
-escassos num dispositivo restrito.
+de modo que $r_m(\mathrm{K0}) = 1$ e $r_m$ cresce com o custo. Os octetos entram como
+octetos totais por mensagem, e não como octetos acrescentados, que são nulos em K0.
+Dá-se maior peso ao processador por mensagem e à latência p99, os recursos escassos
+num dispositivo restrito; os valores de $v_m$, tal como os pesos $\omega_a$, serão
+fixados antes de executar a matriz.
 
 \paragraph{Exequibilidade.} Uma configuração só é candidata se, no Raspberry Pi,
 sustentar a taxa pretendida $R_{\text{alvo}}$ com latência $p99 \le L_{\max}$. Estes
@@ -206,21 +218,24 @@ Para cada caso, o critério seguinte aplica-se apenas às configurações que cu
 os requisitos obrigatórios.
 
 \paragraph{Escolha.} A configuração $c$ domina $c'$ se $S(c) \ge S(c')$ e
-$C(c) \le C(c')$, com pelo menos uma desigualdade estrita. As configurações
+$\operatorname{custo}(c) \le \operatorname{custo}(c')$, com pelo menos uma desigualdade estrita. As configurações
 exequíveis não dominadas formam a \emph{fronteira de Pareto} $\mathcal{P}$, e a
 configuração recomendada é a mais barata entre as que atingem a proteção máxima:
 \begin{equation}
-  c^{*} = \operatorname*{arg\,min}_{c \in \mathcal{P},\ S(c) = S_{\max}} C(c).
+  c^{*} = \operatorname*{arg\,min}_{c \in \mathcal{P},\ S(c) = S_{\max}} \operatorname{custo}(c),
+  \qquad S_{\max} = \max_{c \in \mathcal{P}} S(c).
   \label{eq:melhor}
 \end{equation}
-Reporta-se também o custo marginal $\Delta C / \Delta S$ de cada passo ao longo da
+Reporta-se também o custo marginal $\Delta \operatorname{custo} / \Delta S$ de cada passo ao longo da
 fronteira.
 
 % ---------------------------------------------------------------------------
 \subsection{Procedimento e hipóteses}
 
 Cada configuração será repetida 10 vezes em ordem aleatória, com intervalos de
-confiança por \emph{bootstrap} sobre as execuções. O custo marginal de uma camada
+confiança por \emph{bootstrap} sobre as execuções; se, no piloto, os intervalos forem
+demasiado largos para distinguir configurações, o número de repetições será
+aumentado. O custo marginal de uma camada
 $\ell$ numa métrica $m$ é $m(c_{\ell=1}) - m(c_{\ell=0})$, com os restantes fatores
 fixos, e a diferença das diferenças mostra se pares de camadas interagem. Os
 ataques correrão com tráfego legítimo ativo e com controlos negativos (a mesma
@@ -230,7 +245,8 @@ configuração sem a camada em causa), para atribuir cada rejeição à camada c
   \item O envelope AES-256-GCM terá um custo por mensagem pequeno face à latência
     da rede.
   \item A validade temporal, a anti-repetição e a restrição chave--tópico terão
-    custo marginal quase nulo: aumentam $S$ quase sem aumentar $C$.
+    custo marginal quase nulo: aumentam $S$ (Eq.~\eqref{eq:protecao}) quase sem aumentar o custo
+    (Eq.~\eqref{eq:custo}).
   \item As assinaturas Ed25519 custarão claramente mais do que o AES-GCM por
     mensagem, pelo que só se justificarão onde a prova de origem for necessária.
   \item O custo do TLS concentrar-se-á no estabelecimento da ligação, como observado

@@ -2,7 +2,9 @@
 \label{sec:metodologia}
 
 A revisão segue as diretrizes de Kitchenham e Charters~\cite{kitchenham2007}, em
-três fases (planeamento, condução e relato), e relata a seleção dos estudos com o
+três fases (planeamento, condução e relato). O protocolo (perguntas, \emph{strings} e
+critérios desta secção) foi definido antes das pesquisas, mas não foi registado
+publicamente. A revisão relata a seleção dos estudos com o
 diagrama PRISMA 2020 (\emph{Preferred Reporting Items for Systematic Reviews and
 Meta-Analyses})~\cite{page2021prisma}.
 
@@ -29,7 +31,7 @@ problemas são tratados, e em perguntas estatísticas, que quantificam \emph{qua
     QF1 & Que ameaças e vulnerabilidades do MQTT são identificadas? \\
     QF2 & Que mecanismos são propostos e onde atuam (transporte, \emph{broker},
           mensagem fim-a-fim, deteção)? \\
-    QF3 & Que propriedades garantem e assumem um \emph{broker} confiável? \\
+    QF3 & Que propriedades garantem, e assumem ou não um \emph{broker} confiável? \\
     QF4 & Como são avaliadas as soluções? \\
     QF5 & Que limitações e desafios em aberto são reportados? \\
     QE1 & Quantas publicações existem por ano? \\
@@ -41,6 +43,9 @@ problemas são tratados, e em perguntas estatísticas, que quantificam \emph{qua
 
 % ---------------------------------------------------------------------------
 \subsection{Critérios PICOC}
+
+A Tabela~\ref{tab:picoc} delimita o âmbito da revisão segundo os critérios PICOC
+(\emph{Population, Intervention, Comparison, Outcome, Context})~\cite{kitchenham2007}.
 
 \begin{table}[ht]
   \centering
@@ -73,7 +78,8 @@ problemas são tratados, e em perguntas estatísticas, que quantificam \emph{qua
 A partir das perguntas identificaram-se grupos de ideias e os respetivos sinónimos
 (Tabela~\ref{tab:grupos}); os termos de um grupo combinam-se com \texttt{OR} e os
 grupos entre si com \texttt{AND}. A \emph{string} principal combina G1, G2 e G3 no
-título, resumo e palavras-chave; a secundária acrescenta G4, para encontrar revisões
+título, resumo e palavras-chave (no IEEE Xplore, no campo \emph{All Metadata}, que
+abrange também outros metadados); a secundária acrescenta G4, para encontrar revisões
 já publicadas. A \emph{string} principal inclui \texttt{"MQTT-SN"}, porque há
 soluções para a variante para redes de sensores~\cite{singh2015secure,
 sadio2019lightweight}, e \texttt{"intrusion"}, porque a deteção de intrusões é uma
@@ -108,17 +114,26 @@ linha própria~\cite{vaccari2020mqttset, alotaibi2024secure}.
 
 As pesquisas foram feitas no IEEE Xplore, no Scopus e no ScienceDirect, em
 \dataPesquisa{}; a adaptação da \emph{string} a cada base consta do
-Anexo~\ref{anx:strings}. O ScienceDirect, por não suportar o carácter \texttt{*} e
+Anexo~\ref{anx:strings}. O ScienceDirect, por não suportar o caráter \texttt{*} e
 limitar os operadores booleanos, exigiu dividir a \emph{string} principal em duas
-consultas, e a secundária, que excede esse limite, não pôde ser executada. O ACM
+consultas e reduzi-la: ficaram de fora \texttt{"MQTT-SN"}, \texttt{"MQ Telemetry
+Transport"}, \texttt{"Message Queue Telemetry Transport"}, \texttt{"secure"},
+\texttt{"access control"}, \texttt{"confidentiality"}, \texttt{"integrity"} e todos os
+termos de G3 exceto \texttt{"Internet of Things"} e \texttt{"IoT"}, e
+\texttt{"vulnerabilit*"} passou a \texttt{"vulnerability"}. Os registos desta base
+podem, por isso, ser menos completos do que os das outras duas. A secundária, que
+excede o limite de operadores, não pôde ser executada nesta base. O ACM
 Digital Library e a Web of Science, previstos no protocolo, não foram pesquisados:
 o primeiro exige subscrição para exportar resultados e a segunda não esteve
 acessível; as atas ACM relevantes para o tema (por exemplo, ARES, SaT-CPS e ICPE)
 estão indexadas no Scopus. Os registos foram exportados de cada base, com resumo, e
 processados com um \emph{script} próprio, disponível no
 repositório~\cite{mqttsecure2026repo}, que remove os tipos de documento não
-admitidos pelo CI2 (normas, revistas de divulgação e capítulos de livro) e os
-duplicados, por DOI e, na falta deste, por título normalizado. A
+admitidos pelo CI2 (normas, revistas de divulgação, livros e capítulos de livro) e
+os duplicados, por DOI e, na falta deste, por título normalizado. O filtro de tipo
+foi, assim, aplicado pelo \emph{script} e não na exportação. Durante a triagem
+identificaram-se mais \nDuplicadosTardios{} pares com o mesmo título e DOI
+diferentes, contados também como duplicados. A
 Tabela~\ref{tab:resultados-bases} regista os registos devolvidos por cada base.
 
 \begin{table}[ht]
@@ -165,7 +180,7 @@ que os autores apresentam como alargada a partir dela~\cite[§I]{calabretta2018m
     CI2 & É um estudo primário com revisão por pares (revista, conferência ou
           \emph{workshop}). \\
     CI3 & Foi publicado entre 2014 e 2026. \\
-    CI4 & O texto integral está acessível, em inglês ou português. \\
+    CI4 & O texto integral foi obtido, em inglês ou português. \\
     CE1 & O MQTT é apenas usado como transporte, sem contributo de segurança. \\
     CE2 & É uma versão preliminar de outro estudo incluído. \\
     CE3 & É literatura cinzenta (tese, relatório técnico, patente). \\
@@ -191,61 +206,95 @@ Secção~\ref{sec:discussao}. A triagem deixou \nElegiveis{} estudos elegíveis.
 
 \paragraph{Seleção para análise em profundidade.} O número de estudos elegíveis é
 incompatível com a leitura integral de todos no prazo desta primeira parte do
-projeto. Adotou-se, por isso, um desvio ao protocolo, que se declara: analisaram-se em
-texto integral \nTextoIntegral{} estudos identificados numa fase exploratória,
+projeto. Adotou-se, por isso, um desvio ao protocolo, que se declara: procurou-se o
+texto integral de \nTextoIntegral{} estudos identificados numa fase exploratória,
 anterior às pesquisas formais. Todos foram devolvidos pelas pesquisas e
 classificados como elegíveis na triagem, mas não foram escolhidos a partir da
-lista de elegíveis segundo um critério definido \emph{a priori}. Um deles foi excluído por CI4, por o texto integral não estar acessível,
-pelo que o conjunto analisado tem \nIncluidos{} estudos. Esta escolha é uma ameaça à
-validade da síntese, discutida na Secção~\ref{sec:discussao}, e a lista completa
-das decisões de triagem está no repositório.
+lista de elegíveis segundo um critério definido \emph{a priori}. Dos restantes
+elegíveis, um foi excluído por CE2 (Secção~\ref{sec:criterios}) e
+\nNaoAvaliados{} não foram avaliados. Em \nNaoObtidos{} dos
+\nTextoIntegral{} não se obteve o texto integral, pelo que foram excluídos por
+CI4~\cite{lohachab2019ecc, andy2017attack, hernandez2018fuzzing}, e o conjunto
+analisado tem \nIncluidos{} estudos. Esta escolha é uma ameaça à validade da
+síntese, discutida na Secção~\ref{sec:discussao}, e a lista completa das decisões
+de triagem está no repositório.
 
-\paragraph{Leitura integral.} Os estudos analisados foram lidos em texto integral,
+\paragraph{Leitura integral.} Os \nIncluidos{} estudos analisados foram lidos em texto integral,
 orientando a leitura pelos itens de extração da Secção~\ref{sec:extracao}; a
 secção e a página que sustentam cada classificação ficaram registadas no ficheiro
 de rastreabilidade do repositório.
 
-\paragraph{\emph{Snowballing}.} A revisão de Hintaw et al.~\cite{hintaw2023mqtt},
+\paragraph{Avaliação da qualidade.} Cada estudo analisado foi pontuado em cinco
+critérios, com 1 (cumpre), 0,5 (cumpre em parte) ou 0 (não cumpre ou não
+encontrado), adaptados das listas de verificação de Kitchenham e
+Charters~\cite{kitchenham2007}:
+\begin{enumerate*}[label=\textbf{QA\arabic*}~]
+  \item modelo de ameaças (1 se definir as capacidades do adversário; 0,5 se só
+    enumerar ataques ou referir pressupostos de confiança);
+  \item avaliação com implementação (1 experimental; 0,5 só simulação ou
+    análise);
+  \item comparação com uma referência externa, como o MQTT sem proteção, o TLS ou
+    outra solução (1 quantitativa; 0,5 só qualitativa);
+  \item código ou dados disponibilizados pelos autores;
+  \item limitações próprias declaradas (1; 0,5 se houver só trabalho futuro).
+\end{enumerate*}
+A pontuação (Secção~\ref{sec:qualidade}) não serviu para excluir estudos, mas para
+qualificar a confiança na síntese.
+
+\paragraph{Revisões relacionadas.} As revisões foram selecionadas à parte
+(Secção~\ref{sec:relacionados}), entre as devolvidas pela \emph{string} secundária e
+as excluídas por CE4 na triagem. A revisão de Hintaw et al.~\cite{hintaw2023mqtt},
 citada na comparação de revisões de Lakshminarayana et
 al.~\cite[§I]{lakshminarayana2024securing}, não foi devolvida pelas bases e foi
-acrescentada às revisões relacionadas por \emph{snowballing} retrospetivo.
+acrescentada por \emph{snowballing} retrospetivo. Este \emph{snowballing} foi
+pontual, e não sistemático: não se percorreram as referências de todos os estudos
+analisados.
 A Figura~\ref{fig:prisma} resume o processo.
 
 \begin{figure}[ht]
   \centering
   \begin{tikzpicture}[
-      caixa/.style={draw=iscte, fill=fundotab, rounded corners=2pt, text width=7.4cm,
-                    minimum height=1.0cm, align=center, font=\small},
-      lado/.style={draw=cinza, fill=white, rounded corners=2pt, text width=5.2cm,
-                   minimum height=1.0cm, align=center, font=\small},
+      caixa/.style={draw=iscte, fill=fundotab, rounded corners=2pt, text width=6.2cm,
+                    minimum height=0.95cm, align=center, font=\small},
+      lado/.style={draw=cinza, fill=white, rounded corners=2pt, text width=5.4cm,
+                   minimum height=0.95cm, align=center, font=\small},
       fase/.style={draw=iscte, fill=iscte, text=white, font=\tiny\bfseries,
                    rotate=90, minimum width=1.5cm, minimum height=0.5cm},
       seta/.style={-{Stealth[length=2mm]}, thick, iscte}]
-    \node[caixa] (id) {Registos identificados nas bases de dados\\
-      ($n = \nTotalIdentificados$)\\[-1pt]
+    \node[caixa] (id) {Registos identificados\\nas bases de dados
+      (\mbox{$n = \nTotalIdentificados$})\\[-1pt]
       {\scriptsize IEEE \nIEEE; Scopus \nScopus; ScienceDirect \nScienceDirect}};
     \node[lado, right=0.6cm of id] (dup) {Removidos antes da triagem:\\
-      duplicados ($n = \nDuplicados$)\\tipo não admitido ($n = \nRemovidosTipo$)};
-    \node[caixa, below=0.9cm of id] (tri) {Registos triados por título e resumo\\($n = \nTriados$)};
-    \node[lado, right=0.6cm of tri] (exta) {Excluídos (CI/CE)\\($n = \nExcluidosTA$)};
-    \node[caixa, below=0.9cm of tri] (ti) {Estudos elegíveis ($n = \nElegiveis$)\\
-      analisados em texto integral, da fase exploratória ($n = \nTextoIntegral$)};
-    \node[lado, right=0.6cm of ti] (exti) {Excluídos no texto integral: CI4\\($n = \nExcluidosTI$)};
-    \node[caixa, below=0.9cm of ti, fill=iscte!15] (inc) {\textbf{Estudos primários analisados}\\($n = \nIncluidos$)};
-    \node[lado, right=0.6cm of inc] (sec) {Revisões relacionadas: \nSecundarios{}\\
-      (\nSecundariaUnicos{} devolvidas pela \emph{string} secundária; 1 por \emph{snowballing})};
+      duplicados (\mbox{$n = \nDuplicados$})\\tipo não admitido (\mbox{$n = \nRemovidosTipo$})};
+    \node[caixa, below=0.8cm of id] (tri) {Registos triados por título e resumo\\(\mbox{$n = \nTriados$})};
+    \node[lado, right=0.6cm of tri] (exta) {Excluídos (\mbox{$n = \nExcluidosTA$}):\\
+      {\scriptsize CE1 1079; CI1 535; CE4 85; CE6 24; CE3 3}};
+    \node[caixa, below=0.8cm of tri] (ele) {Estudos elegíveis (\mbox{$n = \nElegiveis$})};
+    \node[lado, right=0.6cm of ele] (nav) {Não avaliados, fora da seleção
+      intencional (\mbox{$n = \nNaoAvaliados$});\\versão preliminar, CE2 (\mbox{$n = \nExcluidosCEDois$})};
+    \node[caixa, below=0.8cm of ele] (ti) {Procurados em texto integral,\\
+      da fase exploratória (\mbox{$n = \nTextoIntegral$})};
+    \node[lado, right=0.6cm of ti] (exti) {Texto integral não obtido: CI4\\(\mbox{$n = \nNaoObtidos$})};
+    \node[caixa, below=0.8cm of ti, fill=iscte!15] (inc) {\textbf{Estudos primários analisados}\\(\mbox{$n = \nIncluidos$})};
+    \node[lado, right=0.6cm of inc, fill=fundotab] (sec) {\textbf{Revisões relacionadas}\\\textbf{analisadas}
+      (\mbox{$n = \nSecundarios$}):\\
+      {\scriptsize 2 da \emph{string} secundária (1 também da principal); 2 da
+      principal (CE4); 1 por \emph{snowballing}}};
     \draw[seta] (id) -- (tri);
-    \draw[seta] (tri) -- (ti);
+    \draw[seta] (tri) -- (ele);
+    \draw[seta] (ele) -- (ti);
     \draw[seta] (ti) -- (inc);
     \draw[seta] (id) -- (dup);
     \draw[seta] (tri) -- (exta);
+    \draw[seta] (ele) -- (nav);
     \draw[seta] (ti) -- (exti);
     \node[fase, left=0.25cm of id] {Identificação};
     \node[fase, left=0.25cm of tri] {Triagem};
     \node[fase, left=0.25cm of ti] {Elegibilidade};
     \node[fase, left=0.25cm of inc] {Inclusão};
   \end{tikzpicture}
-  \caption{Diagrama de fluxo PRISMA 2020 da seleção dos estudos.}
+  \caption{Diagrama de fluxo PRISMA 2020 da seleção dos estudos. A seleção das
+    revisões relacionadas está descrita na Secção~\ref{sec:relacionados}.}
   \label{fig:prisma}
 \end{figure}
 
@@ -258,4 +307,6 @@ Para cada estudo analisado registaram-se os seguintes itens: ano e tipo de publi
 atuação e primitivas usadas (QF2); propriedades garantidas e confiança no
 \emph{broker} (QF3, QE3); tipo de avaliação e uso de dispositivos restritos (QF4);
 e limitações declaradas (QF5). O resumo da extração consta do
-Anexo~\ref{anx:extracao}.
+Anexo~\ref{anx:extracao}. A síntese é narrativa e tabular: os estudos são
+agrupados numa taxonomia, definida a partir dos próprios estudos analisados e não
+\emph{a priori}, e comparados propriedade a propriedade.

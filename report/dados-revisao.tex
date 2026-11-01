@@ -21,13 +21,21 @@
 \newcommand{\nSecundariaUnicos}{73}
 
 % Triagem (diagrama PRISMA)
-\newcommand{\nDuplicados}{1216}
+\newcommand{\nDuplicados}{1221}                % 1216 por DOI/título + 5 por título com outro DOI, detetados depois da triagem
+\newcommand{\nDuplicadosTardios}{5}
 \newcommand{\nRemovidosTipo}{40}
-\newcommand{\nTriados}{2450}                     % títulos e resumos lidos
-\newcommand{\nExcluidosTA}{1729}        % excluídos por título/resumo
-\newcommand{\nElegiveis}{721}          % elegíveis após a triagem
-\newcommand{\nTextoIntegral}{20}                 % analisados em texto integral (seleção intencional)
-\newcommand{\nExcluidosTI}{1}                    % excluídos no texto integral (CI4)
-\newcommand{\nIncluidos}{19}                     % estudos primários analisados (Tabela 9)
-\newcommand{\nSecundarios}{5}                    % revisões relacionadas analisadas (Secção 4)
+\newcommand{\nTriados}{2445}                     % títulos e resumos lidos
+\newcommand{\nExcluidosTA}{1726}        % excluídos por título/resumo
+\newcommand{\nElegiveis}{719}          % elegíveis após a triagem
+\newcommand{\nExcluidosCEDois}{1}                % versão preliminar (CE2) do estudo E04
+\newcommand{\nNaoAvaliados}{698}                 % elegíveis fora da seleção intencional
+\newcommand{\nTextoIntegral}{20}                 % procurados em texto integral (seleção intencional)
+\newcommand{\nNaoObtidos}{3}                     % texto integral não obtido (CI4)
+\newcommand{\nIncluidos}{17}                     % estudos primários analisados (Tabela 9)
 
+% Revisões relacionadas (Secção 4; rsl/dados/revisoes-decisoes.csv)
+\newcommand{\nRevCandidatas}{121}               % secundária (73) + CE4 da principal (85), sem repetições (37)
+\newcommand{\nRevNaoRevisao}{21}                % excluídas por RV1
+\newcommand{\nRevForaObjeto}{79}                % excluídas por RV2
+\newcommand{\nRevElegiveisNaoAnalisadas}{17}    % cumprem RV1 e RV2, não analisadas
+\newcommand{\nSecundarios}{5}                    % revisões analisadas (4 + 1 por snowballing)
