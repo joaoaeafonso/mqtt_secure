@@ -2,8 +2,9 @@
 
 import unittest
 
-from lab import (DEFAULTS, LEVELS, PACKET_OVERHEAD, PRESETS, current_level, merged, parse_revoked,
-                 validate)
+from lab import (DEFAULTS, LEVELS, PACKET_OVERHEAD, PRESETS, current_level, merged, parse_accept,
+                 parse_revoked, validate)
+from msec_envelope import AES_GCM, CHACHA20
 
 
 class Validate(unittest.TestCase):
@@ -33,6 +34,31 @@ class Validate(unittest.TestCase):
         with self.assertRaises(ValueError):
             merged(DEFAULTS, {"response": {"revoked": "999"}})  # only 50 sensors
 
+    def test_checks_need_the_envelope(self):
+        """§7.7 req. 1: a check that needs the envelope cannot be on without it."""
+        for key in ("freshness", "replay", "key_binding"):
+            with self.subTest(key), self.assertRaises(ValueError):
+                merged(DEFAULTS, {"payload": {key: True}})
+        with self.assertRaises(ValueError):
+            merged(DEFAULTS, {"payload": {"accept": "encrypt"}})
+        ok = merged(DEFAULTS, {"payload": {"protection": "encrypt", "freshness": True}})
+        self.assertTrue(ok["payload"]["freshness"])
+        with self.assertRaises(ValueError):  # and turning the envelope off alone is refused
+            merged(ok, {"payload": {"protection": "none"}})
+
+    def test_accept_list(self):
+        self.assertEqual(parse_accept(" encrypt, auth_only,encrypt"), ["encrypt", "auth_only"])
+        with self.assertRaises(ValueError):
+            parse_accept("encrypt,none")
+
+    def test_attacker_settings_need_their_prerequisites(self):
+        for patch in ({"stolen_rate": 5.0}, {"forge_commands_rate": 5.0}, {"tamper": "alter"},
+                      {"stolen_key": 999}):
+            with self.subTest(patch), self.assertRaises(ValueError):
+                merged(DEFAULTS, {"attacker": patch})
+        cfg = merged(DEFAULTS, {"attacker": {"stolen_key": 1, "stolen_rate": 5.0}})
+        self.assertEqual(cfg["attacker"]["stolen_key"], 1)
+
     def test_validate_flattens(self):
         self.assertEqual(validate({"downlink": {"rate": 5}}), [("downlink", "rate", 5)])
 
@@ -61,13 +87,13 @@ class HardenedPreset(unittest.TestCase):
 
 
 class SecurityLevels(unittest.TestCase):
-    """K0..K10 follow Table 17 of the report (Section 7)."""
+    """K0..K11 follow the report's configuration table (Section 7)."""
 
     def apply(self, level_id, base=DEFAULTS):
         return merged(base, PRESETS[level_id](base))
 
     def test_ids_match_the_report(self):
-        self.assertEqual([lv.id for lv in LEVELS], [f"K{i}" for i in range(11)])
+        self.assertEqual([lv.id for lv in LEVELS], [f"K{i}" for i in range(12)])
 
     def test_every_level_is_valid_and_recognised(self):
         for lv in LEVELS:
@@ -90,6 +116,7 @@ class SecurityLevels(unittest.TestCase):
             "K8": (True, "encrypt", True, True, True, True),
             "K9": (True, "sign", True, True, True, True),
             "K10": (False, "encrypt", True, True, True, False),
+            "K11": (True, "encrypt", True, True, True, True),
         }
         for level_id, (on, protection, fresh, replay, binding, limits) in table.items():
             with self.subTest(level_id):
@@ -101,6 +128,14 @@ class SecurityLevels(unittest.TestCase):
                                   p["key_binding"]), (protection, fresh, replay, binding))
                 self.assertEqual(p["rate_limit"] > 0, limits)
                 self.assertEqual(t["max_packet"] > 0 and t["max_connections"] > 0, limits)
+
+    def test_k11_is_k8_with_chacha20(self):
+        k8, k11 = self.apply("K8"), self.apply("K11")
+        self.assertEqual(k8["payload"]["cipher"], AES_GCM)
+        self.assertEqual(k11["payload"]["cipher"], CHACHA20)
+        k11["payload"]["cipher"] = AES_GCM
+        self.assertEqual(k11, k8)
+        self.assertEqual(current_level(self.apply("K11")), "K11")
 
     def test_defaults_are_k0(self):
         self.assertEqual(current_level(merged(DEFAULTS, {})), "K0")

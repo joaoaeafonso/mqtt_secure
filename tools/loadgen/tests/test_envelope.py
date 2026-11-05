@@ -3,8 +3,8 @@
 import unittest
 from pathlib import Path
 
-from msec_envelope import (AUTH_ONLY, ENCRYPT, SIGN, KeySet, Protector, Rejected, Verifier,
-                           public_key, read_keys)
+from msec_envelope import (AES_GCM, AUTH_ONLY, CHACHA20, ENCRYPT, SIGN, KeySet, Protector,
+                           Rejected, Verifier, public_key, read_keys)
 
 VECTORS = Path(__file__).resolve().parents[3] / "tests" / "vectors" / "envelope_vectors.txt"
 NOW_MS = 1_700_000_000_000
@@ -32,8 +32,10 @@ class Vectors(unittest.TestCase):
         for name, mode, key_id, topic, payload_hex, envelope_hex in vectors:
             with self.subTest(name):
                 payload = b"" if payload_hex == "-" else bytes.fromhex(payload_hex)
-                p = Protector(mode, int(key_id), aead, sign, clock_ns=lambda: ts * 1_000_000,
-                              random=lambda n: nonce, sequence=0)
+                mode, _, alg = mode.partition(":")
+                p = Protector(mode, int(key_id), aead, sign,
+                              algorithm=CHACHA20 if alg == "chacha20" else AES_GCM,
+                              clock_ns=lambda: ts * 1_000_000, random=lambda n: nonce, sequence=0)
                 self.assertEqual(p.protect(topic.encode(), payload).hex(), envelope_hex)
 
 
@@ -97,6 +99,44 @@ class VerifierPolicy(unittest.TestCase):
         env = self.sender(ENCRYPT).protect(b"t", b"x")
         self.assertEqual(self.reason(self.verifier({ENCRYPT}, allowed_senders={0}), b"t", env),
                          "PermissionDenied")
+
+
+class ChaCha20Keys(unittest.TestCase):
+    """The AEAD algorithm is an attribute of the key; the envelope is unchanged."""
+
+    def setUp(self):
+        self.key = bytes(range(32))
+        self.clock = lambda: NOW_MS * 1_000_000
+
+    def keys(self, algorithm):
+        keys = KeySet()
+        keys.add(1, "aead", self.key, "sensor-1", algorithm)
+        return keys
+
+    def test_round_trip_and_cross_algorithm_failure(self):
+        for mode in (ENCRYPT, AUTH_ONLY):
+            with self.subTest(mode):
+                env = Protector(mode, 1, self.key, algorithm=CHACHA20, clock_ns=self.clock,
+                                sequence=0).protect(b"t", b"21.5C")
+                ok = Verifier(self.keys(CHACHA20), {mode}, clock_ns=self.clock)
+                self.assertEqual(ok.open(b"t", env), b"21.5C")
+                # Same key bytes registered as AES-GCM: the receiver must not open it.
+                aes = Verifier(self.keys(AES_GCM), {mode}, clock_ns=self.clock)
+                with self.assertRaises(Rejected) as ctx:
+                    aes.open(b"t", env)
+                self.assertEqual(ctx.exception.reason, "AuthenticationFailed")
+
+    def test_key_file_kind_carries_the_algorithm(self):
+        keys = self.keys(CHACHA20)
+        keys.add(2, "aead", self.key, "sensor-2")
+        self.assertIn(f"1 aead-chacha20 {self.key.hex()} sensor-1", keys.lines())
+        self.assertIn(f"2 aead {self.key.hex()} sensor-2", keys.lines())
+        back = KeySet()
+        back.merge(keys)
+        self.assertEqual((back.algorithm(1), back.algorithm(2)), (CHACHA20, AES_GCM))
+        self.assertEqual(keys.subset([1]).algorithm(1), CHACHA20)
+        keys.remove(1)
+        self.assertEqual(keys.algorithm(1), AES_GCM)
 
 
 class KeyFiles(unittest.TestCase):
