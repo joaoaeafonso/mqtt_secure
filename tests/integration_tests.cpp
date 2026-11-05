@@ -39,7 +39,7 @@ protected:
 
     std::unique_ptr<ILayer> security_layer() {
         auto layer = security::SecurityLayer::create(
-            {.sending_key_id = 1},
+            {.sending_key_id = 1, .enforce_key_binding = false},
             {.cipher = cipher_, .key_store = keys_, .random = rng_, .clock = clock_});
         EXPECT_TRUE(layer.has_value());
         return layer ? std::move(*layer) : nullptr;

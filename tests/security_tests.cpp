@@ -7,6 +7,7 @@
 #include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
 #include "msec/security/openssl/aes_gcm_cipher.hpp"
+#include "msec/security/openssl/chacha20_poly1305_cipher.hpp"
 #include "msec/security/openssl/ed25519_signer.hpp"
 #include "msec/security/openssl/random_source.hpp"
 #include "msec/security/replay_guard.hpp"
@@ -151,6 +152,150 @@ TEST(AesGcm, EmptyPlaintext) {
     EXPECT_TRUE(opened->empty());
 }
 
+// ------------------------------------------------------ ChaCha20-Poly1305 ---
+
+TEST(ChaCha20Poly1305, Rfc8439Section282TestVector) {
+    const openssl::ChaCha20Poly1305Cipher cipher;
+    const SecureBuffer key{
+        from_hex("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")};
+    const auto nonce = from_hex("070000004041424344454647");
+    const auto aad = from_hex("50515253c0c1c2c3c4c5c6c7");
+    const auto plaintext = to_bytes(
+        "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the "
+        "future, sunscreen would be it.");
+    const auto expected = from_hex(
+        "d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d63dbea45e8ca9671282fafb69"
+        "da92728b1a71de0a9e060b2905d6a5b67ecd3b3692ddbd7f2d778b8c9803aee328091b58fab324e4fad67594"
+        "5585808b4831d7bc3ff4def08e4b7a9de576d26586cec64b6116"
+        "1ae10b594f09e26a7e902ecbd0600691");  // ciphertext || tag
+
+    const auto sealed = cipher.seal(key, nonce, plaintext, aad);
+    ASSERT_TRUE(sealed.has_value());
+    EXPECT_EQ(*sealed, expected);
+    const auto opened = cipher.open(key, nonce, expected, aad);
+    ASSERT_TRUE(opened.has_value());
+    EXPECT_EQ(*opened, plaintext);
+
+    auto tampered = expected;
+    tampered.back() ^= std::byte{0x01};
+    EXPECT_EQ(cipher.open(key, nonce, tampered, aad).error().code,
+              ErrorCode::AuthenticationFailed);
+    EXPECT_FALSE(cipher.open(key, nonce, expected, to_bytes("other aad")).has_value());
+}
+
+TEST(ChaCha20Poly1305, SameSizesAsAesGcmSoTheEnvelopeDoesNotChange) {
+    const openssl::ChaCha20Poly1305Cipher chacha;
+    const openssl::AesGcmCipher aes;
+    EXPECT_EQ(chacha.key_size(), aes.key_size());
+    EXPECT_EQ(chacha.nonce_size(), aes.nonce_size());
+    EXPECT_EQ(chacha.tag_size(), aes.tag_size());
+    EXPECT_NE(chacha.id(), aes.id());
+}
+
+TEST(ChaCha20Poly1305, NeitherAlgorithmOpensTheOthersOutput) {
+    const openssl::ChaCha20Poly1305Cipher chacha;
+    const openssl::AesGcmCipher aes;
+    const auto key = random_key();
+    const Bytes nonce(12, std::byte{7});
+    const auto aad = to_bytes("aad");
+    const auto by_chacha = chacha.seal(key, nonce, to_bytes("21.5C"), aad);
+    const auto by_aes = aes.seal(key, nonce, to_bytes("21.5C"), aad);
+    ASSERT_TRUE(by_chacha.has_value() && by_aes.has_value());
+    EXPECT_EQ(aes.open(key, nonce, *by_chacha, aad).error().code, ErrorCode::AuthenticationFailed);
+    EXPECT_EQ(chacha.open(key, nonce, *by_aes, aad).error().code, ErrorCode::AuthenticationFailed);
+}
+
+/// The algorithm is an attribute of the key: one receiver serves both.
+class CipherPerKeyTest : public ::testing::Test {
+protected:
+    static constexpr KeyId kAes = 1;
+    static constexpr KeyId kChaCha = 2;
+
+    void SetUp() override {
+        const auto material = random_key();
+        ASSERT_TRUE(keys_->add(kAes, SecureBuffer{material.view()}).has_value());
+        ASSERT_TRUE(
+            keys_->add(kChaCha, SecureBuffer{material.view()}, AeadAlgorithm::ChaCha20Poly1305)
+                .has_value());
+        // The same key bytes, but the receiver believes key 2 is AES.
+        ASSERT_TRUE(aes_only_->add(kChaCha, SecureBuffer{material.view()}).has_value());
+    }
+
+    std::unique_ptr<SecurityLayer> make(KeyId key, std::shared_ptr<const IKeyStore> store,
+                                        PayloadProtection mode = PayloadProtection::Encrypt,
+                                        bool with_chacha = true) {
+        SecurityDependencies deps{.cipher = std::make_shared<openssl::AesGcmCipher>(),
+                                  .key_store = std::move(store),
+                                  .random = std::make_shared<openssl::RandomSource>(),
+                                  .clock = clock_};
+        if (with_chacha) {
+            deps.more_ciphers = {std::make_shared<openssl::ChaCha20Poly1305Cipher>()};
+        }
+        auto layer = SecurityLayer::create(
+            {.sending_key_id = key, .protection = mode, .enforce_key_binding = false},
+            std::move(deps));
+        EXPECT_TRUE(layer.has_value());
+        return layer ? std::move(*layer) : nullptr;
+    }
+
+    std::shared_ptr<InMemoryKeyStore> keys_ = std::make_shared<InMemoryKeyStore>();
+    std::shared_ptr<InMemoryKeyStore> aes_only_ = std::make_shared<InMemoryKeyStore>();
+    std::shared_ptr<test::FakeClock> clock_ = std::make_shared<test::FakeClock>();
+};
+
+TEST_F(CipherPerKeyTest, OneReceiverServesBothAlgorithms) {
+    auto receiver = make(kAes, keys_);
+    // One sender per key: its sequence numbers keep increasing across modes.
+    std::map<KeyId, std::unique_ptr<SecurityLayer>> senders;
+    senders[kAes] = make(kAes, keys_);
+    senders[kChaCha] = make(kChaCha, keys_);
+    for (const auto mode : {PayloadProtection::Encrypt, PayloadProtection::AuthenticateOnly}) {
+        ASSERT_TRUE(receiver->set_accepted({mode}).has_value());
+        for (const KeyId key : {kAes, kChaCha}) {
+            ASSERT_TRUE(senders[key]->set_protection(mode).has_value());
+            auto wire = senders[key]->on_outbound(message("sensors/t", "21.5C"));
+            ASSERT_TRUE(wire.has_value());
+            EXPECT_EQ(envelope::parse(wire->payload)->nonce.size(), 12U);
+            const auto plain = receiver->on_inbound(*wire);
+            ASSERT_TRUE(plain.has_value()) << plain.error().message;
+            EXPECT_EQ(bytes_to_string(plain->payload), "21.5C");
+        }
+    }
+}
+
+TEST_F(CipherPerKeyTest, KeyRegisteredWithTheOtherAlgorithmFails) {
+    auto wire = make(kChaCha, keys_)->on_outbound(message("sensors/t", "21.5C"));
+    ASSERT_TRUE(wire.has_value());
+    EXPECT_EQ(make(kChaCha, aes_only_)->on_inbound(*wire).error().code,
+              ErrorCode::AuthenticationFailed);
+    // And the other way round: an AES envelope under a key the receiver thinks is ChaCha.
+    auto aes_wire = make(kChaCha, aes_only_)->on_outbound(message("sensors/t", "21.5C"));
+    ASSERT_TRUE(aes_wire.has_value());
+    EXPECT_EQ(make(kAes, keys_)->on_inbound(*aes_wire).error().code,
+              ErrorCode::AuthenticationFailed);
+}
+
+TEST_F(CipherPerKeyTest, KeyForAnUnconfiguredAlgorithmIsRefused) {
+    auto aes_only_layer = make(kChaCha, keys_, PayloadProtection::Encrypt, /*with_chacha=*/false);
+    EXPECT_EQ(aes_only_layer->on_outbound(message("sensors/t", "x")).error().code,
+              ErrorCode::InvalidState);
+    auto wire = make(kChaCha, keys_)->on_outbound(message("sensors/t", "x"));
+    ASSERT_TRUE(wire.has_value());
+    EXPECT_EQ(aes_only_layer->on_inbound(*wire).error().code, ErrorCode::AuthenticationFailed);
+}
+
+TEST_F(CipherPerKeyTest, TwoCiphersForOneAlgorithmAreRejected) {
+    auto layer = SecurityLayer::create(
+        {.enforce_key_binding = false},
+        {.cipher = std::make_shared<openssl::AesGcmCipher>(),
+         .key_store = keys_,
+         .random = std::make_shared<openssl::RandomSource>(),
+         .clock = clock_,
+         .more_ciphers = {std::make_shared<openssl::AesGcmCipher>()}});
+    ASSERT_FALSE(layer.has_value());
+    EXPECT_EQ(layer.error().code, ErrorCode::InvalidArgument);
+}
+
 // --------------------------------------------------------- security layer ---
 
 class SecurityLayerTest : public ::testing::Test {
@@ -164,6 +309,7 @@ protected:
     std::unique_ptr<SecurityLayer> make_layer(KeyId key, std::shared_ptr<const IClock> clock,
                                               SecurityConfig config = {}) {
         config.sending_key_id = key;
+        config.enforce_key_binding = false;  // no key → topic policy in these tests
         auto layer = SecurityLayer::create(
             config,
             {.cipher = cipher_, .key_store = keys_, .random = rng_, .clock = std::move(clock)});
@@ -404,8 +550,14 @@ TEST(EnvelopeVectors, CxxMatchesPythonByteForByte) {
         const auto& [name, mode_text, key_text, topic, payload_hex, envelope_hex] =
             std::tie(f[0], f[1], f[2], f[3], f[4], f[5]);
         const auto key_id = static_cast<KeyId>(std::stoul(key_text));
-        const auto mode = mode_text == "encrypt"     ? PayloadProtection::Encrypt
-                          : mode_text == "auth_only" ? PayloadProtection::AuthenticateOnly
+        // "<mode>[:chacha20]": the aead key's algorithm.
+        const auto colon = mode_text.find(':');
+        const std::string mode_name = mode_text.substr(0, colon);
+        const auto algorithm = colon != std::string::npos && mode_text.substr(colon + 1) == "chacha20"
+                                   ? AeadAlgorithm::ChaCha20Poly1305
+                                   : AeadAlgorithm::Aes256Gcm;
+        const auto mode = mode_name == "encrypt"     ? PayloadProtection::Encrypt
+                          : mode_name == "auth_only" ? PayloadProtection::AuthenticateOnly
                                                      : PayloadProtection::Sign;
         const Bytes payload = payload_hex == "-" ? Bytes{} : from_hex(payload_hex);
 
@@ -414,7 +566,8 @@ TEST(EnvelopeVectors, CxxMatchesPythonByteForByte) {
         auto pub = std::make_shared<InMemoryKeyStore>();
         const openssl::Ed25519Signer signer;
         const SecureBuffer sign_key{from_hex(params.at("sign_key"))};
-        ASSERT_TRUE(aead->add(key_id, SecureBuffer{from_hex(params.at("aead_key"))}).has_value());
+        ASSERT_TRUE(
+            aead->add(key_id, SecureBuffer{from_hex(params.at("aead_key"))}, algorithm).has_value());
         ASSERT_TRUE(pub->add(key_id, SecureBuffer{*signer.public_key(sign_key)}).has_value());
         ASSERT_TRUE(priv->add(key_id, SecureBuffer{sign_key.view()}).has_value());
         auto clock = std::make_shared<test::FakeClock>(std::chrono::system_clock::time_point{
@@ -426,8 +579,10 @@ TEST(EnvelopeVectors, CxxMatchesPythonByteForByte) {
             .clock = clock,
             .signer = std::make_shared<openssl::Ed25519Signer>(),
             .signing_keys = priv,
-            .verify_keys = pub};
-        auto layer = SecurityLayer::create({.sending_key_id = key_id, .protection = mode}, deps);
+            .verify_keys = pub,
+            .more_ciphers = {std::make_shared<openssl::ChaCha20Poly1305Cipher>()}};
+        auto layer = SecurityLayer::create(
+            {.sending_key_id = key_id, .protection = mode, .enforce_key_binding = false}, deps);
         ASSERT_TRUE(layer.has_value()) << name;
 
         const auto sealed = (*layer)->on_outbound(
@@ -441,7 +596,7 @@ TEST(EnvelopeVectors, CxxMatchesPythonByteForByte) {
         EXPECT_EQ(opened->payload, payload) << name;
         ++vectors;
     }
-    EXPECT_GE(vectors, 5);
+    EXPECT_GE(vectors, 7);
 }
 
 TEST(SecurityLayerFactory, RejectsMissingDependencies) {
@@ -598,7 +753,7 @@ TEST_F(SignedLayerTest, KeyMayOnlyPublishOnItsOwnersTopics) {
     EXPECT_TRUE(
         receiver->on_inbound(*sender->on_outbound(message("sensors/sensor-1/t", "21"))).has_value());
 
-    receiver->set_enforce_key_binding(false);
+    ASSERT_TRUE(receiver->set_enforce_key_binding(false).has_value());
     EXPECT_TRUE(receiver->on_inbound(foreign).has_value());
 }
 
@@ -608,7 +763,7 @@ TEST_F(SignedLayerTest, RejectedBindingDoesNotConsumeTheSequenceNumber) {
     ASSERT_TRUE(sender && receiver);
     auto foreign = *sender->on_outbound(message("sensors/sensor-2/t", "99"));
     EXPECT_EQ(receiver->on_inbound(foreign).error().code, ErrorCode::PermissionDenied);
-    receiver->set_enforce_key_binding(false);
+    ASSERT_TRUE(receiver->set_enforce_key_binding(false).has_value());
     EXPECT_TRUE(receiver->on_inbound(foreign).has_value());  // not recorded as seen before
 }
 
