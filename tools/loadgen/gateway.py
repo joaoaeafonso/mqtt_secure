@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 
 import keylog
-from pki import Pki
+from pki import EPOCH_STRIDE, Pki
 
 
 def on_off(value: bool) -> str:
@@ -32,10 +32,12 @@ class GatewayProcess:
                "--key", str(pki.client_key("gateway")),
                "--username", "gateway", "--credentials", str(pki.credentials),
                "--keys", str(pki.keys),
-               "--protection", p["protection"], "--freshness", on_off(p["freshness"]),
+               "--protection", p["protection"], "--accept", p.get("accept") or "-",
+               "--freshness", on_off(p["freshness"]),
                "--replay", on_off(p["replay"]), "--key-binding", on_off(p["key_binding"]),
                "--rate-limit", str(p["rate_limit"]), "--persistence", s["persistence"],
                "--sending-key", str(sending_key),
+               "--epoch-state", str(pki.epoch_state), "--epoch-stride", str(EPOCH_STRIDE),
                "--downlink", str(config["downlink"]["rate"]), "--zone", config["load"]["zone"],
                "--control", "stdin", "--stats", "json", "--report", "1000"]
         if verbose:
@@ -46,6 +48,7 @@ class GatewayProcess:
         self.latest: dict = {}
         self.log: collections.deque[str] = collections.deque(maxlen=5000)
         self._summaries: queue.Queue = queue.Queue()
+        self._connects: queue.Queue = queue.Queue()
         self._ready = threading.Event()
         threading.Thread(target=self._read_stdout, daemon=True).start()
         threading.Thread(target=self._read_stderr, daemon=True).start()
@@ -63,6 +66,8 @@ class GatewayProcess:
                 self.latest = msg
             elif msg.get("type") == "summary":
                 self._summaries.put(msg)
+            elif msg.get("type") == "connect":
+                self._connects.put(msg)
 
     def _read_stderr(self) -> None:
         for line in self.proc.stderr:
@@ -78,6 +83,14 @@ class GatewayProcess:
     def set(self, key: str, value) -> None:
         self.send(f"set {key} {on_off(value) if isinstance(value, bool) else value}")
 
+    def apply(self, **settings) -> None:
+        """Several settings at once, validated together by the gateway (a
+        combination like protection=none with freshness=on is refused)."""
+        if settings:
+            self.send("apply " + " ".join(
+                f"{k}={on_off(v) if isinstance(v, bool) else (v if v != '' else '-')}"
+                for k, v in settings.items()))
+
     def add_key(self, line: str) -> None:
         self.send(f"key add {line}")
 
@@ -90,7 +103,16 @@ class GatewayProcess:
     def reset(self) -> None:
         self.send("reset")
 
-    def summary(self, timeout: float = 10) -> dict:
+    def connect_test(self, count: int = 5, timeout: float = 60) -> dict:
+        """Times `count` reconnects (TCP + TLS + CONNECT + resubscribe)."""
+        self.send(f"connect-test {count}")
+        return self._connects.get(timeout=timeout)
+
+    @property
+    def pid(self) -> int:
+        return self.proc.pid
+
+    def summary(self, timeout: float = 30) -> dict:
         self.send("summary")
         return self._summaries.get(timeout=timeout)
 
