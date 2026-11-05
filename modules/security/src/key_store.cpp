@@ -5,7 +5,7 @@
 
 namespace msec::security {
 
-Status InMemoryKeyStore::add(KeyId id, SecureBuffer key) {
+Status InMemoryKeyStore::add(KeyId id, SecureBuffer key, AeadAlgorithm algorithm) {
     if (key.empty()) {
         return make_error(ErrorCode::InvalidArgument, "key must not be empty");
     }
@@ -14,7 +14,8 @@ Status InMemoryKeyStore::add(KeyId id, SecureBuffer key) {
     if (keys_.contains(id)) {
         return make_error(ErrorCode::InvalidState, std::format("key {} already exists", id));
     }
-    keys_.emplace(id, std::make_shared<const SecureBuffer>(std::move(key)));
+    keys_.emplace(id, Entry{.key = std::make_shared<const SecureBuffer>(std::move(key)),
+                         .algorithm = algorithm});
     return {};
 }
 
@@ -32,7 +33,16 @@ Result<std::shared_ptr<const SecureBuffer>> InMemoryKeyStore::find(KeyId id) con
     if (it == keys_.end()) {
         return make_error(ErrorCode::NotFound, std::format("key {} not found", id));
     }
-    return it->second;
+    return it->second.key;
+}
+
+Result<AeadAlgorithm> InMemoryKeyStore::algorithm(KeyId id) const {
+    const std::scoped_lock lock{mutex_};
+    const auto it = keys_.find(id);
+    if (it == keys_.end()) {
+        return make_error(ErrorCode::NotFound, std::format("key {} not found", id));
+    }
+    return it->second.algorithm;
 }
 
 }  // namespace msec::security
