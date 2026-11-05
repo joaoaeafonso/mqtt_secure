@@ -18,7 +18,9 @@ Trust bootstrap, in this order:
      keys, Ed25519 payload signing keys) travel only over this verified
      channel, and only those of the sensors the agent runs (plus the
      gateway's downlink AES key and public key, which every actuator needs).
-     The attacker role receives only the public CA.
+     The attacker role receives only the public CA, unless a scenario sets
+     attacker.stolen_key: then it also gets that one device's keys, password
+     and certificate, standing in for a compromised device.
 
 The controller identity (CA, its certificate and the token) persists in a
 state directory, so agents can stay up across many lab runs and reconnect on
@@ -43,6 +45,7 @@ from pathlib import Path
 
 import keylog
 import pki as pki_module
+from attacker import COUNTERS as ATTACK_COUNTERS
 from sensors import summarize
 
 PROTOCOL_VERSION = 2  # 2: key files carry kinds and owners (aead + Ed25519)
@@ -378,8 +381,14 @@ class FleetGroup:
             m.update(add_keys=pki_module.device_view(keys, m.ids).lines())
             m.update(epoch=epoch)
 
-    def poll(self) -> dict:
-        reports = [(name, m.poll()) for name, m in zip(self.names, self.members)]
+    def fresh_poll(self) -> dict:
+        """Like poll(), but local sensor groups report as of now; remote agents
+        report every 0.5 s, so their window edges stay that fuzzy."""
+        return self.poll(fresh=True)
+
+    def poll(self, fresh: bool = False) -> dict:
+        reports = [(name, m.fresh_poll() if fresh and hasattr(m, "fresh_poll") else m.poll())
+                   for name, m in zip(self.names, self.members)]
         out = summarize([r for _, r in reports], sum(r.get("total", 0) for _, r in reports))
         errors = [f"{name}: {r['last_error']}" for name, r in reports if r.get("last_error")]
         out["last_error"] = errors[-1] if errors else ""
@@ -393,7 +402,7 @@ class FleetGroup:
 class AttackerGroup:
     """Several attackers seen as one: counters add up, status summarises."""
 
-    COUNTERS = ("received", "injected", "replayed", "captured")
+    COUNTERS = (*ATTACK_COUNTERS, "captured", "slow_held")
 
     def __init__(self, members: list, names: list[str]) -> None:
         self.members, self.names = members, names
@@ -405,6 +414,8 @@ class AttackerGroup:
     def poll(self) -> dict:
         reports = [m.poll() for m in self.members]
         out = {k: sum(r.get(k, 0) for r in reports) for k in self.COUNTERS}
+        probes = [r["probe_ms"] for r in reports if r.get("probe_ms")]
+        out["probe_ms"] = max(probes) if probes else 0.0
         connected = [r for r in reports if r.get("connected")]
         out["connected"] = bool(connected)
         out["enabled"] = any(r.get("enabled") for r in reports)

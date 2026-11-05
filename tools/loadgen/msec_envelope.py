@@ -18,6 +18,10 @@ SecurityLayer (tests/vectors/envelope_vectors.txt is checked by both):
 
     AAD = bytes[0 : 25+N] || u16 topic length || topic
 
+AEAD is AES-256-GCM or ChaCha20-Poly1305 (RFC 8439): an attribute of the key,
+not a field of the envelope. Both use 12-byte nonces and 16-byte tags, so the
+bytes above are the same; only the key (chosen by the key id) says which one.
+
 Protector seals (sensors, attacker); Verifier opens (actuators receiving
 gateway commands), with the same policy checks as the C++ receiver: accepted
 modes, freshness, key → sender binding and a 64-entry replay window.
@@ -32,7 +36,7 @@ from dataclasses import dataclass, field
 
 from cryptography.exceptions import InvalidSignature, InvalidTag
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
 
 MAGIC = b"MS"
 VERSION = 2
@@ -65,12 +69,25 @@ SENDER_PROTECTION = {
     "full": ENCRYPT,
 }
 
-# Key kinds in key files: "<id> <kind> <hex> [owner]".
+# AEAD algorithms (the attribute of an aead key).
+AES_GCM = "aes-256-gcm"
+CHACHA20 = "chacha20-poly1305"
+AEAD_ALGORITHMS = {AES_GCM: AESGCM, CHACHA20: ChaCha20Poly1305}
+
+# Key kinds in key files: "<id> <kind> <hex> [owner]". An aead key is
+# AES-256-GCM; "aead-chacha20" is an aead key used with ChaCha20-Poly1305.
 AEAD = "aead"
+AEAD_CHACHA20 = "aead-chacha20"
 SIGN_PRIVATE = "sign-private"
 SIGN_PUBLIC = "sign-public"
 KINDS = (AEAD, SIGN_PRIVATE, SIGN_PUBLIC)
 GATEWAY_OWNER = "gateway"
+
+
+def aead_cipher(algorithm: str, key: bytes):
+    if algorithm not in AEAD_ALGORITHMS:
+        raise ValueError(f"unknown AEAD algorithm {algorithm!r}")
+    return AEAD_ALGORITHMS[algorithm](key)
 
 
 class Rejected(Exception):
@@ -89,17 +106,31 @@ class KeySet:
     sign_private: dict[int, bytes] = field(default_factory=dict)
     sign_public: dict[int, bytes] = field(default_factory=dict)
     owners: dict[int, str] = field(default_factory=dict)
+    algorithms: dict[int, str] = field(default_factory=dict)  # aead keys that are not AES-GCM
+
+    def algorithm(self, key_id: int) -> str:
+        return self.algorithms.get(key_id, AES_GCM)
 
     def store(self, kind: str) -> dict[int, bytes]:
         return {AEAD: self.aead, SIGN_PRIVATE: self.sign_private,
                 SIGN_PUBLIC: self.sign_public}[kind]
 
-    def add(self, key_id: int, kind: str, key: bytes, owner: str | None = None) -> None:
+    def add(self, key_id: int, kind: str, key: bytes, owner: str | None = None,
+            algorithm: str = AES_GCM) -> None:
+        if kind == AEAD_CHACHA20:
+            kind, algorithm = AEAD, CHACHA20
         if kind not in KINDS:
             raise ValueError(f"unknown key kind {kind!r}")
+        if algorithm not in AEAD_ALGORITHMS:
+            raise ValueError(f"unknown AEAD algorithm {algorithm!r}")
         if len(key) != KEY_SIZE:
             raise ValueError(f"key {key_id} ({kind}) must be {KEY_SIZE} bytes")
         self.store(kind)[key_id] = key
+        if kind == AEAD:
+            if algorithm == AES_GCM:
+                self.algorithms.pop(key_id, None)
+            else:
+                self.algorithms[key_id] = algorithm
         if owner:
             self.owners[key_id] = owner
 
@@ -107,13 +138,19 @@ class KeySet:
         for kind in KINDS:
             self.store(kind).pop(key_id, None)
         self.owners.pop(key_id, None)
+        self.algorithms.pop(key_id, None)
+
+    def file_kind(self, kind: str, key_id: int) -> str:
+        """The kind as written in key files (aead keys carry their algorithm)."""
+        return AEAD_CHACHA20 if kind == AEAD and self.algorithm(key_id) == CHACHA20 else kind
 
     def lines(self) -> list[str]:
         out = []
         for kind in KINDS:
             for key_id, key in sorted(self.store(kind).items()):
                 owner = self.owners.get(key_id)
-                out.append(f"{key_id} {kind} {key.hex()}" + (f" {owner}" if owner else ""))
+                out.append(f"{key_id} {self.file_kind(kind, key_id)} {key.hex()}"
+                           + (f" {owner}" if owner else ""))
         return out
 
     def subset(self, key_ids, kinds=KINDS) -> KeySet:
@@ -121,7 +158,8 @@ class KeySet:
         for kind in kinds:
             for key_id in key_ids:
                 if key_id in self.store(kind):
-                    out.add(key_id, kind, self.store(kind)[key_id], self.owners.get(key_id))
+                    out.add(key_id, kind, self.store(kind)[key_id], self.owners.get(key_id),
+                            self.algorithm(key_id))
         return out
 
     def merge(self, other: KeySet) -> None:
@@ -178,12 +216,13 @@ class Protector:
     """
 
     def __init__(self, protection: str, key_id: int = 0, key: bytes | None = None,
-                 signing_key: bytes | None = None, *,
+                 signing_key: bytes | None = None, *, algorithm: str = AES_GCM,
                  clock_ns: Callable[[], int] = time.time_ns,
                  random: Callable[[int], bytes] = os.urandom,
                  sequence: int | None = None) -> None:
         self.key_id = key_id
-        self._aead = AESGCM(key) if key else None
+        self.algorithm = algorithm
+        self._aead = aead_cipher(algorithm, key) if key else None
         self._signer = Ed25519PrivateKey.from_private_bytes(signing_key) if signing_key else None
         self._clock_ns = clock_ns
         self._random = random
@@ -206,10 +245,14 @@ class Protector:
             raise ValueError("protection 'sign' needs a signing key")
         self.protection = protection
 
-    def rekey(self, key_id: int, key: bytes | None, signing_key: bytes | None) -> None:
-        """Key rotation: continue with a new key id (and a fresh sequence space)."""
+    def rekey(self, key_id: int, key: bytes | None, signing_key: bytes | None,
+              algorithm: str = AES_GCM) -> None:
+        """Key rotation: continue with a new key id (and a fresh sequence space).
+        The new key may use another AEAD algorithm: that is how a fleet switches
+        between AES-256-GCM and ChaCha20-Poly1305."""
         self.key_id = key_id
-        self._aead = AESGCM(key) if key else None
+        self.algorithm = algorithm
+        self._aead = aead_cipher(algorithm, key) if key else None
         self._signer = Ed25519PrivateKey.from_private_bytes(signing_key) if signing_key else None
 
     def protect(self, topic: bytes, payload: bytes) -> bytes:
@@ -289,9 +332,10 @@ class Verifier:
         key = store.get(key_id)
         if key is None:
             raise Rejected("AuthenticationFailed", "unknown key id")
+        aead = None if mode == SIGN else aead_cipher(self.keys.algorithm(key_id), key)
         try:
             if mode == ENCRYPT:
-                return AESGCM(key).decrypt(nonce, body, aad)
+                return aead.decrypt(nonce, body, aad)
             tag_size = SIGNATURE_SIZE if mode == SIGN else TAG_SIZE
             if len(body) < tag_size:
                 raise Rejected("AuthenticationFailed")
@@ -299,7 +343,7 @@ class Verifier:
             if mode == SIGN:
                 Ed25519PublicKey.from_public_bytes(key).verify(tag, aad + payload)
             else:
-                AESGCM(key).decrypt(nonce, tag, aad + payload)
+                aead.decrypt(nonce, tag, aad + payload)
             return payload
         except (InvalidTag, InvalidSignature, ValueError) as e:
             raise Rejected("AuthenticationFailed") from e

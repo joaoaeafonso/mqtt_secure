@@ -5,6 +5,9 @@ and an attacker, with every security feature switchable at runtime.
   live     run the lab with a web dashboard; flip features and watch the effect
   matrix   apply each combination of settings in turn, measure, write a table
   scenarios  run the named attack-vs-defence experiments, report PASS/FAIL
+  attacks  run every attack against every security level: π_a(c), the input of S(c)
+  campaign the report's procedure: repetitions in a seeded random order, raw data,
+           manifest and frozen analysis parameters (see tools/analysis)
   agent    run sensors or an attacker on another machine for a live/matrix controller
 
 Configuration: lab.example.toml documents every setting. Pass a file with
@@ -12,9 +15,11 @@ Configuration: lab.example.toml documents every setting. Pass a file with
 
 Examples
   loadgen.py live --set load.sensors=100 --set transport.mode=tls
-  loadgen.py live --preset hardened          (or K0 … K10, the report's levels)
+  loadgen.py live --preset hardened          (or K0 … K11, the report's levels)
   loadgen.py matrix --levels K0,K1,K3,K6,K8,K9 --vary load.payload=16,256,4096
   loadgen.py matrix --vary transport.mode=plain,tls,mtls --vary payload.protection=none,encrypt
+  loadgen.py campaign --repetitions 10 --seed 1 --duration 30 --connect-test 5 --attacks \
+                      --out results/pi5-$(date +%Y%m%d)
 
 Multiple machines: on the controller (broker + gateway) set
   --set broker.host=0.0.0.0 --set cluster.sensor_agents=2 --set cluster.attacker_agents=1
@@ -37,7 +42,8 @@ from pathlib import Path
 import keylog
 from capture import Capture
 from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
-from lab import DEFAULTS, LEVEL_BY_ID, PRESETS, SPEC, STARTUP_ONLY, Lab, merged, uses_agents
+from lab import (DEFAULTS, LEVEL_BY_ID, LEVELS, PRESETS, SPEC, STARTUP_ONLY, Lab, merged,
+                 uses_agents)
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
@@ -264,6 +270,9 @@ def cmd_scenarios(args) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     cap = start_capture(args, config, out.with_suffix(".pcapng"))
     cluster = control_server(args, config)
+    if sc.needs_wiretap(only) and not config["attacker"]["wiretap"]:
+        log("the selected scenarios include on-path attacks: attacker.wiretap = true")
+        config = merged(config, {"attacker": {"wiretap": True}})
     lab = Lab(config, args.gateway, None, args.verbose,
               log if cluster else (lambda m: None), cluster)
     if cap:
@@ -278,7 +287,8 @@ def cmd_scenarios(args) -> None:
             cluster.stop()
 
     with open(out.with_suffix(".csv"), "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(f, fieldnames=list(dict.fromkeys(k for r in rows for k in r)),
+                                restval="")
         writer.writeheader()
         writer.writerows(rows)
     table = ["| Scenario | Attack | Defence | Expected | Result | Evidence |",
@@ -287,10 +297,64 @@ def cmd_scenarios(args) -> None:
               f"{r['result']} | {r['evidence']} |" for r in rows]
     out.with_suffix(".md").write_text("\n".join(table) + "\n", encoding="utf-8")
     print("\n".join(table))
-    failed = [r["scenario"] for r in rows if r["result"] != "PASS"]
+    failed = [r["scenario"] for r in rows if r["result"] == "FAIL"]
     log(f"\n{len(rows) - len(failed)}/{len(rows)} passed; results in {out}.{{md,csv}}")
     if failed:
         sys.exit(f"failed: {', '.join(failed)}")
+
+
+# ------------------------------------------------------------------ attacks ---
+
+def cmd_attacks(args) -> None:
+    import attacks as at
+
+    if args.list:
+        for a in at.ATTACKS:
+            print(f"{a.name:24} {a.description}")
+        return
+    names = args.only.split(",") if args.only else None
+    unknown = set(names or []) - set(at.ATTACK_BY_NAME)
+    if unknown:
+        raise ValueError(f"unknown attack(s): {', '.join(sorted(unknown))}")
+    config = load_config(args)
+    if at.needs_wiretap(names):
+        config = merged(config, {"attacker": {"wiretap": True}})
+    levels = [LEVEL_BY_ID[x] for x in args.levels.split(",")] if args.levels else LEVELS
+    out = Path(args.out or REPO / "build" / "loadtest" /
+               f"attacks-{time.strftime('%Y%m%d-%H%M%S')}.csv")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cluster = control_server(args, config)
+    lab = Lab(config, args.gateway, None, args.verbose,
+              log if cluster else (lambda m: None), cluster)
+    try:
+        lab.start()
+        rows = at.run_matrix(lab, levels, args.settle, args.duration, names, log)
+    finally:
+        lab.stop()
+        if cluster:
+            cluster.stop()
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(dict.fromkeys(k for r in rows for k in r)),
+                                restval="")
+        writer.writeheader()
+        writer.writerows(rows)
+    attack_names = list(dict.fromkeys(r["attack"] for r in rows))
+    print("| level | " + " | ".join(attack_names) + " |")
+    print("|---|" + "---|" * len(attack_names))
+    for level in dict.fromkeys(r["level"] for r in rows):
+        cells = {r["attack"]: ("✓" if r["prevented"] else "✗") for r in rows
+                 if r["level"] == level}
+        print(f"| {level} | " + " | ".join(cells.get(a, "") for a in attack_names) + " |")
+    log(f"\n✓ prevented, ✗ succeeded; results in {out}")
+
+
+# ----------------------------------------------------------------- campaign ---
+
+def cmd_campaign(args) -> None:
+    from campaign import run_campaign
+
+    base = load_config(args)
+    run_campaign(args, base, lambda cfg: control_server(args, cfg), REPO, log)
 
 
 # -------------------------------------------------------------------- agent ---
@@ -316,7 +380,7 @@ def main() -> None:
         p.add_argument("--set", type=parse_assignment, action="append", metavar="SECTION.KEY=VALUE",
                        help="override one setting; repeatable")
         p.add_argument("--preset", choices=list(PRESETS),
-                       help="start from a named profile: K0 … K10 (the report's security "
+                       help="start from a named profile: K0 … K11 (the report's security "
                             "levels) or hardened (= K9, every defence on)")
         p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
         p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
@@ -366,6 +430,44 @@ def main() -> None:
     p.add_argument("--out", help="output path without extension "
                                  "(default build/loadtest/scenarios-<time>)")
     p.set_defaults(func=cmd_scenarios)
+
+    p = sub.add_parser("attacks", help="every attack against every level: π_a(c)")
+    common(p)
+    p.add_argument("--list", action="store_true", help="list the attacks and exit")
+    p.add_argument("--only", help="comma-separated attack names")
+    p.add_argument("--levels", type=parse_levels, metavar="K0,K1,...",
+                   help="levels to attack (default: all)")
+    p.add_argument("--settle", type=float, default=3, help="seconds after each change")
+    p.add_argument("--duration", type=float, default=6, help="measurement window, seconds")
+    p.add_argument("--out", help="CSV path (default build/loadtest/attacks-<time>.csv)")
+    p.set_defaults(func=cmd_attacks)
+
+    p = sub.add_parser("campaign", help="the report's measurement procedure (raw data + manifest)")
+    common(p)
+    p.add_argument("--levels", type=parse_levels, metavar="K0,K1,...",
+                   help="levels to measure (default: all, K0 … K11)")
+    p.add_argument("--vary", type=parse_assignment, action="append",
+                   metavar="SECTION.KEY=V1,V2,...",
+                   help="extra factors (cartesian product), e.g. load.payload=16,256,4096")
+    p.add_argument("--repetitions", type=int, default=10, help="runs per configuration (10)")
+    p.add_argument("--seed", type=int, help="seed of the random order (default: drawn and "
+                                            "recorded in the manifest)")
+    p.add_argument("--settle", type=float, default=3, help="seconds after each change (3)")
+    p.add_argument("--duration", type=float, default=30, help="measurement window, s (30)")
+    p.add_argument("--connect-test", type=int, default=5, metavar="N",
+                   help="after each run, time N gateway reconnections (0 = off)")
+    p.add_argument("--attacks", action="store_true", help="also measure π_a(c) (attacks.csv)")
+    p.add_argument("--attack-repetitions", type=int, default=1)
+    p.add_argument("--attack-duration", type=float, default=6)
+    p.add_argument("--saturate", metavar="R1,R2,...",
+                   help="also sweep load.rate (msg/s per sensor) per level until loss ≥ 1 %%")
+    p.add_argument("--saturation-repetitions", type=int, default=3)
+    p.add_argument("--saturation-duration", type=float, default=15)
+    p.add_argument("--params", type=Path, default=REPO / "tools" / "analysis" / "params.toml",
+                   help="analysis parameters to freeze into the campaign")
+    p.add_argument("--out", required=True, help="new directory for the raw data, e.g. "
+                                                "results/pi5-20261201 (kept out of build/)")
+    p.set_defaults(func=cmd_campaign)
 
     p = sub.add_parser("agent", help="run sensors or an attacker for a remote controller")
     p.add_argument("--controller", required=True, help=f"HOST[:PORT] (default port {DEFAULT_CONTROL_PORT})")

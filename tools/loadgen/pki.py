@@ -13,7 +13,9 @@ One CertificateAuthority signs everything. Per run, generate() writes:
     device-keys.txt                  the local sensors' payload keys
 
 Payload keys (msec_envelope.KeySet, "<id> <kind> <hex> <owner>"): per device an
-AES key (aead) and an Ed25519 key pair; key id = epoch * EPOCH_STRIDE + device,
+AEAD key and an Ed25519 key pair. The AEAD key's algorithm (AES-256-GCM, kind
+"aead", or ChaCha20-Poly1305, kind "aead-chacha20") is chosen per epoch, so
+switching algorithms is a key rotation; key id = epoch * EPOCH_STRIDE + device,
 device 0 = the gateway. The gateway gets every aead key and public key but
 only its own private key: a signature then proves a sensor made the message,
 which a shared AES key cannot. A device gets its own aead + private key plus
@@ -41,7 +43,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
-from msec_envelope import AEAD, KEY_SIZE, SIGN_PRIVATE, SIGN_PUBLIC, KeySet, public_key
+from msec_envelope import AEAD, AES_GCM, KEY_SIZE, SIGN_PRIVATE, SIGN_PUBLIC, KeySet, public_key
 
 EPOCH_STRIDE = 1_000_000
 GATEWAY = 0
@@ -210,6 +212,11 @@ class Pki:
         return self.root / "device-keys.txt"
 
     @property
+    def epoch_state(self) -> Path:
+        """The gateway's durable record of the newest key epoch it accepted."""
+        return self.root / "gateway-epoch"
+
+    @property
     def crl(self) -> Path:
         return self.root / "pki" / "crl.pem"
 
@@ -229,13 +236,14 @@ def owner(device: int) -> str:
     return "gateway" if device == GATEWAY else f"sensor-{device}"
 
 
-def make_keys(sensor_ids: list[int], epoch: int) -> KeySet:
-    """Fresh payload keys for the gateway and these sensors."""
+def make_keys(sensor_ids: list[int], epoch: int, algorithm: str = AES_GCM) -> KeySet:
+    """Fresh payload keys for the gateway and these sensors; `algorithm` is the
+    AEAD algorithm of this epoch's aead keys."""
     keys = KeySet()
     for device in [GATEWAY, *sensor_ids]:
         kid, name = key_id(device, epoch), owner(device)
         signing = secrets.token_bytes(KEY_SIZE)
-        keys.add(kid, AEAD, secrets.token_bytes(KEY_SIZE), name)
+        keys.add(kid, AEAD, secrets.token_bytes(KEY_SIZE), name, algorithm)
         keys.add(kid, SIGN_PRIVATE, signing, name)
         keys.add(kid, SIGN_PUBLIC, public_key(signing), name)
     return keys
@@ -245,7 +253,7 @@ def gateway_view(keys: KeySet) -> KeySet:
     """Every aead and public key; the private signing key of the gateway only."""
     out = KeySet()
     for kid in keys.aead:
-        out.add(kid, AEAD, keys.aead[kid], keys.owners.get(kid))
+        out.add(kid, AEAD, keys.aead[kid], keys.owners.get(kid), keys.algorithm(kid))
     for kid in keys.sign_public:
         out.add(kid, SIGN_PUBLIC, keys.sign_public[kid], keys.owners.get(kid))
     for kid, key in keys.sign_private.items():
@@ -286,7 +294,8 @@ def write_crl(pki: Pki, ca: CertificateAuthority, revoked: set[str]) -> None:
 
 
 def generate(root: Path, ca: CertificateAuthority, sensor_ids: list[int],
-             local_sensor_ids: list[int], server_names: list[str]) -> tuple[Pki, KeySet]:
+             local_sensor_ids: list[int], server_names: list[str],
+             algorithm: str = AES_GCM) -> tuple[Pki, KeySet]:
     """Credentials for one lab run. Certificates (with private keys) are made here
     only for the gateway and local sensors; remote sensors enrol via CSR."""
     pki = Pki(root)
@@ -313,7 +322,7 @@ def generate(root: Path, ca: CertificateAuthority, sensor_ids: list[int],
     write_passwd(pki, passwords, set())
     write_crl(pki, ca, set())
 
-    keys = make_keys(sensor_ids, epoch=0)
+    keys = make_keys(sensor_ids, epoch=0, algorithm=algorithm)
     write_keys(pki.keys, gateway_view(keys))
     write_keys(pki.device_keys, device_view(keys, local_sensor_ids))
     return pki, keys

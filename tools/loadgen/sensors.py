@@ -131,13 +131,22 @@ class Sensor:
         """Processes incoming packets (CONNACK, commands, PINGRESP), notices dead sockets."""
         if self.client is None:
             return
+        lost = False
         try:
-            self.client.loop_read()
-            self.client.loop_write()
-            self.client.loop_misc()
+            # With a hand-driven loop, paho reports a closed connection (e.g. the
+            # broker handing the session to another client with the same id)
+            # only through these return codes: is_connected() stays True.
+            for rc in (self.client.loop_read(), self.client.loop_write(),
+                       self.client.loop_misc()):
+                lost = lost or rc in (mqtt.MQTT_ERR_NO_CONN, mqtt.MQTT_ERR_CONN_LOST)
         except Exception as e:  # noqa: BLE001
             self.error = str(e)
-        if self.client.is_connected():
+        if lost and self.state == "up":
+            self.counters.kicked += 1
+            self.error = self.error or "connection lost (session taken over?)"
+            self.close()
+            return
+        if self.client.is_connected() and not lost:
             if self.state != "up":
                 self.state = "up"
                 self.subscribe_commands(qos)
@@ -222,7 +231,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
 
     def make_sensor(sid: int) -> Sensor:
         kid = state["epoch"] * EPOCH_STRIDE + sid
-        protector = Protector(NONE, kid, keys.aead.get(kid), keys.sign_private.get(kid))
+        protector = Protector(NONE, kid, keys.aead.get(kid), keys.sign_private.get(kid),
+                              algorithm=keys.algorithm(kid))
         protector.set_protection(SENDER_PROTECTION_MODES[state["protection"]])
         return Sensor(sid, cfg.credentials[f"sensor-{sid}"], protector, make_verifier(), counters)
 
@@ -261,6 +271,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
             while True:
                 change = control.get_nowait()
                 state.update({k: v for k, v in change.items() if k in state})
+                if "report_now" in change:  # measurement edge: report immediately
+                    last_report = 0.0
                 if "add_keys" in change:  # rotation, step 1: new keys next to the old ones
                     for line in change["add_keys"]:
                         add_line(keys, line)
@@ -268,7 +280,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
                     for s in sensors:
                         kid = state["epoch"] * EPOCH_STRIDE + s.sid
                         if kid in keys.aead:  # a revoked sensor gets no new keys
-                            s.protector.rekey(kid, keys.aead[kid], keys.sign_private.get(kid))
+                            s.protector.rekey(kid, keys.aead[kid], keys.sign_private.get(kid),
+                                              keys.algorithm(kid))
                 if "drop_keys" in change:  # rotation, step 3: forget the old ones
                     for kid in change["drop_keys"]:
                         keys.remove(kid)
@@ -390,6 +403,24 @@ class SensorFleet:
             except queue.Empty:
                 break
             self.latest[r.worker] = r
+        return summarize(list(self.latest.values()), self.count)
+
+    def fresh_poll(self, timeout: float = 2.0) -> dict:
+        """Totals as of now (within milliseconds): every worker is asked for a
+        report and each one's next report is awaited. Periodic reports are up
+        to 0.5 s old, which over a measurement window is a loss error of
+        ±0.5 s / window — too much for a 1 % loss criterion."""
+        self.poll()
+        self.update(report_now=True)
+        pending = set(range(len(self.controls)))
+        deadline = time.monotonic() + timeout
+        while pending and time.monotonic() < deadline:
+            try:
+                r = self.reports.get(timeout=max(deadline - time.monotonic(), 0.01))
+            except queue.Empty:
+                break
+            self.latest[r.worker] = r
+            pending.discard(r.worker)
         return summarize(list(self.latest.values()), self.count)
 
     def stop(self) -> None:
