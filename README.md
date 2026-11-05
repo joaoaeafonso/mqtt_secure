@@ -171,7 +171,7 @@ python3 -m venv tools/loadgen/.venv
 tools/loadgen/.venv/bin/pip install -r tools/loadgen/requirements.txt
 ```
 
-**Live dashboard**: pick one of the report's security levels (K0–K10), start or
+**Live dashboard**: pick one of the report's security levels (K0–K11), start or
 stop attacks, and read three answers at the top — is traffic flowing, is it
 secure (each attack: blocked, by which layer, or why it succeeds), and what it
 costs (CPU per message, p99 latency, bytes added). Charts mark every change; the
@@ -196,6 +196,18 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py matrix \
     --set load.sensors=100 --set load.rate=100 \
     --vary transport.mode=plain,tls,mtls --vary transport.auth=off,on \
     --vary payload.protection=none,auth_only,encrypt --settle 3 --duration 10
+```
+
+**Report Part 2 evaluation** — repetitions in a seeded random order, raw data,
+manifest and frozen analysis parameters, then every table and figure rebuilt
+from the raw data ([docs/evaluation.md](docs/evaluation.md)):
+
+```bash
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
+    --repetitions 10 --seed 1 --duration 30 --connect-test 5 --out results/<name>
+tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py attacks --out results/<name>/attacks.csv
+tools/analysis/microbench.py --out results/<name>/microbench
+tools/analysis/analyze.py results/<name>          # → build/analysis/<name>/
 ```
 
 Columns: offered vs. delivered msg/s, `loss_pct`, `rejected` (and by reason),
@@ -231,8 +243,8 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --set load.sen
 
 `--preset hardened` (CLI, also `./run.sh`), the **K9** level on the
 dashboard, or `POST /api/preset {"name": "hardened"}` switches every defence on.
-It is the last of the report's security levels K0–K10
-([configuration.md](docs/loadgen/configuration.md#security-levels-k0k10)), which
+It is K9 of the report's security levels K0–K11
+([configuration.md](docs/loadgen/configuration.md#security-levels-k0k11)), which
 add one defence at a time and are available the same way (`--preset K6`):
 
 | Layer | Settings |

@@ -1,8 +1,8 @@
 # mqtt-secure documentation
 
 mqtt-secure is a layered security architecture for MQTT-based IoT
-communication in C++23: end-to-end payload protection (AES-256-GCM, GMAC or
-Ed25519 envelopes with topic binding, freshness, replay protection, downgrade
+communication in C++23: end-to-end payload protection (AES-256-GCM or
+ChaCha20-Poly1305, GMAC/Poly1305 or Ed25519 envelopes with topic binding, freshness, replay protection, downgrade
 protection and key → topic binding) composed as layers in a pipeline next to
 transport security (TLS/mTLS, authentication, ACLs) and a gateway rate limit —
 plus a load lab that switches every defence on and off while traffic flows and
@@ -18,6 +18,7 @@ measures what each one costs and what it stops.
 | know what is protected against whom | [security/threat-model.md](security/threat-model.md) |
 | implement the wire format elsewhere | [protocol/envelope-format.md](protocol/envelope-format.md) |
 | add a layer, transport or crypto back-end | [extending.md](extending.md) |
+| run the report's Part 2 evaluation (campaign, attacks, analysis) | [evaluation.md](evaluation.md) |
 
 ## Contents
 
@@ -32,6 +33,7 @@ docs/
 ├── testing.md                     unit/integration/vector/Python tests, fuzzing, sanitizers, scenarios
 ├── network-analysis.md            Wireshark: dissector, TLS key logging, lab captures, experiments, filters
 ├── benchmarks.md                  end-to-end cost matrix: zones × profiles × payload sizes, attack probes
+├── evaluation.md                  report Part 2: campaign, attack matrix, analysis (S(c), cost(c), Pareto, c*)
 ├── extending.md                   adding layers, MQTT adapters, crypto back-ends, lab settings
 ├── coding-standards.md            engineering practices and conventions
 ├── glossary.md                    terms
