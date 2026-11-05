@@ -21,6 +21,7 @@ if(MSEC_WITH_OPENSSL)
     msec_add_test(NAME security_tests    SOURCES security_tests.cpp    DEPS msec::security)
     target_compile_definitions(security_tests PRIVATE
         MSEC_ENVELOPE_VECTORS="${CMAKE_CURRENT_SOURCE_DIR}/vectors/envelope_vectors.txt")
+    msec_add_test(NAME acceptance_tests  SOURCES acceptance_tests.cpp  DEPS msec::security)
     msec_add_test(NAME integration_tests SOURCES integration_tests.cpp
                   DEPS msec::mqtt msec::security msec::data)
 endif()

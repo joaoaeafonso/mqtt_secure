@@ -28,6 +28,7 @@ jobs:
           python3 -m venv tools/loadgen/.venv
           tools/loadgen/.venv/bin/pip install -q -r tools/loadgen/requirements.txt
           tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen -v
+          tools/loadgen/.venv/bin/python -m unittest discover -s tools/analysis/tests -t tools/analysis -v
       - name: Scenarios (end to end against a real Mosquitto)
         run: |
           tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios \

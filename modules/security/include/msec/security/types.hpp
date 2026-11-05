@@ -10,6 +10,23 @@ namespace msec::security {
 /// Identifies a key (and, by convention, the single sender that owns it).
 using KeyId = std::uint32_t;
 
+/// The AEAD algorithm a key is used with. It is an attribute of the key, not a
+/// field of the envelope: the key id in the (authenticated) header selects the
+/// key, and the key selects the algorithm, so the wire format is the same for
+/// both. Both use 96-bit nonces and 128-bit tags (RFC 8439 §2.8).
+enum class AeadAlgorithm : std::uint8_t {
+    Aes256Gcm = 1,         ///< default; fast where the CPU has AES instructions
+    ChaCha20Poly1305 = 2,  ///< RFC 8439; the alternative for CPUs without AES hardware
+};
+
+[[nodiscard]] constexpr std::string_view to_string(AeadAlgorithm a) noexcept {
+    switch (a) {
+        case AeadAlgorithm::Aes256Gcm:        return "aes-256-gcm";
+        case AeadAlgorithm::ChaCha20Poly1305: return "chacha20-poly1305";
+    }
+    return "unknown";
+}
+
 /// How a payload is protected. The value is carried in the envelope header and
 /// authenticated, so a receiver knows which check to run and can refuse modes
 /// its policy does not accept (e.g. a downgrade from Encrypt to AuthenticateOnly).
