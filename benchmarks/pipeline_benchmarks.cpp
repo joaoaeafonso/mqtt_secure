@@ -48,6 +48,7 @@
 #include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
 #include "msec/security/openssl/aes_gcm_cipher.hpp"
+#include "msec/security/openssl/chacha20_poly1305_cipher.hpp"
 #include "msec/security/openssl/ed25519_signer.hpp"
 #include "msec/security/openssl/random_source.hpp"
 #include "msec/security/security_layer.hpp"
@@ -88,6 +89,7 @@ struct Profile {
     std::optional<security::SecurityConfig> security;  // nullopt: no security layer
     Persistence persistence{Persistence::None};
     bool key_binding{false};  // a key → topic policy is installed
+    security::AeadAlgorithm aead{security::AeadAlgorithm::Aes256Gcm};  // the key's algorithm
 };
 
 using security::PayloadProtection;
@@ -121,6 +123,12 @@ const std::array kProfiles{
             .persistence = Persistence::AtRest},
     Profile{.name = "9_sign", .security = SecurityConfig{.protection = PayloadProtection::Sign}},
     Profile{.name = "10_full_key_binding", .security = SecurityConfig{}, .key_binding = true},
+    // Report level K11 (payload part): K7/K8's envelope with ChaCha20-Poly1305
+    // keys. Compare with 10_full_key_binding, also under OPENSSL_armcap=0.
+    Profile{.name = "11_full_key_binding_chacha20",
+            .security = SecurityConfig{},
+            .key_binding = true,
+            .aead = security::AeadAlgorithm::ChaCha20Poly1305},
 };
 
 constexpr std::array<std::int64_t, 4> kPayloadSizes{16, 256, 4 * 1024, 64 * 1024};
@@ -176,7 +184,7 @@ public:
                                                         : std::nullopt)} {
         SecureBuffer key{cipher_->key_size()};
         unwrap(rng_->fill(key.mutable_view()));
-        unwrap(keys_->add(kKeyId, std::move(key)));
+        unwrap(keys_->add(kKeyId, std::move(key), profile.aead));
         SecureBuffer signing_key{signer_->private_key_size()};
         unwrap(rng_->fill(signing_key.mutable_view()));
         unwrap(verify_keys_->add(kKeyId, SecureBuffer{unwrap(signer_->public_key(signing_key))}));
@@ -216,6 +224,7 @@ public:
         if (profile_.security) {
             SecurityConfig config = *profile_.security;
             config.sending_key_id = kKeyId;
+            config.enforce_key_binding = profile_.key_binding;
             builder.add(unwrap(security::SecurityLayer::create(
                 config, {.cipher = cipher_,
                          .key_store = keys_,
@@ -224,7 +233,8 @@ public:
                          .signer = signer_,
                          .signing_keys = signing_keys_,
                          .verify_keys = verify_keys_,
-                         .authorization = profile_.key_binding ? policy_ : nullptr})));
+                         .authorization = profile_.key_binding ? policy_ : nullptr,
+                         .more_ciphers = {chacha_}})));
         }
         if (persist && profile_.persistence == Persistence::AtRest) {
             builder.add(persistence());
@@ -247,6 +257,8 @@ private:
     std::shared_ptr<const IClock> clock_ = std::make_shared<SystemClock>();
     std::shared_ptr<security::openssl::AesGcmCipher> cipher_ =
         std::make_shared<security::openssl::AesGcmCipher>();
+    std::shared_ptr<security::openssl::ChaCha20Poly1305Cipher> chacha_ =
+        std::make_shared<security::openssl::ChaCha20Poly1305Cipher>();
     std::shared_ptr<security::openssl::RandomSource> rng_ =
         std::make_shared<security::openssl::RandomSource>();
     std::shared_ptr<security::InMemoryKeyStore> keys_ =

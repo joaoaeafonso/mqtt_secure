@@ -8,6 +8,7 @@ namespace msec::security::openssl {
 class AesGcmCipher final : public IAeadCipher {
 public:
     [[nodiscard]] std::string_view algorithm() const noexcept override { return "AES-256-GCM"; }
+    [[nodiscard]] AeadAlgorithm id() const noexcept override { return AeadAlgorithm::Aes256Gcm; }
     [[nodiscard]] std::size_t key_size() const noexcept override { return 32; }
     [[nodiscard]] std::size_t nonce_size() const noexcept override { return 12; }
     [[nodiscard]] std::size_t tag_size() const noexcept override { return 16; }

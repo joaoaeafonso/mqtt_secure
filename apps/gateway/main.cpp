@@ -65,7 +65,9 @@ int main() {
 
     const security::SecurityDependencies deps{
         .cipher = cipher, .key_store = keys, .random = rng, .clock = clock};
-    const security::SecurityConfig config{.sending_key_id = kSensorKey};
+    // No key → topic policy in this demo: binding off explicitly (the layer refuses
+    // a check that is on without a policy to check against).
+    const security::SecurityConfig config{.sending_key_id = kSensorKey, .enforce_key_binding = false};
 
     // Two topic zones, enforced by the broker (defence layer 1, authorization):
     //   open/#        anyone may publish and read (subscribing to '#' sees it)

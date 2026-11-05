@@ -6,6 +6,7 @@
 //   username / password               (broker authentication)
 //   protocol   3.1.1 | 5
 //   protection none | auth_only | encrypt | sign
+//   accept     modes accepted inbound (default: the protection mode only)
 //   freshness  on | off
 //   replay     on | off
 //   key_binding on | off       (a key may only publish on its owner's topics)
@@ -23,18 +24,30 @@
 // first 8 bytes of the plaintext, so latency is measured after the pipeline
 // (decryption included); sensors and gateway must share a clock. Payloads with
 // "FORGED!!" at offset 8 come from the attacker; re-delivered send times are
-// replays. Both are counted when the gateway accepts them, so the effect of
-// each switch on attacks is visible.
+// replays (same topic) or republications (another topic). All are counted when
+// the gateway accepts them, so the effect of each switch on attacks is visible.
 //
-// Key file: "<key id> <kind> <hex> [owner]" per line, kind = aead | sign-private
-// | sign-public (a line with only "<id> <hex>" is an aead key). Key 0 is the
-// gateway's own (downlink); owners name devices for the key → topic policy.
+// Key file: "<key id> <kind> <hex> [owner]" per line, kind = aead (AES-256-GCM)
+// | aead-chacha20 (ChaCha20-Poly1305) | sign-private | sign-public (a line with
+// only "<id> <hex>" is an aead key). The AEAD algorithm is an attribute of the
+// key: the envelope does not change. Key 0 is the gateway's own (downlink);
+// owners name devices for the key → topic policy.
+//
+// Settings depend on each other: freshness, replay and key_binding check the
+// envelope, so they cannot be on while protection is none. Such a combination
+// is refused at startup and by `set`/`apply`, never silently ignored.
+//
+// Restarts (--epoch-state FILE): the gateway records the newest key epoch it
+// has accepted (key id / --epoch-stride) and, after a restart, accepts only
+// keys of a later epoch, so its empty replay windows cannot be replayed into.
 //
 // Control (with --control stdin), one command per line:
-//   set <key> <value>   any option below, without the leading "--"
+//   set <key> <value>   any runtime option below, without the leading "--"
+//   apply <key>=<value> ...   several settings at once, validated together
 //   key add <id> <kind> <hex> [owner]   install a key (rotation)
 //   key revoke <id>     remove every key with that id (revocation)
 //   reconnect           apply transport/credential settings
+//   connect-test N      time N reconnects (TLS + CONNECT); prints a JSON line
 //   reset               start a new measurement window
 //   summary             print the window's summary as a JSON line
 //   quit
@@ -80,7 +93,9 @@
 #include "msec/mqtt/paho/paho_client.hpp"
 #include "msec/security/key_policy.hpp"
 #include "msec/security/key_store.hpp"
+#include "msec/security/epoch_store.hpp"
 #include "msec/security/openssl/aes_gcm_cipher.hpp"
+#include "msec/security/openssl/chacha20_poly1305_cipher.hpp"
 #include "msec/security/openssl/ed25519_signer.hpp"
 #include "msec/security/openssl/random_source.hpp"
 #include "msec/security/security_layer.hpp"
@@ -164,6 +179,7 @@ struct Settings {
     msec::mqtt::ProtocolVersion protocol{msec::mqtt::ProtocolVersion::V311};
     // pipeline
     Protection protection{Protection::Encrypt};
+    std::vector<Protection> accept{};  // empty: only `protection`
     bool freshness{true};
     bool replay{true};
     bool key_binding{true};
@@ -172,6 +188,12 @@ struct Settings {
     Persistence persistence{Persistence::None};
     std::string keys_file{};
     std::vector<std::string> key_patterns{};
+    // receiver rules (startup only)
+    std::chrono::milliseconds max_age{std::chrono::seconds{60}};
+    std::chrono::milliseconds max_skew{std::chrono::seconds{5}};
+    std::vector<msec::security::FreshnessRule> freshness_rules{};
+    std::string epoch_state{};
+    int epoch_stride{1'000'000};
     // downlink
     int downlink{0};  // commands/s, 0 = off
     std::string zone{"restricted"};
@@ -200,6 +222,8 @@ transport (applied on connect / `reconnect`):
   --protocol V          MQTT version 3.1.1 | 5              (3.1.1)
 pipeline (applied immediately):
   --protection P        none | auth_only | encrypt | sign   (encrypt)
+  --accept LIST         inbound modes, comma-separated, e.g. encrypt,auth_only
+                        (default: the --protection mode only; `-` resets)
   --freshness on|off    (on)          --replay on|off       (on)
   --key-binding on|off  a key may only publish on its owner's topics (on)
   --key-pattern F       topic filter keys may publish on; %u owner, %k key id;
@@ -209,6 +233,14 @@ pipeline (applied immediately):
   --persistence P       none | plain | at-rest              (none)
   --profile P           preset: none | auth_only | aead | aead_freshness | aead_replay | full
   --keys FILE           key file (see above); required unless protection is none
+receiver rules (startup only):
+  --max-age MS          temporal validity: oldest accepted message (60000)
+  --max-skew MS         temporal validity: tolerated clock skew (5000)
+  --freshness-rule F=AGE[/SKEW]  per-flow validity in ms for topics matching F;
+                        repeatable, first match wins (e.g. +/actuators/#=5000/1000)
+  --epoch-state FILE    record the newest accepted key epoch; after a restart
+                        accept only later epochs
+  --epoch-stride N      key id = epoch * N + device       (1000000)
 downlink (applied immediately):
   --downlink N          commands/s to <zone>/actuators/<owner>/cmd, 0 = off (0)
   --zone Z              open | restricted                   (restricted)
@@ -315,6 +347,27 @@ Status apply_profile(Settings& s, std::string_view value) {
     return {};
 }
 
+Status add_freshness_rule(Settings& s, std::string_view value) {
+    // F=AGE[/SKEW]
+    const auto eq = value.rfind('=');
+    if (eq == std::string_view::npos || eq == 0) {
+        return make_error(ErrorCode::InvalidArgument, "expected FILTER=AGE_MS[/SKEW_MS]");
+    }
+    const auto limits = value.substr(eq + 1);
+    const auto slash = limits.find('/');
+    auto age = parse_int(limits.substr(0, slash));
+    auto skew = slash == std::string_view::npos
+                    ? Result<int>{static_cast<int>(s.max_skew.count())}
+                    : parse_int(limits.substr(slash + 1));
+    if (!age || !skew) {
+        return make_error(ErrorCode::InvalidArgument, "expected FILTER=AGE_MS[/SKEW_MS]");
+    }
+    s.freshness_rules.push_back({.filter = std::string{value.substr(0, eq)},
+                                 .max_message_age = std::chrono::milliseconds{*age},
+                                 .max_clock_skew = std::chrono::milliseconds{*skew}});
+    return {};
+}
+
 /// Applies one option; the single place where option names are defined.
 Status apply(Settings& s, std::string_view key, const std::string& value) {
     constexpr std::array kTransports{std::pair{"plain"sv, Transport::Plain},
@@ -384,6 +437,18 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
         s.zone = value;
     } else if (key == "protection") {
         return set_enum(s.protection, value, kProtections);
+    } else if (key == "accept") {
+        std::vector<Protection> modes;
+        std::istringstream list{value == "-" ? std::string{} : value};
+        for (std::string name; std::getline(list, name, ',');) {
+            Protection mode{};
+            if (auto ok = set_enum(mode, name, kProtections); !ok || mode == Protection::None) {
+                return make_error(ErrorCode::InvalidArgument,
+                                  std::format("--accept: invalid mode '{}'", name));
+            }
+            modes.push_back(mode);
+        }
+        s.accept = std::move(modes);
     } else if (key == "freshness") {
         return set_switch(s.freshness, value);
     } else if (key == "replay") {
@@ -394,6 +459,18 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
         return apply_profile(s, value);
     } else if (key == "keys") {
         s.keys_file = value;
+    } else if (key == "max_age" || key == "max_skew") {
+        int ms = 0;
+        if (auto ok = set_int(ms, value); !ok) {
+            return ok;
+        }
+        (key == "max_age" ? s.max_age : s.max_skew) = std::chrono::milliseconds{ms};
+    } else if (key == "freshness_rule") {
+        return add_freshness_rule(s, value);
+    } else if (key == "epoch_state") {
+        s.epoch_state = value;
+    } else if (key == "epoch_stride") {
+        return set_int(s.epoch_stride, value);
     } else if (key == "report") {
         int ms = 0;
         if (auto ok = set_int(ms, value); !ok) {
@@ -422,6 +499,25 @@ Status apply(Settings& s, std::string_view key, const std::string& value) {
         return make_error(ErrorCode::InvalidArgument, std::format("unknown option '{}'", key));
     }
     return {};
+}
+
+/// Combinations that make no sense: a check that needs the envelope while the
+/// envelope is off would be silently skipped, so it is refused instead.
+Status validate(const Settings& s) {
+    if (s.protection == Protection::None && (s.freshness || s.replay || s.key_binding)) {
+        return make_error(ErrorCode::InvalidArgument,
+                          "freshness, replay and key_binding need the envelope: turn them off "
+                          "or choose a protection other than none");
+    }
+    return {};
+}
+
+bool is_startup_only_key(std::string_view key) {
+    constexpr std::array kKeys{"keys"sv,           "key_pattern"sv, "max_age"sv,
+                               "max_skew"sv,       "freshness_rule"sv, "epoch_state"sv,
+                               "epoch_stride"sv,   "report"sv,      "duration"sv,
+                               "json"sv,           "stats"sv,       "control"sv};
+    return std::ranges::find(kKeys, key) != kKeys.end();
 }
 
 bool is_transport_key(std::string_view key) {
@@ -459,6 +555,12 @@ Settings parse_command_line(int argc, char** argv) {
     }
     if (settings.key_patterns.empty()) {
         settings.key_patterns = {"+/sensors/%u/#"};
+    }
+    if (auto ok = validate(settings); !ok) {
+        die(ok.error().message);
+    }
+    if (!settings.epoch_state.empty() && settings.epoch_stride <= 0) {
+        die("--epoch-state needs a positive --epoch-stride");
     }
     return settings;
 }
@@ -543,14 +645,17 @@ public:
         if (!raw) {
             return std::unexpected{raw.error()};
         }
-        auto* store = f[1] == "aead"           ? aead.get()
+        using msec::security::AeadAlgorithm;
+        const bool chacha = f[1] == "aead-chacha20";
+        auto* store = f[1] == "aead" || chacha  ? aead.get()
                       : f[1] == "sign-private" ? sign_private.get()
                       : f[1] == "sign-public"  ? sign_public.get()
                                                : nullptr;
         if (store == nullptr) {
             return make_error(ErrorCode::InvalidArgument, std::format("unknown key kind '{}'", f[1]));
         }
-        auto added = store->add(key_id, msec::SecureBuffer{*raw});
+        auto added = store->add(key_id, msec::SecureBuffer{*raw},
+                                chacha ? AeadAlgorithm::ChaCha20Poly1305 : AeadAlgorithm::Aes256Gcm);
         msec::secure_zero(*raw);
         if (!added) {
             return added;
@@ -664,6 +769,7 @@ public:
         std::uint64_t bytes{0};
         std::uint64_t forged_accepted{0};
         std::uint64_t replays_accepted{0};
+        std::uint64_t republished_accepted{0};  ///< a known message accepted on another topic
         std::uint64_t retained_received{0};
         std::uint64_t duplicates_rejected{0};  ///< QoS redeliveries the pipeline refused
         std::uint64_t commands_sent{0};
@@ -714,10 +820,17 @@ public:
             ++window_.replays_accepted;
             return;
         }
-        seen_order_.push_back(fingerprint);
+        // The same send time on another topic: a copy moved to a new topic.
+        const bool republished = !seen_ns_.insert(*sent_ns).second;
+        seen_order_.emplace_back(fingerprint, *sent_ns);
         if (seen_order_.size() > kSeenCapacity) {
-            seen_.erase(seen_order_.front());
+            seen_.erase(seen_order_.front().first);
+            seen_ns_.erase(seen_order_.front().second);
             seen_order_.pop_front();
+        }
+        if (republished) {
+            ++window_.republished_accepted;
+            return;
         }
         const double latency_us =
             static_cast<double>(unix_ns() - static_cast<std::int64_t>(*sent_ns)) / 1e3;
@@ -778,7 +891,8 @@ private:
     Clock::time_point last_;
     double cpu_at_first_{0};
     std::unordered_set<std::uint64_t> seen_;
-    std::deque<std::uint64_t> seen_order_;
+    std::unordered_set<std::uint64_t> seen_ns_;
+    std::deque<std::pair<std::uint64_t, std::uint64_t>> seen_order_;  // fingerprint, send time
 };
 
 std::string rejected_by_json(const Stats::Counters& c) {
@@ -804,10 +918,10 @@ std::string settings_json(const Settings& s) {
 /// Attack and protocol counters shared by the stats lines and the summary.
 std::string counters_json(const Stats::Counters& c) {
     return std::format(
-        R"("forged_accepted":{},"replays_accepted":{},"retained_received":{},)"
-        R"("duplicates_rejected":{},"commands_sent":{},"commands_failed":{})",
-        c.forged_accepted, c.replays_accepted, c.retained_received, c.duplicates_rejected,
-        c.commands_sent, c.commands_failed);
+        R"("forged_accepted":{},"replays_accepted":{},"republished_accepted":{},)"
+        R"("retained_received":{},"duplicates_rejected":{},"commands_sent":{},"commands_failed":{})",
+        c.forged_accepted, c.replays_accepted, c.republished_accepted, c.retained_received,
+        c.duplicates_rejected, c.commands_sent, c.commands_failed);
 }
 
 std::string summary_json(const Settings& settings, Stats::Window w, double cpu_now) {
@@ -880,6 +994,13 @@ private:
 
 // ---------------------------------------------------------------- gateway ---
 
+msec::security::PayloadProtection to_payload(Protection p) {
+    using msec::security::PayloadProtection;
+    return p == Protection::AuthOnly ? PayloadProtection::AuthenticateOnly
+           : p == Protection::Sign   ? PayloadProtection::Sign
+                                     : PayloadProtection::Encrypt;
+}
+
 /// Owns the endpoint and the switchable layers; applies settings to them.
 class Gateway {
 public:
@@ -898,8 +1019,16 @@ public:
         }
 
         msec::security::SecurityConfig config{
-            .sending_key_id = static_cast<msec::security::KeyId>(settings_.sending_key)};
+            .sending_key_id = static_cast<msec::security::KeyId>(settings_.sending_key),
+            .max_message_age = settings_.max_age,
+            .max_clock_skew = settings_.max_skew,
+            .freshness_rules = settings_.freshness_rules};
         config.max_tracked_senders = std::max(config.max_tracked_senders, key_count);
+        std::shared_ptr<msec::security::IEpochStore> epochs;
+        if (!settings_.epoch_state.empty()) {
+            config.key_epoch_stride = static_cast<std::uint32_t>(settings_.epoch_stride);
+            epochs = std::make_shared<msec::security::FileEpochStore>(settings_.epoch_state);
+        }
         auto security_layer = require(
             msec::security::SecurityLayer::create(
                 config, {.cipher = std::make_shared<msec::security::openssl::AesGcmCipher>(),
@@ -909,8 +1038,15 @@ public:
                          .signer = std::make_shared<msec::security::openssl::Ed25519Signer>(),
                          .signing_keys = keys_.sign_private,
                          .verify_keys = keys_.sign_public,
-                         .authorization = keys_.policy}),
+                         .authorization = keys_.policy,
+                         .more_ciphers = {std::make_shared<
+                             msec::security::openssl::ChaCha20Poly1305Cipher>()},
+                         .epoch_store = std::move(epochs)}),
             "security");
+        if (security_layer->minimum_epoch() > 0) {
+            warn(std::format("restarted: accepting key epochs {} and later only",
+                             security_layer->minimum_epoch()));
+        }
         security_ = security_layer.get();
         auto rate_layer = require(msec::limits::RateLimitLayer::create({}, clock), "rate limit");
         rate_limit_ = rate_layer.get();
@@ -955,16 +1091,26 @@ public:
     void apply_pipeline() {
         using msec::security::PayloadProtection;
         security_switch_->set_enabled(settings_.protection != Protection::None);
-        const auto mode = settings_.protection == Protection::AuthOnly ? PayloadProtection::AuthenticateOnly
-                          : settings_.protection == Protection::Sign   ? PayloadProtection::Sign
-                                                                       : PayloadProtection::Encrypt;
+        const auto mode = to_payload(settings_.protection);
         if (auto ok = security_->set_protection(mode); !ok) {
             warn(std::format("protection {}: {}", to_string(settings_.protection),
                              ok.error().message));
         }
+        if (!settings_.accept.empty()) {
+            msec::security::ProtectionSet accepted;
+            for (const auto p : settings_.accept) {
+                accepted = msec::security::ProtectionSet::from_bits(static_cast<std::uint8_t>(
+                    accepted.bits() | msec::security::ProtectionSet{to_payload(p)}.bits()));
+            }
+            if (auto ok = security_->set_accepted(accepted); !ok) {
+                warn(std::format("accept: {}", ok.error().message));
+            }
+        }
         security_->set_enforce_freshness(settings_.freshness);
         security_->set_enforce_replay_protection(settings_.replay);
-        security_->set_enforce_key_binding(settings_.key_binding);
+        if (auto ok = security_->set_enforce_key_binding(settings_.key_binding); !ok) {
+            warn(std::format("key_binding: {}", ok.error().message));
+        }
         security_->set_sending_key(static_cast<msec::security::KeyId>(settings_.sending_key));
         rate_limit_->set_rate(settings_.rate_limit);
         persist_plain_->set_enabled(settings_.persistence == Persistence::Plaintext);
@@ -1052,13 +1198,44 @@ void handle_command(Gateway& gateway, const std::string& line, Clock::time_point
     std::string value;
     in >> verb >> key;
     std::getline(in >> std::ws, value);
-    if (verb == "set") {
-        if (key == "subscribe") {
-            settings.subscriptions.clear();  // `set subscribe` replaces the list
+    if (verb == "set" || verb == "apply") {
+        // set <key> <value>  |  apply <key>=<value> [<key>=<value> ...]
+        std::vector<std::pair<std::string, std::string>> changes;
+        if (verb == "set") {
+            changes.emplace_back(key, value);
+        } else {
+            std::istringstream rest{key + " " + value};
+            for (std::string pair; rest >> pair;) {
+                const auto eq = pair.find('=');
+                if (eq == std::string::npos) {
+                    warn(std::format("apply: expected key=value, got '{}'", pair));
+                    return;
+                }
+                changes.emplace_back(pair.substr(0, eq), pair.substr(eq + 1));
+            }
         }
-        if (auto ok = apply(settings, key, value); !ok) {
-            warn(std::format("set {}: {}", key, ok.error().message));
-        } else if (!is_transport_key(key)) {
+        Settings next = settings;
+        bool pipeline = false;
+        for (auto& [k, v] : changes) {
+            if (is_startup_only_key(k)) {
+                warn(std::format("{} {}: can only be set at startup", verb, k));
+                return;
+            }
+            if (k == "subscribe") {
+                next.subscriptions.clear();  // `set subscribe` replaces the list
+            }
+            if (auto ok = apply(next, k, v); !ok) {
+                warn(std::format("{} {}: {}", verb, k, ok.error().message));
+                return;
+            }
+            pipeline = pipeline || !is_transport_key(k);
+        }
+        if (auto ok = validate(next); !ok) {
+            warn(std::format("{}: {}", verb, ok.error().message));
+            return;
+        }
+        settings = std::move(next);
+        if (pipeline) {
             gateway.apply_pipeline();
         }
     } else if (verb == "key") {
@@ -1077,6 +1254,26 @@ void handle_command(Gateway& gateway, const std::string& line, Clock::time_point
         if (!ok) {
             warn(std::format("key {}: {}", key, ok.error().message));
         }
+    } else if (verb == "connect-test") {
+        // Connection establishment cost (TLS handshake + CONNECT/CONNACK +
+        // resubscribe), measured outside the traffic window.
+        auto n = parse_int(key.empty() ? "5" : key);
+        const int count = n ? std::clamp(*n, 1, 100) : 5;
+        std::string samples;
+        const double cpu_before = cpu_seconds();
+        int failed = 0;
+        for (int i = 0; i < count; ++i) {
+            const auto t0 = Clock::now();
+            if (!gateway.connect()) {
+                ++failed;
+                continue;
+            }
+            const double ms = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+            samples += std::format("{}{:.3f}", samples.empty() ? "" : ",", ms);
+        }
+        last_connect = Clock::now();
+        emit(std::format(R"({{"type":"connect","samples_ms":[{}],"failed":{},"cpu_ms":{:.3f}}})",
+                         samples, failed, 1e3 * (cpu_seconds() - cpu_before)));
     } else if (verb == "reconnect") {
         last_connect = Clock::now();
         if (auto ok = gateway.connect(); !ok) {

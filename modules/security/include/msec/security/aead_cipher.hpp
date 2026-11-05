@@ -6,6 +6,7 @@
 #include "msec/core/bytes.hpp"
 #include "msec/core/error.hpp"
 #include "msec/core/secure_buffer.hpp"
+#include "msec/security/types.hpp"
 
 namespace msec::security {
 
@@ -22,6 +23,8 @@ public:
     IAeadCipher& operator=(IAeadCipher&&) = delete;
 
     [[nodiscard]] virtual std::string_view algorithm() const noexcept = 0;
+    /// Which keys this cipher serves (see IKeyStore::algorithm).
+    [[nodiscard]] virtual AeadAlgorithm id() const noexcept = 0;
     [[nodiscard]] virtual std::size_t key_size() const noexcept = 0;
     [[nodiscard]] virtual std::size_t nonce_size() const noexcept = 0;
     [[nodiscard]] virtual std::size_t tag_size() const noexcept = 0;
