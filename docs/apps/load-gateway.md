@@ -75,6 +75,7 @@ ever has the active transport's listener.
 | Option | Default | Meaning |
 |---|---|---|
 | `--protection P` | `encrypt` | `none` (security layer switched off) · `auth_only` · `encrypt` · `sign` |
+| `--accept LIST` | | inbound modes, comma-separated (e.g. `encrypt,auth_only`); default (or `-`): the `--protection` mode only |
 | `--freshness on\|off` | on | |
 | `--replay on\|off` | on | |
 | `--key-binding on\|off` | on | key may only publish on its owner's topics |
@@ -87,6 +88,22 @@ ever has the active transport's listener.
 
 Switch values accept `on/true/1` and `off/false/0`. Integers must be
 non-negative.
+
+**Dependencies are validated**: `freshness`, `replay` and `key_binding` check
+the envelope, so they cannot be on with `--protection none`. Such a
+combination is refused at startup (exit) and by `set`/`apply` (the settings
+stay as they were), instead of being silently ignored. To change several
+settings that only make sense together, use `apply` (§4).
+
+### Receiver rules (startup only)
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--max-age MS` | 60000 | temporal validity Δa (global) |
+| `--max-skew MS` | 5000 | tolerated clock skew Δs (global) |
+| `--freshness-rule F=AGE[/SKEW]` | | per-flow validity for topics matching filter F (ms); repeatable, first match wins, e.g. `+/actuators/#=5000/1000` |
+| `--epoch-state FILE` | | record the newest key epoch accepted; after a restart accept only later epochs (§5) |
+| `--epoch-stride N` | 1000000 | key id = epoch × N + device |
 
 ### Downlink (applied immediately)
 
@@ -116,7 +133,8 @@ One key per line, `#` comments and blank lines ignored:
 
 | kind | Store | Use |
 |---|---|---|
-| `aead` | AEAD store | encrypt / auth_only, both directions |
+| `aead` | AEAD store, AES-256-GCM | encrypt / auth_only, both directions |
+| `aead-chacha20` | AEAD store, ChaCha20-Poly1305 | the same, with the other algorithm (the envelope is unchanged) |
 | `sign-private` | signing store | sending `sign` (the gateway has only its own) |
 | `sign-public` | verify store | receiving `sign` |
 
@@ -129,11 +147,13 @@ targets (`devices()` = every owner except `gateway`).
 
 | Command | Effect |
 |---|---|
-| `set <key> <value>` | any option above without `--` (underscores); pipeline keys apply immediately, transport keys on the next `reconnect` |
+| `set <key> <value>` | any runtime option above without `--` (underscores); pipeline keys apply immediately, transport keys on the next `reconnect`; startup-only keys are refused |
+| `apply <k>=<v> [<k>=<v> …]` | several settings validated together and applied at once (e.g. `apply protection=none freshness=off replay=off key_binding=off`); the lab uses it for every payload change |
 | `key add <id> <kind> <hex> [owner]` | install a key (rotation) |
 | `key revoke <id>` | remove the id from every store, the policy owner/rules, the replay window and the owner map (revocation) |
 | `reconnect` | close and reconnect with current transport settings, resubscribe |
 | `reset` | start a new measurement window (counters, latencies, first/last timestamps) |
+| `connect-test N` | time N reconnections (TCP + TLS + CONNECT + resubscribe; 1–100, default 5) and print `{"type":"connect","samples_ms":[…],"failed":…,"cpu_ms":…}` |
 | `summary` | print the current window's summary JSON on stdout |
 | `quit` | stop |
 
@@ -154,6 +174,12 @@ stop the process. When stdin reaches EOF (the controller died) the gateway quits
   they are protected like uplink). Plaintext = u64 BE send time (ns) ‖ u64 BE
   command id (starts at the startup time in ns) ‖ `"CMD:<owner>"`. After a
   pause it never bursts more than one second's worth.
+- **Restarts** (`--epoch-state`): the security layer records the newest key
+  epoch it has accepted in that file (atomically, once per rotation). Started
+  again with the same file, it logs `restarted: accepting key epochs N and
+  later only` and rejects everything sealed with older keys
+  (`ReplayDetected`) until the senders rotate. The lab passes
+  `<workdir>/gateway-epoch`.
 - **Exit**: disconnect and print the summary.
 
 ### Measurement semantics (`Stats`)
@@ -164,6 +190,7 @@ stop the process. When stdin reaches EOF (the controller died) the gateway quits
 | latency | gateway `system_clock::now()` − send time, measured **after** the pipeline (decryption included) |
 | forged accepted | delivered payload with `"FORGED!!"` at offset 8 (the attacker's marker) |
 | replay accepted | delivered payload whose (send time ⊕ hash(topic)) was seen before (FIFO of 2¹⁸ fingerprints) |
+| republished accepted | delivered payload whose send time was seen before **on another topic** (a copy moved to a new topic) |
 | duplicates rejected | rejected messages that carried the MQTT DUP flag |
 | `msg_per_s` | (delivered − 1) / (last − first activity) — N messages span N−1 gaps |
 | CPU | `getrusage(RUSAGE_SELF)` user + system |
@@ -183,7 +210,7 @@ stop the process. When stdin reaches EOF (the controller died) the gateway quits
 **Counters object** (embedded):
 
 ```json
-"forged_accepted":0,"replays_accepted":0,"retained_received":0,
+"forged_accepted":0,"replays_accepted":0,"republished_accepted":0,"retained_received":0,
 "duplicates_rejected":0,"commands_sent":200,"commands_failed":0
 ```
 

@@ -27,7 +27,7 @@ All integers are **big-endian**.
 | 4 | 4 | key id | unsigned 32-bit; identifies the key and, by convention, the sender |
 | 8 | 8 | sequence number | unsigned 64-bit, ≥ 1, strictly increasing per sender |
 | 16 | 8 | timestamp | signed 64-bit, milliseconds since the Unix epoch, sender's clock |
-| 24 | 1 | nonce length *N* | 12 for AES-256-GCM modes, 0 for sign; at most 32 |
+| 24 | 1 | nonce length *N* | 12 for the AEAD modes (AES-256-GCM or ChaCha20-Poly1305), 0 for sign; at most 32 |
 | 25 | *N* | nonce | random per message (AEAD modes) |
 | 25+*N* | rest | body | see below; must be non-empty |
 
@@ -35,9 +35,17 @@ All integers are **big-endian**.
 
 | Mode | Body | Computation |
 |---|---|---|
-| 1 encrypt | ciphertext ‖ tag (16) | `AES-256-GCM.seal(key, nonce, plaintext = payload, aad = AAD)` |
-| 2 auth_only | payload ‖ tag (16) | `AES-256-GCM.seal(key, nonce, plaintext = ∅, aad = AAD ‖ payload)` — i.e. GMAC |
+| 1 encrypt | ciphertext ‖ tag (16) | `AEAD.seal(key, nonce, plaintext = payload, aad = AAD)` |
+| 2 auth_only | payload ‖ tag (16) | `AEAD.seal(key, nonce, plaintext = ∅, aad = AAD ‖ payload)` — GMAC with AES, Poly1305 with ChaCha20 |
 | 3 sign | payload ‖ signature (64) | `Ed25519.sign(private key, AAD ‖ payload)`; N = 0 |
+
+**AEAD** is AES-256-GCM or ChaCha20-Poly1305 (RFC 8439 §2.8). Which one is an
+attribute of the key, not a field of the envelope: the key id selects the key
+and the key its algorithm, which sender and receiver agree on when the key is
+provisioned (key-file kind `aead` = AES-256-GCM, `aead-chacha20` =
+ChaCha20-Poly1305). Both use 12-byte nonces and 16-byte tags, so the format,
+the AAD and the overhead are identical; switching algorithm is a key
+rotation.
 
 ### Associated data (AAD)
 
@@ -150,11 +158,12 @@ aead_key   <64 hex>            parameters: "<name> <value>"
 sign_key   <64 hex>
 nonce      <24 hex>
 timestamp_ms <int>
-<name> <mode> <key_id> <topic> <payload_hex | -> <envelope_hex>     vectors (6 fields)
+<name> <mode>[:chacha20] <key_id> <topic> <payload_hex | -> <envelope_hex>     vectors (6 fields)
 ```
 
 Every vector uses sequence 1 and the fixed parameters. `-` is an empty
-payload. The C++ test (`EnvelopeVectors.CxxMatchesPythonByteForByte`) seals
+payload. A `:chacha20` suffix on the mode means the aead key is used with
+ChaCha20-Poly1305 instead of AES-256-GCM. The C++ test (`EnvelopeVectors.CxxMatchesPythonByteForByte`) seals
 each vector with a `FixedRandom` and `FakeClock` and compares bytes, then opens
 the expected envelope; the Python test (`test_python_reproduces_every_vector`)
 seals with injected clock/random/sequence. The fuzz corpus
@@ -163,5 +172,8 @@ seals with injected clock/random/sequence. The fuzz corpus
 ## 7. Versioning
 
 The version byte allows incompatible changes. Version 2 introduced the mode
-byte (and with it auth_only and sign). A future version could add an epoch or
-session id to remove the need for persisted sequence counters.
+byte (and with it auth_only and sign). ChaCha20-Poly1305 did not need a new
+version (the algorithm belongs to the key). Receiver restarts are handled
+without a format change either: key ids encode an epoch, and a restarted
+receiver accepts only epochs later than the last it recorded (see
+`IEpochStore` in docs/modules/security.md).

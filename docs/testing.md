@@ -4,7 +4,7 @@
 |---|---|---|---|
 | C++ unit + integration | GoogleTest | `tests/` | `ctest --preset dev` |
 | Cross-language vectors | GoogleTest + unittest | `tests/vectors/envelope_vectors.txt` | both suites |
-| Python unit | unittest | `tools/loadgen/tests/` | see below |
+| Python unit | unittest | `tools/loadgen/tests/`, `tools/analysis/tests/` | see below |
 | Wireshark tooling | unittest + tshark (+ mosquitto) | `tools/loadgen/tests/test_wireshark.py` | see below |
 | Fuzzing | libFuzzer + ASan/UBSan | `fuzz/` | `fuzz` preset |
 | Static analysis | clang-tidy | `.clang-tidy` | `ci` preset |
@@ -25,7 +25,8 @@
 | `mqtt_tests` | 8 | topic filter matching (incl. `$SYS`, parent level) and validation; loopback routing; ACL deny-by-default and per-client rules; ACL blocks publishes; `#` subscriber only receives readable topics; publish requires connection |
 | `data_tests` | 4 | ring-buffer eviction; find by topic; persistence config; factory validation |
 | `limits_tests` | 7 | unlimited by default; burst then refill; independent topic budgets; outbound never limited; runtime rate change; bounded memory under topic flood; factory validation |
-| `security_tests` | 39 | envelope; replay guard; AES-GCM; security layer (confidentiality, tampering, header, topic rebinding, replay, expiry, future, revocation, plaintext injection, rotation, sequence/nonce, auth-only, mode policy, authenticated mode, ablation switches, runtime switching); cross-language vectors; factory; RFC 8032 vector; key → topic policy; signatures; key binding and replay-window interaction |
+| `acceptance_tests` | 17 | the receiver's acceptance rules (report §6): one test per row of the verification order (each breaks two rules and checks which rejection wins), window limits and reordering, mode policy, key → topic with `%u`, Δa/Δs at their (inclusive) limits, per-flow validity, dependency validation, restart rule and `FileEpochStore`. Each test was checked to fail when its rule is removed or moved in `security_layer.cpp` |
+| `security_tests` | 46 | envelope; replay guard; AES-GCM; ChaCha20-Poly1305 (RFC 8439 §2.8.2 vector, neither algorithm opens the other's output, one receiver serves both, unconfigured algorithm, duplicate cipher); security layer (confidentiality, tampering, header, topic rebinding, replay, expiry, future, revocation, plaintext injection, rotation, sequence/nonce, auth-only, mode policy, authenticated mode, ablation switches, runtime switching); cross-language vectors; factory; RFC 8032 vector; key → topic policy; signatures; key binding and replay-window interaction |
 | `integration_tests` | 2 | full stack sensor → loopback broker → gateway `[persistence, security]`: delivers and stores plaintext; attacker cannot replay (`ReplayDetected`) or inject (`MalformedMessage`) and the rejection observer sees the topic |
 
 `security_tests` and `integration_tests` require `MSEC_WITH_OPENSSL`. The
@@ -37,9 +38,10 @@ tests uses the real CSPRNG, which does not affect assertions.
 
 ## Cross-language test vectors
 
-`tests/vectors/envelope_vectors.txt` holds five vectors (`encrypt_short`,
+`tests/vectors/envelope_vectors.txt` holds seven vectors (`encrypt_short`,
 `encrypt_empty`, `auth_only`, `sign`, `sign_binary` — the last with key id
-2³²−1 and binary payload). The C++ test seals each with the fixed key, nonce,
+2³²−1 and binary payload — and `encrypt_chacha20`, `auth_only_chacha20`, the
+same envelope format with a ChaCha20-Poly1305 key). The C++ test seals each with the fixed key, nonce,
 timestamp and sequence 1 and compares **byte for byte**, then opens the
 expected envelope; the Python test reproduces every envelope with
 `Protector`. Neither implementation can drift without breaking a test. Format:
@@ -49,7 +51,14 @@ expected envelope; the Python test reproduces every envelope with
 
 ```bash
 tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
+tools/loadgen/.venv/bin/python -m unittest discover -s tools/analysis/tests -t tools/analysis
 ```
+
+The lab tests include the dependency rules (`payload.protection = none` with a
+check on is refused), K11 and the attacker settings' prerequisites; the
+analysis tests run `analyze.py` on a synthetic campaign (bootstrap, marginal
+cost, S(c), cost(c), use-case filter, Pareto frontier, c*, feasibility and the
+PROVISIONAL flag).
 
 31 tests across `test_envelope.py`, `test_lab_config.py`, `test_pki.py` and
 `test_wireshark.py` (details in

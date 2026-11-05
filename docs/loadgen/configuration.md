@@ -40,6 +40,8 @@ something to turn on, one at a time with the levels below or individually.
 | Key | Default | Values | Meaning |
 |---|---|---|---|
 | `protection` | `"none"` | `none` · `auth_only` · `encrypt` · `sign` | sensors, actuators and gateway |
+| `cipher` | `"aes-256-gcm"` | `aes-256-gcm` · `chacha20-poly1305` | AEAD algorithm of the payload keys. An attribute of the keys, so changing it while running **rotates every key** (the next epoch's keys use it; `key_epoch` goes up by one) |
+| `accept` | `""` | comma list of `auth_only`, `encrypt`, `sign` | modes the gateway accepts inbound; `""` = only `protection` (a mixed fleet, or the downgrade experiments) |
 | `freshness` | `false` | bool | reject messages older than 60 s (or > 5 s in the future) |
 | `replay` | `false` | bool | sequence-number replay window |
 | `key_binding` | `false` | bool | a key may only publish on `+/sensors/<owner>/#` |
@@ -83,6 +85,19 @@ something to turn on, one at a time with the levels below or individually.
 | `impersonate` | `false` | claim username `gateway` (no password, no certificate) |
 | `inject_rate` | `0.0` | forged plaintext msg/s into `<zone>/sensors/sensor-1/temp` |
 | `replay_rate` | `0.0` | captured messages re-published per second |
+| `republish_rate` | `0.0` | captured messages copied to another topic of the same device (`…/temp` → `…/humidity`) per second |
+| `relabel_rate` | `0.0` | captured envelopes re-published with the mode byte changed (encrypt ↔ auth_only) per second |
+| `stolen_key` | `0` | n > 0: the attacker is a **compromised sensor-n**: it gets that device's payload keys (with the gateway's aead and public key every actuator holds), its password and, with mtls, its certificate, and connects as sensor-n |
+| `stolen_rate` | `0.0` | forged readings sealed with sensor-n's key per second (needs `stolen_key`) |
+| `stolen_target` | `"own"` | `own` (sensor-n's topic) · `other` (another device's topic) |
+| `stolen_mode` | `""` | protection for those messages; `""` = `payload.protection` (e.g. `auth_only` to try a downgrade) |
+| `stolen_age_s` | `0.0` | date them this many seconds in the past (an old message never seen) |
+| `forge_commands_rate` | `0.0` | commands forged to another actuator per second with the gateway's key material sensor-n holds (needs `stolen_key`) |
+| `slow_connections` | `0` | hold this many half-open connections (partial CONNECT, SlowITe), reopening those the broker closes |
+| `probe_rate` | `0.0` | fresh anonymous connection attempts per second (are newcomers admitted?) |
+| `wiretap` | `false` | **startup**: run the gateway's link through the attacker's relay (network eavesdropping; needed by `tamper`) |
+| `tamper` | `"none"` | the relay as a malicious broker, on every 2nd PUBLISH to the gateway: `alter` · `redirect` · `delay` · `drop` (plaintext MQTT only) |
+| `tamper_delay_s` | `2.0` | delay for `tamper = delay` |
 
 ### `[cluster]` — all startup
 
@@ -108,7 +123,12 @@ something to turn on, one at a time with the levels below or individually.
     (`PACKET_OVERHEAD`: envelope ≤ 25 + 12 + 64, topic, MQTT headers);
   - `load.payload` ≥ 8; `load.sensors` ≥ 1;
   - `cluster.sensor_agents` ≤ `load.sensors`;
-  - agents require `broker.host` not to be a loopback address.
+  - agents require `broker.host` not to be a loopback address;
+  - **dependencies**: with `payload.protection = none`, `freshness`,
+    `replay`, `key_binding` and `accept` must be off/empty (they check the
+    envelope; the gateway refuses the same combination); `attacker.stolen_rate`
+    and `forge_commands_rate` need `stolen_key` (≤ `load.sensors`);
+    `attacker.tamper` needs `attacker.wiretap`.
 - In `Lab.apply` additionally: startup-only keys cannot change;
   `payload.key_epoch` cannot decrease; `response.revoked` cannot shrink. At
   `Lab.start`: `key_epoch` must be 0 and `revoked` empty.
@@ -150,9 +170,9 @@ attacker is affected.
 
 ## Presets
 
-### Security levels K0–K10
+### Security levels K0–K11
 
-The configurations of the report's evaluation plan (Section 7, Table 17), each
+The configurations of the report's evaluation plan (Section 7), each
 adding one layer or mechanism to the previous one. Pick one with `--preset K6`,
 the level buttons at the top of the dashboard, `POST /api/preset {"name":"K6"}`,
 or measure several with `matrix --levels K0,K3,K6`. Defined in `lab.py`
@@ -171,6 +191,11 @@ or measure several with `matrix --levels K0,K3,K6`. Defined in `lab.py`
 | K8 | on | `encrypt` | on | on | on | on | floods dropped before any crypto |
 | K9 | on | `sign` | on | on | on | on | proof of origin; **= `hardened`** |
 | K10 | off | `encrypt` | on | on | on | off | K7's envelope without TLS: what TLS adds |
+| K11 | on | `encrypt` | on | on | on | on | K8 with `cipher = chacha20-poly1305` (CPUs without AES hardware) |
+
+Every level sets `payload.cipher` (ChaCha20-Poly1305 for K11, AES-256-GCM for
+the others) and clears `payload.accept`; moving between K11 and any other
+level therefore rotates the keys.
 
 Every level also sets `protocol=5`, `tls_version=1.3`, `sys_topics=false` and
 `load.zone=restricted`. "Limits" means `payload.rate_limit = max(10, int(2 ×

@@ -12,16 +12,18 @@ interfaces; OpenSSL implementations live under `openssl/`.
 
 | Header | Contents |
 |---|---|
-| `types.hpp` | `KeyId`, `PayloadProtection`, `to_string`, `protection_from_wire`, `ProtectionSet` |
+| `types.hpp` | `KeyId`, `AeadAlgorithm`, `PayloadProtection`, `to_string`, `protection_from_wire`, `ProtectionSet` |
 | `envelope.hpp` | `EnvelopeHeader`, `Envelope`, `envelope::{serialize, parse, associated_data}` |
 | `security_layer.hpp` | `SecurityConfig`, `SecurityDependencies`, `SecurityLayer` |
 | `replay_guard.hpp` | `ReplayGuard` |
-| `key_store.hpp` | `IKeyStore`, `InMemoryKeyStore` |
+| `key_store.hpp` | `IKeyStore`, `InMemoryKeyStore` (each AEAD key carries its `AeadAlgorithm`) |
+| `epoch_store.hpp` | `IEpochStore`, `FileEpochStore` (receiver restarts) |
 | `key_policy.hpp` | `IKeyAuthorization`, `KeyTopicPolicy` |
 | `aead_cipher.hpp` | `IAeadCipher` |
 | `signature_scheme.hpp` | `ISignatureScheme` |
 | `random_source.hpp` | `IRandomSource` |
 | `openssl/aes_gcm_cipher.hpp` | `openssl::AesGcmCipher` |
+| `openssl/chacha20_poly1305_cipher.hpp` | `openssl::ChaCha20Poly1305Cipher` |
 | `openssl/ed25519_signer.hpp` | `openssl::Ed25519Signer` |
 | `openssl/random_source.hpp` | `openssl::RandomSource` |
 
@@ -79,16 +81,23 @@ version ≠ 2; unknown mode; sequence 0; nonce length > 32; no body bytes.
 ## `SecurityConfig` and `SecurityDependencies`
 
 ```cpp
+struct FreshnessRule {                              // temporal validity for one flow
+    std::string filter;                             // MQTT topic filter
+    std::chrono::milliseconds max_message_age, max_clock_skew;
+};
+
 struct SecurityConfig {
     KeyId sending_key_id{0};
-    std::chrono::milliseconds max_message_age{60s};
-    std::chrono::milliseconds max_clock_skew{5s};
+    std::chrono::milliseconds max_message_age{60s}; // Δa (global default)
+    std::chrono::milliseconds max_clock_skew{5s};   // Δs (global default)
+    std::vector<FreshnessRule> freshness_rules{};   // per flow; first match wins
     std::size_t max_tracked_senders{1024};
+    std::uint32_t key_epoch_stride{0};              // key id = epoch * stride + device
     PayloadProtection protection{Encrypt};          // how outbound is protected
     std::optional<ProtectionSet> accept{};          // inbound policy; nullopt = {protection}
     bool enforce_freshness{true};                   // ablation switches (benchmarks/lab)
     bool enforce_replay_protection{true};
-    bool enforce_key_binding{true};                 // effective only with deps.authorization
+    bool enforce_key_binding{true};                 // requires deps.authorization
 };
 
 struct SecurityDependencies {
@@ -100,14 +109,49 @@ struct SecurityDependencies {
     std::shared_ptr<const IKeyStore>   signing_keys{};      // private keys, to send Sign
     std::shared_ptr<const IKeyStore>   verify_keys{};       // public keys, to accept Sign
     std::shared_ptr<const IKeyAuthorization> authorization{};  // optional key → topic policy
+    std::vector<std::shared_ptr<const IAeadCipher>> more_ciphers{};  // other AEAD algorithms
+    std::shared_ptr<IEpochStore> epoch_store{};             // optional: restart rule
 };
 ```
 
 `SecurityLayer::create(config, deps)` returns `InvalidArgument` if a required
-dependency is missing, if the cipher's nonce size is 0 or > 32, or if
-`max_message_age ≤ 0` / `max_clock_skew < 0`; `InvalidState` if the sending
-mode or an accepted mode needs signer/keys that are absent; `InvalidArgument`
-if the accept set is empty.
+dependency is missing, if a cipher's nonce size is 0 or > 32, if two ciphers
+serve the same algorithm, if `max_message_age ≤ 0` / `max_clock_skew < 0`
+(globally or in a `FreshnessRule`, whose filter must also be valid), if the
+accept set is empty, and — **dependencies between mechanisms are refused, not
+silently skipped** — if `enforce_key_binding` is on without an
+`authorization` policy, or an `epoch_store` is given without
+`key_epoch_stride`; `InvalidState` if the sending mode or an accepted mode
+needs signer/keys that are absent; `StorageFailure` if the epoch store cannot
+be read.
+
+### AEAD algorithm per key (AES-256-GCM or ChaCha20-Poly1305)
+
+The algorithm is an **attribute of the key**, not a field of the envelope:
+`InMemoryKeyStore::add(id, key, AeadAlgorithm)` (default `Aes256Gcm`) and
+`IKeyStore::algorithm(id)`. Both algorithms use 32-byte keys, 12-byte nonces
+and 16-byte tags (RFC 8439 §2.8), so the envelope is byte-for-byte the same
+format; the key id in the authenticated header selects the key, and the key
+selects the cipher among `cipher` and `more_ciphers`. One receiver therefore
+serves both kinds of keys at once, and a fleet switches algorithm by rotating
+to a new key epoch. An envelope opened with the other algorithm (the same key
+bytes registered as AES on one side and ChaCha20 on the other) fails with
+`AuthenticationFailed`; a key whose algorithm has no configured cipher is
+refused (`InvalidState` outbound, `AuthenticationFailed` inbound).
+
+### Receiver restarts: a new key epoch (`IEpochStore`)
+
+The replay windows live in memory. With an `epoch_store` (and
+`key_epoch_stride`), the receiver records **durably** the newest key epoch
+(`key id / stride`) it has accepted — one write per rotation, before the
+first message of the new epoch is accepted, never per message — and, when
+created again after a restart, accepts only keys of a **later** epoch
+(`minimum_epoch()`). Anything sealed before the restart, replayed into the
+now-empty windows, is rejected (`ReplayDetected`); senders resume once they
+rotate. `FileEpochStore` keeps the number in a file replaced atomically
+(write, fsync, rename, fsync the directory); an unreadable or corrupt file
+fails closed (`StorageFailure`), and so does a failed write (the message is
+rejected).
 
 A typical receiver that only verifies signatures holds **no private keys**:
 
@@ -123,14 +167,18 @@ auto gateway = SecurityLayer::create(
 ```
 Outbound: plaintext ─▶ seal (AEAD or signature) ─▶ Envelope
 Inbound:  Envelope ─▶ parse ─▶ mode policy ─▶ freshness ─▶ verify/decrypt
-                    ─▶ key → topic binding ─▶ replay check ─▶ plaintext
+                    ─▶ key → topic binding ─▶ epoch floor + replay check ─▶ plaintext
 ```
+
+The inbound order is the report's Table 11; `tests/acceptance_tests.cpp` has
+one test per row (each sends a message that breaks two rules and checks which
+rejection wins) and fails if a rule is removed or moved.
 
 ### Outbound (`on_outbound`)
 
 1. Read the current mode; choose `signing_keys` (Sign) or `key_store`.
-2. Find the sending key (`NotFound` propagates); check its size against the
-   algorithm (`CryptoFailure`).
+2. Find the sending key (`NotFound` propagates) and, for AEAD modes, the cipher
+   of its algorithm; check its size against the algorithm (`CryptoFailure`).
 3. `sequence = next_sequence_++` (atomic, starts at 1; wrap to 0 ⇒
    `InvalidState` "sequence space exhausted; rotate key").
 4. Nonce: 12 random bytes (AEAD modes) or none (Sign).
@@ -148,14 +196,15 @@ Inbound:  Envelope ─▶ parse ─▶ mode policy ─▶ freshness ─▶ verif
 |---|---|---|---|
 | 1 | `envelope::parse` | `MalformedMessage` | anything not an envelope (e.g. injected plaintext) |
 | 2 | mode ∈ accept set | `ProtectionNotAccepted` | prevents downgrade; the mode is in the AAD so lying about it can only fail |
-| 3 | nonce length matches mode/cipher | `MalformedMessage` | |
-| 4 | freshness (if on): `now−max_age ≤ ts ≤ now+max_skew` | `MessageExpired` | cheap, before crypto; bounds computed from `now` to avoid overflow on attacker input |
-| 5 | key lookup (`verify_keys` for Sign else `key_store`) | `AuthenticationFailed` "unknown key id" | revoked keys land here |
+| 3 | nonce length fits a configured algorithm (empty for Sign) | `MalformedMessage` | |
+| 4 | freshness (if on): `now−Δa ≤ ts ≤ now+Δs`, with Δa/Δs of the first matching `FreshnessRule`, else the global ones; both limits inclusive | `MessageExpired` | cheap, before crypto; bounds computed from `now` to avoid overflow on attacker input |
+| 5 | key lookup (`verify_keys` for Sign else `key_store`, then the key's cipher) | `AuthenticationFailed` "message authentication failed" | revoked keys land here; same error and message as step 6 |
 | 6 | verify / decrypt with AAD built from the **received** topic | `AuthenticationFailed` (uniform) | no oracle on *why* it failed |
-| 7 | key binding (if `authorization` and on) | `PermissionDenied` | after auth: unauthenticated input cannot probe policy |
-| 8 | replay window (if on) | `ReplayDetected` / `CapacityExceeded` | after auth: forged sequence numbers cannot move the window; after binding: a rejected message does not consume its number |
+| 7 | key binding (if on; needs `authorization`) | `PermissionDenied` | after auth: unauthenticated input cannot probe policy |
+| 8 | epoch floor (if replay on and an epoch store is set): epoch ≥ `minimum_epoch()`; records a new epoch durably | `ReplayDetected` / `StorageFailure` | after a restart, nothing from before it |
+| 9 | replay window (if on) | `ReplayDetected` / `CapacityExceeded` | after auth: forged sequence numbers cannot move the window; after binding: a rejected message does not consume its number |
 
-Plaintext is wiped on rejections after decryption (steps 7–8).
+Plaintext is wiped on rejections after decryption (steps 7–9).
 
 ### Runtime switches
 
@@ -167,7 +216,7 @@ All are thread-safe (relaxed atomics) and take effect from the next message.
 | `set_accepted(set)` | accept set only (e.g. a mixed fleet `{Encrypt, AuthenticateOnly}`) |
 | `set_enforce_freshness(bool)` | |
 | `set_enforce_replay_protection(bool)` | the window keeps its state, so turning it back on does **not** reopen old sequence numbers |
-| `set_enforce_key_binding(bool)` | |
+| `set_enforce_key_binding(bool)` | returns `Status`: turning it on without an `authorization` policy fails (`InvalidState`) and changes nothing |
 | `set_sending_key(id)` | key rotation |
 | `forget_key(id)` | free a revoked key's replay window — **never reuse that id** |
 | `config()` | the static config overlaid with the current switch values |
@@ -257,7 +306,7 @@ policy.allow_pattern("+/sensors/%u/#");
 
 ```cpp
 class IAeadCipher {
-    std::string_view algorithm(); std::size_t key_size(), nonce_size(), tag_size();
+    std::string_view algorithm(); AeadAlgorithm id(); std::size_t key_size(), nonce_size(), tag_size();
     Result<Bytes> seal(const SecureBuffer& key, ByteView nonce, ByteView plaintext, ByteView aad) const; // ct‖tag
     Result<Bytes> open(const SecureBuffer& key, ByteView nonce, ByteView ct_and_tag, ByteView aad) const; // AuthenticationFailed on tamper
 };
@@ -273,16 +322,27 @@ class IRandomSource { Status fill(MutableByteView out); };
 | Class | Algorithm | Sizes | Notes |
 |---|---|---|---|
 | `openssl::AesGcmCipher` | AES-256-GCM (EVP) | key 32, nonce 12, tag 16 | validates sizes and `INT_MAX` limits; on any decrypt/tag failure the output is `secure_zero`ed — unauthenticated plaintext is never released |
+| `openssl::ChaCha20Poly1305Cipher` | ChaCha20-Poly1305 (EVP, RFC 8439) | key 32, nonce 12, tag 16 | same code path as AES-GCM (`src/openssl/evp_aead.cpp`); checked against RFC 8439 §2.8.2 |
 | `openssl::Ed25519Signer` | Ed25519 (RFC 8032) | private 32 (seed), public 32, signature 64 | raw keys; deterministic signatures; wrong sizes on verify ⇒ `AuthenticationFailed` |
 | `openssl::RandomSource` | `RAND_bytes` | — | empty request OK; > `INT_MAX` ⇒ `InvalidArgument` |
 
 OpenSSL errors map to `CryptoFailure`. Adding another back-end (e.g.
-XChaCha20-Poly1305, libsodium, an HSM) means implementing the interface and
-injecting it; `SecurityLayer` accepts any cipher with a nonce of 1–32 bytes.
+XChaCha20-Poly1305, libsodium, an HSM) means implementing the interface (with
+a new `AeadAlgorithm` value) and injecting it in `more_ciphers`;
+`SecurityLayer` accepts any cipher with a nonce of 1–32 bytes.
 
 ## Tests
 
-`tests/security_tests.cpp` (39 tests) covers: envelope round trip, malformed
+`tests/acceptance_tests.cpp` covers the receiver's acceptance rules: one
+test per row of the verification order, the window limits (w = 64) and
+reordering, the mode policy, the key → topic restriction with `%u`, Δa/Δs at
+their limits (inclusive), per-flow validity, dependency validation and the
+restart rule (`FileEpochStore` included). Each was checked by removing or
+moving its rule in the code and watching the test fail.
+
+`tests/security_tests.cpp` covers ChaCha20-Poly1305 (RFC 8439 vector, neither
+algorithm opening the other's output, one receiver serving both, unconfigured
+algorithm, duplicate cipher) and: envelope round trip, malformed
 input, signature envelopes without nonce; replay guard (fresh/duplicate,
 reordering, too old, forgetting frees a slot, bounded); AES-GCM round trip,
 tamper, empty plaintext; the layer (hides plaintext, tampered ciphertext,

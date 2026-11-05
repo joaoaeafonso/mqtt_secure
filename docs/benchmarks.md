@@ -63,6 +63,11 @@ Ordered from no protection to full protection; each step adds one guarantee.
 | `8_full_persist_at_rest` | `[security, persistence]` | defaults | stores envelopes |
 | `9_sign` | `[security]` | Sign (Ed25519) | proof of origin; payload readable |
 | `10_full_key_binding` | `[security]` + `KeyTopicPolicy` (key 1 → `+/sensors/room1/#`) | defaults | a key may only publish on its owner's topics |
+| `11_full_key_binding_chacha20` | as 10, with a ChaCha20-Poly1305 key | defaults | report level K11 (payload part): compare with 10, also without AES hardware |
+
+For the report's level 1 (every profile, every size, repeated, in random
+order, with and without the CPU's AES instructions, raw JSON kept) use
+`tools/analysis/microbench.py` (see [evaluation.md](evaluation.md#2-level-1-microbenchmarks)).
 
 The sensor pipeline is the same minus persistence.
 

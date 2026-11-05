@@ -25,7 +25,11 @@ max_connections = 0        # broker-wide connection limit. 0 = no limit
 
 [payload]                  # defence layer 2: end to end, sensor <-> gateway
 protection = "none"        # none | auth_only | encrypt | sign (Ed25519: proof of origin)
+cipher = "aes-256-gcm"     # aes-256-gcm | chacha20-poly1305: the payload keys' AEAD algorithm
+                           # (changing it while running rotates every key)
+accept = ""                # modes the gateway accepts, e.g. "encrypt,auth_only"; "" = protection
 freshness = false          # reject messages older than 60 s
+                           # (freshness, replay and key_binding need protection != none)
 replay = false             # sequence-number replay window
 key_binding = false        # a key may only publish on its owner's topics (+/sensors/<owner>/#)
 rate_limit = 0             # gateway: inbound msg/s per topic, 0 = off
@@ -55,6 +59,19 @@ enabled = true             # subscribes to '#'; has only the public CA certifica
 impersonate = false        # claim username "gateway" (no password, no certificate)
 inject_rate = 0            # forged plaintext msg/s into sensor-1's topic
 replay_rate = 0            # captured messages re-published per second
+republish_rate = 0         # captured messages copied to another topic of the same device
+relabel_rate = 0           # captured envelopes with the mode byte changed
+stolen_key = 0             # n > 0: the attacker holds sensor-n's keys, password and certificate
+stolen_rate = 0            #   forged readings sealed with that key, msg/s
+stolen_target = "own"      #   own | other: sensor-n's topic or another device's
+stolen_mode = ""           #   "" = payload.protection; e.g. "auth_only" to try a downgrade
+stolen_age_s = 0           #   date them this far in the past (old, never-seen messages)
+forge_commands_rate = 0    #   commands forged to another actuator with the gateway's key material
+slow_connections = 0       # half-open connections held open (SlowITe)
+probe_rate = 0             # fresh anonymous connection attempts per second
+wiretap = false            # startup: the gateway's link runs through the attacker's relay
+tamper = "none"            # with wiretap: none | alter | redirect | delay | drop (every 2nd message)
+tamper_delay_s = 2.0
 
 [cluster]                  # startup only: sensors/attackers on other machines
 sensor_agents = 0          # 0 = sensors run here; N = wait for N agents, split sensors evenly
