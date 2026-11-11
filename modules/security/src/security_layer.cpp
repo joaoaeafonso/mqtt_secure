@@ -9,8 +9,11 @@
 
 namespace msec::security {
 
-Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig config,
-                                                             SecurityDependencies deps) {
+namespace {
+
+/// Everything `create` refuses before building the layer: missing or
+/// inconsistent dependencies and limits.
+Status validate_setup(const SecurityConfig& config, const SecurityDependencies& deps) {
     if (!deps.cipher || !deps.key_store || !deps.random || !deps.clock) {
         return make_error(ErrorCode::InvalidArgument, "security layer: missing dependency");
     }
@@ -39,7 +42,7 @@ Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig conf
     }
     for (const auto& rule : config.freshness_rules) {
         if (auto ok = validate_topic_filter(rule.filter); !ok) {
-            return std::unexpected{std::move(ok.error())};
+            return ok;
         }
         if (bad_window(rule.max_message_age, rule.max_clock_skew)) {
             return make_error(ErrorCode::InvalidArgument,
@@ -54,6 +57,16 @@ Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig conf
     }
     if (deps.epoch_store && config.key_epoch_stride == 0) {
         return make_error(ErrorCode::InvalidArgument, "an epoch store needs key_epoch_stride");
+    }
+    return {};
+}
+
+}  // namespace
+
+Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig config,
+                                                             SecurityDependencies deps) {
+    if (auto ok = validate_setup(config, deps); !ok) {
+        return std::unexpected{std::move(ok.error())};
     }
     if (!config.accept) {
         config.accept = ProtectionSet{config.protection};
@@ -84,15 +97,15 @@ Result<std::unique_ptr<SecurityLayer>> SecurityLayer::create(SecurityConfig conf
 }
 
 SecurityLayer::SecurityLayer(PassKey /*key*/, SecurityConfig config, SecurityDependencies deps)
-    : config_{config},
-      protection_{config.protection},
-      accept_{config.accept.value_or(ProtectionSet{config.protection}).bits()},
-      enforce_freshness_{config.enforce_freshness},
-      enforce_replay_protection_{config.enforce_replay_protection},
-      enforce_key_binding_{config.enforce_key_binding},
-      sending_key_id_{config.sending_key_id},
+    : config_{std::move(config)},  // declared first: the members below read it
+      protection_{config_.protection},
+      accept_{config_.accept.value_or(ProtectionSet{config_.protection}).bits()},
+      enforce_freshness_{config_.enforce_freshness},
+      enforce_replay_protection_{config_.enforce_replay_protection},
+      enforce_key_binding_{config_.enforce_key_binding},
+      sending_key_id_{config_.sending_key_id},
       deps_{std::move(deps)},
-      replay_guard_{config.max_tracked_senders} {}
+      replay_guard_{config_.max_tracked_senders} {}
 
 Status SecurityLayer::can_send(PayloadProtection mode) const {
     if (mode == PayloadProtection::Sign && (!deps_.signer || !deps_.signing_keys)) {

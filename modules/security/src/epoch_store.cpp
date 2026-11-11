@@ -6,6 +6,7 @@
 #include <charconv>
 #include <format>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <system_error>
 
@@ -39,9 +40,10 @@ Result<std::optional<std::uint32_t>> FileEpochStore::load() const {
     std::string text;
     std::getline(in, text);  // one number on the first line
     const auto end = text.find_last_not_of(" \t\r");
+    text.erase(end == std::string::npos ? 0 : end + 1);  // drop trailing blanks
     std::uint32_t epoch = 0;
-    const char* last = text.data() + (end == std::string::npos ? 0 : end + 1);
-    const auto [ptr, err] = std::from_chars(text.data(), last, epoch);
+    const char* const last = std::to_address(text.end());
+    const auto [ptr, err] = std::from_chars(std::to_address(text.begin()), last, epoch);
     if (err != std::errc{} || ptr != last || text.empty()) {
         // Fail closed: a corrupt record must not silently reset the floor.
         return make_error(ErrorCode::StorageFailure,
