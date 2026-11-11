@@ -76,8 +76,19 @@ dirty tree, and agents from another version are rejected.
    hostname -I                  # the Pi's LAN address: <PI_IP> below
    ```
 
-   Close everything else on the Pi (desktop session, browsers). Note whether
-   NTP is running (`timedatectl`), to say so in the report.
+   Close everything else on the Pi (desktop session, browsers).
+
+   **Clock.** Turn NTP on and let it settle before any run with agents:
+
+   ```bash
+   sudo timedatectl set-ntp true
+   timedatectl timesync-status      # Offset: within ±1 ms, twice, a few minutes apart
+   ```
+
+   While NTP is still pulling a large offset in, it changes the clock's rate,
+   and the agents' drift correction lags for a few runs (pilot 2 showed
+   latencies off by ≈ 200 µs, some negative). Say in the report that NTP was
+   on.
 
 ## 2. Prepare each load machine (once)
 
@@ -140,12 +151,12 @@ AGENTS="--set broker.host=0.0.0.0 --set broker.advertise=<PI_IP> \
 PY=tools/loadgen/.venv/bin/python
 ```
 
-## 5. Pilot → fix R_alvo and L_max (≈ 20 minutes)
+## 5. Pilot → fix R_alvo and L_max (≈ 30 minutes)
 
 ```bash
 $PY tools/loadgen/loadgen.py campaign $AGENTS \
     --levels K0,K8,K9,K11 --repetitions 3 --duration 15 \
-    --saturate 10,20,50,100,200,400 --out build/pilot
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 --out build/pilot
 tools/analysis/analyze.py build/pilot
 ```
 
@@ -192,7 +203,7 @@ NAME=pi5-$(date +%Y%m%d)
 # 7a. cost: 12 levels × 10 repetitions, random order, + saturation   (≈ 2.5 h)
 $PY tools/loadgen/loadgen.py campaign $AGENTS \
     --repetitions 10 --seed 20261201 --settle 3 --duration 30 --connect-test 5 \
-    --saturate 10,20,50,100,200,400,800 \
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
     --out results/$NAME
 
 # 7b. attacks: every attack against every level, 3 repetitions       (≈ 1.2 h)

@@ -874,6 +874,28 @@ class Lab:
         return sum(len(f"{zone}/sensors/sensor-{n}/temp") for n in self.sensor_ids) / len(
             self.sensor_ids)
 
+    def drain(self, timeout: float = 120.0, interval: float = 1.0, tolerance: float = 0.1) -> float:
+        """After an overload: waits until the backlog it left (queued in the
+        broker and in the sockets) has reached the gateway, i.e. until the
+        gateway takes in no more than the sensors send, twice in a row.
+        Otherwise that backlog arrives in the next measurement window, where a
+        new key or a lower rate limit rejects it as if it were that run's
+        traffic. Returns the seconds waited (`timeout` if it never drained)."""
+        start = time.monotonic()
+        quiet = 0
+        while time.monotonic() - start < timeout:
+            f0 = self.fleet.fresh_poll()
+            self.gateway.reset()
+            time.sleep(interval)
+            f1 = self.fleet.fresh_poll()
+            summary = self.gateway.summary()
+            sent = f1["sent"] - f0["sent"]
+            arrived = summary["received"] + summary["rejected"]
+            quiet = quiet + 1 if arrived <= sent * (1 + tolerance) + 10 else 0
+            if quiet >= 2:
+                break
+        return round(time.monotonic() - start, 1)
+
     def measure(self, settle: float, duration: float, connect_test: int = 0) -> dict:
         """One matrix cell: wait for the change to settle, then measure a window.
 
