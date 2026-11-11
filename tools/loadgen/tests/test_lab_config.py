@@ -2,8 +2,8 @@
 
 import unittest
 
-from lab import (DEFAULTS, LEVEL_BY_ID, LEVELS, PACKET_OVERHEAD, PRESETS, current_level,
-                 level_patch, merged, parse_accept, parse_revoked, validate)
+from lab import (DEFAULTS, DEMO_STEPS, LEVEL_BY_ID, LEVELS, PACKET_OVERHEAD, PRESETS, current_level,
+                 current_demo_step, level_patch, merged, parse_accept, parse_revoked, validate)
 from msec_envelope import AES_GCM, CHACHA20
 
 
@@ -107,6 +107,41 @@ class LevelWithExtraSettings(unittest.TestCase):
         self.assertEqual(patch["transport"]["tls_version"], "1.2")
         self.assertEqual(patch["payload"]["protection"], "encrypt")
         self.assertEqual(before, merged(DEFAULTS, {}))
+
+
+class DemoLadder(unittest.TestCase):
+    """The defence ladder for demonstrations: full configurations, K0–K11 untouched."""
+
+    def config(self, step, base=DEFAULTS):
+        return merged(base, PRESETS[step.id](base))
+
+    def test_every_step_is_valid_and_recognised_from_anywhere(self):
+        hardened = merged(DEFAULTS, PRESETS["K9"](DEFAULTS))
+        for step in DEMO_STEPS:
+            with self.subTest(step.id):
+                self.assertEqual(self.config(step), self.config(step, hardened))
+                self.assertEqual(current_demo_step(self.config(step), step.id), step.id)
+
+    def test_inside_out_then_breach(self):
+        by = {s.id: self.config(s) for s in DEMO_STEPS}
+        # Payload layers first, over plain TCP with no broker defence at all.
+        for sid in ("D1", "D2", "D3", "D4", "D5", "D6"):
+            t = by[sid]["transport"]
+            self.assertEqual((t["mode"], t["auth"], t["acl"]), ("plain", False, False), sid)
+        self.assertEqual(by["D1"]["payload"]["protection"], "auth_only")
+        self.assertTrue(by["D3"]["payload"]["freshness"] and not by["D3"]["payload"]["replay"])
+        self.assertTrue(by["D7"]["transport"]["acl"] and not by["D7"]["transport"]["auth"])
+        self.assertEqual(by["D9"]["transport"]["mode"], "mtls")
+        # The breach: the inner layers of D9, the broker layer gone (= D6).
+        self.assertEqual(by["D10"], by["D6"])
+        self.assertEqual(by["D10"]["payload"], by["D9"]["payload"])
+        self.assertEqual(current_demo_step(by["D10"], "D10"), "D10")
+        self.assertEqual(current_demo_step(by["D10"]), "D6")
+
+    def test_report_levels_are_unchanged_and_distinct_from_demo_steps(self):
+        self.assertEqual([lv.id for lv in LEVELS], [f"K{i}" for i in range(12)])
+        self.assertIsNone(current_level(self.config(DEMO_STEPS[9])))   # D9 is not K8: no broker limits
+        self.assertIsNone(current_demo_step(merged(DEFAULTS, PRESETS["K9"](DEFAULTS))))
 
 
 class SecurityLevels(unittest.TestCase):

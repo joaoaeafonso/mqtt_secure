@@ -152,6 +152,7 @@ targets (`devices()` = every owner except `gateway`).
 | `key add <id> <kind> <hex> [owner]` | install a key (rotation) |
 | `key revoke <id>` | remove the id from every store, the policy owner/rules, the replay window and the owner map (revocation) |
 | `reconnect` | close and reconnect with current transport settings, resubscribe |
+| `sync` | print `{"type":"sync"}` on stdout: every command sent before it is in effect (used before senders switch to new keys) |
 | `reset` | start a new measurement window (counters, latencies, first/last timestamps) |
 | `connect-test N` | time N reconnections (TCP + TLS + CONNECT + resubscribe; 1–100, default 5) and print `{"type":"connect","samples_ms":[…],"failed":…,"cpu_ms":…}` |
 | `summary` | print the current window's summary JSON on stdout |

@@ -7,6 +7,28 @@ up, which the K0–K11 ladder cannot do. No code was changed during the session.
 Everything below was observed on the running lab, except the parts marked as a
 proposal.
 
+## Status (2026-11-11, after the session)
+
+| Item | Status |
+|---|---|
+| B1 wall-clock intervals | fixed: the lab keeps one clock that never goes back (`Lab.now()`), `measure()` uses monotonic time |
+| B2 rotation rejects genuine messages | fixed: senders switch only after the gateway confirms the new keys (`sync`) |
+| B3 delivered rate misread | fixed: gateway rates use the gateway's own report interval; a repeated report is not sampled |
+| B4 stopping Eavesdrop | fixed: it clears every attack; **Stop everything** does the same |
+| B5 Flood verdict | fixed: format, mode and timestamp rejections are "before any crypto" |
+| B6 verdict right after a change | fixed: only points measured after the change are averaged |
+| B7 K11 label | fixed |
+| B8, B10 | open (cosmetic) |
+| B9 rejections while the mode switches | left as is: they fall inside the settle time, and accepting the old mode for a grace period would weaken the downgrade policy |
+| B11 | grammar and favicon fixed; the rest open |
+| Defence ladder | implemented as D0–D10 (a key–topic step, D5, was added, so the numbers after D4 moved by one); see [dashboard-and-api.md](dashboard-and-api.md#defence-ladder-d0d10-demonstrations-only) |
+| Insider attacks | three dashboard rows: old message, stolen key on another topic, forged commands. The real device is offline while compromised (`attacker.stolen_exclusive`), so the session takeover noted below no longer happens |
+
+Verified by driving the lab through the dashboard's own verdict code (not in
+a browser): every step D0–D10 against the outsider attacks, the three insider
+rows at D2–D5, D9 and K9, and the B4 sequence. The page itself (layout, the
+new buttons) still needs a look in a browser.
+
 ## How it was tested
 
 | Item | Value |
