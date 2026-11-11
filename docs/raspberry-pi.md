@@ -213,6 +213,22 @@ Do not touch the Pi or the load machines while it runs. Clocks first (§1,
 step 5): synced with NTP, then NTP **off** on the Pi and on every load machine
 for the whole of steps 6–7 (`sudo timedatectl set-ntp false`).
 
+**Unattended (recommended).** Two scripts run all of §6–§8 with no input:
+
+```bash
+# Pi, inside tmux (an SSH drop would kill a 4–5 h run):
+tools/loadgen/pi_campaign.sh pi5-<date> <PI_IP> --check   # preflight + prints the agents line
+tools/loadgen/pi_campaign.sh pi5-<date> <PI_IP>           # 7a → 7b ×3 + merge → 6 → scenarios → 8
+# Load machine, once (before or after; keeps it from suspending):
+tools/loadgen/start_agents.sh <PI_IP> <TOKEN> <FINGERPRINT>
+```
+
+The preflight refuses a dirty tree, an existing `results/<name>`, a governor
+other than `performance`, NTP on or Docker running. The agents retry until the
+controller is up and rejoin between steps; everything is logged to
+`build/campaign-<name>.log`, and a failed step is reported at the end without
+stopping the ones after it. The commands below are what the script runs.
+
 ```bash
 NAME=pi5-$(date +%Y%m%d)
 
