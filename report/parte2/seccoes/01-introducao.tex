@@ -1,0 +1,42 @@
+\section{Introdução}
+\label{sec:introducao}
+
+A primeira parte do projeto reviu a literatura sobre segurança em comunicações
+MQTT, propôs uma arquitetura em camadas (\PUm{Secção~6}) e definiu o plano para a
+avaliar (\PUm{Secção~7}). O objetivo desta segunda parte é o que esse plano
+enuncia: medir, num Raspberry~Pi, quanto custa cada camada em desempenho e quanto
+protege, isoladamente e em combinação, para identificar a configuração com a maior
+proteção e o menor impacto no desempenho.
+
+O documento responde às cinco perguntas experimentais da Parte~1:
+
+\begin{enumerate}[label=\textbf{QP\arabic*.}, leftmargin=*]
+  \item Qual é o custo de cada camada num Raspberry Pi (processador, latência,
+    débito, memória, octetos)? (Secção~\ref{sec:custo})
+  \item Que ataques impede cada camada, e quais só a combinação de camadas impede?
+    (Secção~\ref{sec:protecao})
+  \item Como varia o custo com o tamanho da mensagem e a carga, e quando satura o
+    Raspberry Pi? (Secção~\ref{sec:custo})
+  \item Quanto pesa a aceleração criptográfica por \emph{hardware}?
+    (Secção~\ref{sec:custo})
+  \item Que configurações são ótimas de Pareto, e qual recomendar para cada caso de
+    uso? (Secção~\ref{sec:criterio})
+\end{enumerate}
+
+\paragraph{Contributos desta parte.}
+\begin{itemize}[leftmargin=*]
+  \item Um protótipo em C++23 da arquitetura proposta, com cada camada ativável de
+    forma independente, e os seus testes automatizados (Secção~\ref{sec:prototipo}).
+  \item Um laboratório de carga que executa de forma automática as doze
+    configurações, os ataques e os respetivos controlos negativos contra um
+    \emph{broker} real, e que guarda os dados brutos e o registo do ambiente de cada
+    execução (Secção~\ref{sec:metodo}).
+  \item As medições no Raspberry~Pi~5 e num computador de secretária, a aplicação
+    do critério de escolha e o veredicto das hipóteses H1 a H5
+    (Secções~\ref{sec:custo} a \ref{sec:hipoteses}).
+  \item A validação do protótipo e a calibração dos limites de validade temporal
+    que a Parte~1 deixou em aberto (Secção~\ref{sec:validacao}).
+\end{itemize}
+
+O plano da Parte~1 foi seguido; o que foi concretizado de forma diferente, ou
+decidido só nesta parte, está declarado na Secção~\ref{sec:desvios}.

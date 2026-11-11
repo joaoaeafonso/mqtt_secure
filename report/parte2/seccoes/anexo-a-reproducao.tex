@@ -1,0 +1,23 @@
+\section{Reprodução dos resultados}
+\label{sec:reproducao}
+
+O repositório contém o código, os dados brutos de cada campanha
+(\texttt{results/}) e os programas de análise. Os passos para repetir as medições
+num Raspberry~Pi estão em \texttt{docs/raspberry-pi.md}; o procedimento e o
+significado de cada ficheiro, em \texttt{docs/evaluation.md}.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Refazer as tabelas e figuras a partir dos dados brutos:}\\
+    \texttt{tools/analysis/analyze.py results/<campanha>} e, nesta pasta,
+    \texttt{make dados PI=<campanha>} seguido de \texttt{make}.
+  \item \textbf{Repetir as medições:} \texttt{loadgen.py campaign} com a mesma
+    semente e o mesmo \texttt{params.toml} (guardados em cada campanha).
+\end{itemize}
+
+\PorFazer{Tabela com as campanhas usadas: nome, plataforma, data, \emph{commit},
+semente, número de execuções.}
+
+\subsection*{Plataforma de referência}
+
+\geradoRef{desktop/summary}
+\geradoRef{desktop/criterion}

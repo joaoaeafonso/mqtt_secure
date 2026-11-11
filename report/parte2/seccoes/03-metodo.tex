@@ -1,0 +1,145 @@
+\section{Método experimental}
+\label{sec:metodo}
+
+\subsection{Plataforma}
+
+\PorFazer{Preencher a partir de \texttt{manifest.json} de cada campanha: modelo e
+memória do Raspberry~Pi~5, sistema operativo e \emph{kernel}, versões do OpenSSL,
+do Mosquitto e do compilador, \emph{commit} do código; o mesmo para o computador de
+secretária e para as máquinas dos sensores e do atacante; rede (cabo ou Wi-Fi);
+dissipador; regulador de frequência; se o NTP esteve ativo.}
+
+Tal como planeado, a avaliação tem dois níveis. No \textbf{nível~1}, os
+\emph{microbenchmarks} medem o tempo de processador da cadeia de camadas por
+mensagem, sem rede, para 16~B, 256~B, 4~KiB e 64~KiB. No \textbf{nível~2}, o
+\emph{broker} e o \emph{gateway} correm no Raspberry~Pi e os sensores e o atacante
+noutras máquinas da rede local.
+
+\subsection{Configurações}
+
+Foram medidas as doze configurações da \PUm{Tabela das configurações} (K0 a K11),
+sem alterações. O nível~1 tem um perfil para K0, K2 a K7, K9 e K11; K1, K8 e K10
+só diferem das vizinhas no transporte e nos limites, que só existem no nível~2.
+
+\subsection{Métricas}
+
+A Tabela~\ref{tab:medidas} indica como cada métrica do plano foi medida.
+
+\begin{table}[ht]
+  \centering
+  \caption{Como cada métrica foi medida.}
+  \label{tab:medidas}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}L{3.8cm}Y@{}}
+    \toprule
+    \textbf{Métrica} & \textbf{Medição} \\
+    \midrule
+    Processador por mensagem & Tempo de processador do processo do \emph{gateway}
+      na janela, dividido pelas mensagens recebidas (nível~2); tempo de processador
+      por mensagem da cadeia completa (nível~1) \\
+    Latência p50 e p99 & Do instante de envio, escrito pelo sensor na mensagem, à
+      entrega depois da cadeia de camadas. O relógio de cada máquina de sensores é
+      corrigido pelo desvio estimado em relação ao do \emph{gateway} \\
+    Débito máximo sustentado & Maior taxa entregue com perda inferior a 1\,\% e
+      p99 dentro de $L_{\max}$, numa subida de carga por configuração \\
+    Octetos por mensagem & Octetos recebidos na ligação TCP do \emph{gateway} por
+      mensagem, separados em conteúdo, envelope, MQTT e restante (TLS e controlo) \\
+    Memória & Pico de memória residente do \emph{gateway} e do \emph{broker} na
+      janela \\
+    Estabelecimento de ligação & Tempo e tempo de processador de religações do
+      \emph{gateway} (TLS, CONNECT e subscrições), fora da janela de tráfego \\
+    Ataques impedidos, $\pi_a(c)$ & Cada ataque contra cada configuração, com
+      tráfego legítimo ativo; maioria sobre as repetições \\
+    Fuga de informação & Fração das mensagens legíveis por um subscritor de
+      \texttt{\#} e por um atacante na ligação do \emph{gateway} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+A energia, opcional no plano, não foi medida. \PorFazer{Confirmar, ou descrever o
+medidor se vier a ser usado.}
+
+\subsection{Ataques}
+
+O atacante do laboratório executa os ataques da \PUm{Tabela dos ataques}. Dois
+tipos de ensaio usam-nos de forma diferente:
+
+\begin{itemize}[leftmargin=*]
+  \item A \textbf{matriz de ataques} lança cada ataque contra cada configuração
+    completa e dá $\pi_a(c)$, de que resulta $S(c)$. Um ataque travado no
+    \emph{broker} (por exemplo, um estranho sem credenciais perante a autenticação
+    mútua) conta como impedido por essa configuração.
+  \item Os \textbf{cenários} isolam uma defesa de cada vez sobre uma base aberta e
+    emparelham cada ataque com um \emph{controlo negativo}, a mesma configuração sem
+    essa defesa, em que o ataque tem de ter sucesso. Só assim se atribui uma
+    rejeição à camada certa.
+\end{itemize}
+
+Os ataques internos partem de um dispositivo comprometido: o atacante recebe as
+chaves, a palavra-passe e o certificado de um sensor, e o sensor verdadeiro fica
+desligado enquanto o atacante o controla. Os ataques na rede usam um intermediário
+na ligação entre o \emph{broker} e o \emph{gateway}, que conta o que consegue ler
+e, em MQTT sem TLS, altera, redireciona, atrasa ou suprime mensagens, fazendo de
+\emph{broker} malicioso.
+
+\subsection{Procedimento}
+
+Cada configuração foi repetida \PorFazer{10} vezes, em ordem aleatória com semente
+registada, com 3~s de estabilização e 30~s de medição por execução. Os intervalos
+de confiança são de 95\,\%, por \emph{bootstrap} de percentis sobre as execuções.
+O custo marginal de uma camada é a diferença de medianas entre as duas
+configurações que só diferem nela, e a diferença das diferenças mede a interação
+entre a validade temporal e a anti-repetição e entre o TLS e o envelope. A matriz
+de ataques correu separada das medições de custo, porque o intermediário na
+ligação do \emph{gateway} acrescenta latência.
+
+Cada campanha guarda os dados brutos de todas as execuções, a ordem dos ensaios, a
+semente, a configuração completa e um registo do ambiente (código, plataforma,
+versões, temperatura e frequência do processador por execução). Todas as tabelas e
+figuras deste relatório são geradas a partir desses dados por um único comando
+(Anexo~\ref{sec:reproducao}).
+
+\subsection{Parâmetros fixados antes das medições}
+\label{sec:parametros}
+
+Os parâmetros do critério de escolha foram fixados antes da campanha: o ficheiro
+que os contém é copiado para a pasta da campanha antes da primeira medição e o seu
+resumo criptográfico fica no registo do ambiente.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Pesos dos ataques.} Cada linha da tabela de ataques da Parte~1
+    pesa~1. Duas linhas são medidas por dois ataques cada (a escuta, na rede e no
+    \emph{broker}; a injeção e a adulteração), que pesam 0,5 cada.
+  \item \textbf{Pesos do custo.} Processador por mensagem 0,4; latência p99 0,4;
+    débito máximo, octetos por mensagem, memória do \emph{gateway} e
+    estabelecimento de ligação 0,05 cada.
+  \item \textbf{Exequibilidade.} $R_{\text{alvo}} = $ \PorFazer{valor}~mensagens/s
+    e $L_{\max} = $ \PorFazer{valor}~ms, escolhidos depois de um piloto no
+    Raspberry~Pi (\PorFazer{justificar com o cenário de aplicação}) e antes da
+    campanha.
+\end{itemize}
+
+\subsection{Desvios ao plano}
+\label{sec:desvios}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Aceleração AES desligada.} O plano previa
+    \texttt{OPENSSL\_armcap=0}. Essa variável desliga todas as extensões ARM que o
+    OpenSSL usa, incluindo o NEON, de que o ChaCha20-Poly1305 depende. Um
+    dispositivo sem as extensões criptográficas tem, em geral, NEON; por isso
+    mediu-se também com \texttt{OPENSSL\_armcap=1} (só NEON), e é essa a
+    comparação usada para a QP4. Os dois resultados são apresentados.
+  \item \textbf{Estabelecimento de ligação.} O tempo de ligação medido varia em
+    degraus de cerca de 100~ms, por esperas internas da biblioteca cliente, que
+    escondem os poucos milissegundos do TLS. No custo agregado entra o tempo de
+    processador por ligação; o tempo decorrido é reportado à parte.
+  \item \textbf{Escuta no \emph{broker}.} Na matriz de ataques, este ataque é um
+    subscritor de \texttt{\#} sem credenciais. Um \emph{broker} curioso não é
+    medido por $S(c)$ (Secção~\ref{sec:ameacas}); é o requisito de
+    confidencialidade do caso de uso que o cobre.
+  \item \textbf{Dispositivo comprometido.} O sensor verdadeiro fica desligado
+    durante o ataque. Com os dois ligados, disputam a sessão MQTT e o ataque fica
+    reduzido a uma fração do tempo (Secção~\ref{sec:observacoes}).
+  \item \PorFazer{Outros desvios que surjam na campanha (repetições a mais,
+    execuções repetidas, energia).}
+\end{itemize}
