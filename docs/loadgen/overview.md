@@ -21,6 +21,7 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway (C++) �
 | [components.md](components.md) | each Python module in detail |
 | [scenarios.md](scenarios.md) | the 16 attack-vs-defence experiments |
 | [dashboard-and-api.md](dashboard-and-api.md) | the web dashboard, the HTTP API, metric definitions, matrix columns |
+| [dashboard-test-findings.md](dashboard-test-findings.md) | a full dashboard test run: what works, bugs found, a proposed defence ladder for demos |
 | [distributed-agents.md](distributed-agents.md) | running sensors/attackers on other machines: trust bootstrap, protocol, clock correction |
 | [../network-analysis.md](../network-analysis.md) | recording runs for Wireshark (`--capture`), TLS decryption, the dissector |
 

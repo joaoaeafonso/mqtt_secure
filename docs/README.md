@@ -58,6 +58,7 @@ docs/
     ├── components.md              each Python module
     ├── scenarios.md               the 16 attack-vs-defence experiments
     ├── dashboard-and-api.md       dashboard, HTTP API, metrics and measurement columns
+    ├── dashboard-test-findings.md dashboard test run: bugs found, proposed defence ladder for demos
     └── distributed-agents.md      multi-machine runs: trust bootstrap, protocol, clock correction
 ```
 
