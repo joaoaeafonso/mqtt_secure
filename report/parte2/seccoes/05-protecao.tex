@@ -1,0 +1,45 @@
+\section{Resultados: proteção}
+\label{sec:protecao}
+
+\subsection{Ataques impedidos por configuração (QP2)}
+
+\PorFazer{Tabela $\pi_a(c)$: configurações em linhas, ataques em colunas, a partir
+de \texttt{gerado/pi5/protection.csv}, com $S(c)$ na última coluna. Indicar o
+número de repetições e os casos em que as repetições não concordaram.}
+
+\PorFazer{Leitura: o que K1 já impede (tudo o que exige chegar ao \emph{broker});
+o que só o envelope impede (K10 sem TLS, \emph{broker} ativo); o que só a
+combinação impede (mensagem antiga nunca recebida: validade; repetição: janela);
+o que só K8 e seguintes impedem (inundação, ocupação de ligações).}
+
+\subsection{Cada ataque contra a sua defesa, com controlo negativo}
+
+\PorFazer{Tabela dos cenários (\texttt{results/<campanha>/scenarios.md}): ataque,
+defesa, previsão, resultado e evidência, com o controlo negativo ao lado. Esta
+tabela confirma ou refuta, linha a linha, a tabela de ataques da Parte~1.}
+
+\subsection{Observações}
+\label{sec:observacoes}
+
+Os ensaios mostraram efeitos que a tabela de ataques da Parte~1 não previa.
+\PorFazer{Confirmar cada um com os dados do Raspberry~Pi e quantificar.}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Ocupação de ligações.} O limite de ligações protege os recursos do
+    \emph{broker} e mantém os clientes já ligados, mas o atacante ocupa as vagas
+    livres; se o \emph{broker} reiniciar durante o ataque, o atacante pode ficar
+    com todas as vagas e nenhum sensor volta a ligar-se.
+  \item \textbf{Chave roubada e janela da vítima.} As mensagens aceites com uma
+    chave roubada avançam a janela anti-repetição dessa chave; o tráfego legítimo
+    do dispositivo passa a ser rejeitado até à rotação de chaves.
+  \item \textbf{Credencial clonada e sessão MQTT.} Se o atacante se liga com a
+    identidade de um dispositivo que continua ligado, o \emph{broker} entrega-lhe
+    a sessão e desliga o legítimo; os dois alternam enquanto o ataque dura, o que
+    é uma negação de serviço da vítima.
+  \item \textbf{Falsificação pelo recetor num \emph{broker} legítimo.} A ACL já
+    impede um atuador de publicar nos tópicos de ordens dos outros; a diferença
+    entre a chave partilhada e a assinatura só se observa sem ACL ou com um
+    \emph{broker} ativo.
+  \item \textbf{Atraso e supressão.} Um \emph{broker} ativo que atrase mensagens
+    menos do que $\Delta_a$, ou que as suprima, não é detetado pelo recetor.
+\end{itemize}

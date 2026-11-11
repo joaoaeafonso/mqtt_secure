@@ -1,0 +1,50 @@
+\section{Resultados: custo}
+\label{sec:custo}
+
+\subsection{Custo por configuração (QP1)}
+
+As Tabelas~\ref{tab:resumo} e~\ref{tab:resumo-b} dão, para cada configuração, a
+mediana e o intervalo de confiança de cada métrica no Raspberry~Pi~5.
+
+\gerado{pi5/summary}
+
+\figuraGerada{pi5/fig-cpu}{Tempo de processador do \emph{gateway} por mensagem,
+  por configuração (mediana e IC 95\,\%).}{fig:cpu}
+\figuraGerada{pi5/fig-p99}{Latência p99 por configuração (mediana e IC
+  95\,\%).}{fig:p99}
+
+\PorFazer{Leitura: que configurações se distinguem e quais ficam dentro do ruído;
+ordem de grandeza do custo do transporte e do envelope.}
+
+\subsection{Custo marginal de cada camada}
+
+\gerado{pi5/marginal}
+
+\PorFazer{Comentar a Tabela~\ref{tab:marginal} camada a camada. Interações
+(\texttt{interaction.csv}): a validade e a anti-repetição custam o mesmo juntas e
+separadas? O TLS custa o mesmo com e sem envelope?}
+
+\subsection{Tamanho da mensagem e saturação (QP3)}
+
+\PorFazer{Custo em função do tamanho: nível~1 (Tabela~\ref{tab:microbench}) e, se
+medido, nível~2 com \texttt{--vary load.payload}. Débito máximo sustentado por
+configuração (\texttt{saturation.csv}): tabela ou figura, e o que limita primeiro
+(processador do \emph{gateway}, do \emph{broker} ou a rede).}
+
+\subsection{Aceleração criptográfica por \emph{hardware} (QP4)}
+
+\gerado{pi5/microbench}
+
+\PorFazer{AES-GCM e ChaCha20-Poly1305 com a aceleração ligada, com
+\texttt{OPENSSL\_armcap=1} (só NEON) e com \texttt{OPENSSL\_armcap=0}; K8 contra
+K11 no nível~2. Em que condições o ChaCha20 compensa.}
+
+\subsection{Octetos e memória}
+
+\PorFazer{Octetos por mensagem: confirmar os 53 e 89 octetos do envelope e quanto
+acrescenta o TLS por mensagem. Memória do \emph{gateway} e do \emph{broker}.}
+
+\subsection{Plataforma de referência}
+
+\PorFazer{O mesmo no computador de secretária (Anexo~\ref{sec:reproducao}): em que
+é que a ordenação das configurações muda, se mudar.}

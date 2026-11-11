@@ -1,0 +1,32 @@
+\section{Hipóteses}
+\label{sec:hipoteses}
+
+A evidência de cada hipótese está em \texttt{gerado/pi5/hypotheses.md}; o
+veredicto é dos autores.
+
+\begin{table}[ht]
+  \centering
+  \caption{Veredicto das hipóteses da Parte~1.}
+  \label{tab:hipoteses}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}L{5.6cm}YL{2.2cm}@{}}
+    \toprule
+    \textbf{Hipótese} & \textbf{Evidência} & \textbf{Veredicto} \\
+    \midrule
+    H1. O envelope AES-256-GCM tem um custo por mensagem pequeno face à latência
+      da rede & \PorFazer{K1$\to$K3: processador e p50} & \PorFazer{} \\
+    H2. Validade, anti-repetição e chave--tópico têm custo marginal quase nulo &
+      \PorFazer{K3$\to$K4, K3$\to$K5, K6$\to$K7} & \PorFazer{} \\
+    H3. Ed25519 custa claramente mais do que AES-GCM por mensagem &
+      \PorFazer{K8$\to$K9} & \PorFazer{} \\
+    H4. O custo do TLS concentra-se no estabelecimento da ligação &
+      \PorFazer{processador por ligação K0 e K1; K0$\to$K1 e K10$\to$K7 por
+      mensagem} & \PorFazer{} \\
+    H5. Sob inundação, a limitação antes da criptografia reduz o processador do
+      \emph{gateway} & \PorFazer{ataque de inundação em K7 e K8} & \PorFazer{} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\PorFazer{Um parágrafo por hipótese refutada ou só em parte confirmada. A Parte~1
+diz que as hipóteses podem ser refutadas: dizê-lo claramente quando acontecer.}

@@ -1,0 +1,37 @@
+\section{Validação do protótipo}
+\label{sec:validacao}
+
+\subsection{Conformidade com a especificação}
+
+A validação tem três níveis. Os \textbf{testes automatizados}
+(Secção~\ref{sec:prototipo}) verificam cada regra de aceitação, os vetores de
+teste do envelope (partilhados pela implementação em C++ e pela em Python, que
+assim não podem divergir) e os vetores do RFC~8439 para o ChaCha20-Poly1305. Os
+\textbf{cenários} (Secção~\ref{sec:protecao}) verificam o sistema completo contra
+um \emph{broker} real: \PorFazer{39/39} com o resultado previsto no Raspberry~Pi.
+A \textbf{matriz de ataques} confirma que cada configuração impede o que o desenho
+prevê.
+
+\subsection{Calibração da validade temporal}
+
+A Parte~1 fixou valores iniciais, $\Delta_a = 60$~s e $\Delta_s = 5$~s, a calibrar
+nesta parte a partir da latência medida e do desvio de relógio observado. Cada
+execução regista a cauda da latência e o desvio entre o relógio de cada máquina de
+sensores e o do \emph{gateway}.
+
+\PorFazer{Copiar de \texttt{gerado/pi5/calibration.md}: latência máxima, desvio de
+relógio máximo e incerteza residual; valores propostos de $\Delta_a$ e $\Delta_s$
+com relógios sincronizados e sem sincronização (margem de segurança 2,
+arredondamento a 100~ms). Comentar o que isto significa para as ordens a
+atuadores, que justificam uma validade mais curta por fluxo.}
+
+\subsection{Reinício do recetor}
+
+\PorFazer{Demonstração: reiniciar o \emph{gateway}; as mensagens com chaves da
+época anterior são rejeitadas (incluindo repetições capturadas antes do reinício);
+depois da rotação, o tráfego retoma. Indicar o tempo sem serviço.}
+
+\subsection{Rotação e revogação}
+
+\PorFazer{Cenários \texttt{key-rotation} e \texttt{revocation}: sem rejeições
+durante a rotação; o dispositivo revogado fica de fora e os outros continuam.}

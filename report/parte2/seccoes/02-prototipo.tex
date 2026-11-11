@@ -1,0 +1,86 @@
+\section{Protótipo}
+\label{sec:prototipo}
+
+\subsection{Visão geral}
+
+O protótipo tem três partes. A \textbf{biblioteca} (C++23) implementa as camadas
+como elementos de uma cadeia de processamento: cada mensagem que chega passa pela
+limitação de tráfego, pela camada de segurança (o envelope) e, opcionalmente, pela
+persistência; cada camada pode ser ligada e desligada em execução, sem reconstruir
+a cadeia. O \textbf{\emph{gateway} de ensaio} liga essa cadeia a um \emph{broker}
+Mosquitto real através de um cliente Paho e reporta, por janela de medição, as
+mensagens entregues e rejeitadas (por motivo), a latência e o tempo de processador.
+O \textbf{laboratório de carga} (Python) lança o \emph{broker}, o \emph{gateway},
+os sensores simulados e o atacante, aplica cada configuração e mede.
+
+\PorFazer{Figura da arquitetura implementada (adaptar a da Parte~1, Secção~6.1,
+marcando o que corre em cada processo e em cada máquina).}
+
+\subsection{O que foi implementado}
+
+A Tabela~\ref{tab:implementado} relaciona cada elemento da proposta com a sua
+concretização.
+
+\begin{table}[ht]
+  \centering
+  \caption{Elementos da arquitetura proposta e a sua implementação.}
+  \label{tab:implementado}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}L{4.6cm}YL{4.2cm}@{}}
+    \toprule
+    \textbf{Elemento (Parte~1)} & \textbf{Implementação} & \textbf{Onde} \\
+    \midrule
+    Envelope de 25 octetos; tópico e modo nos dados associados; modos de cifra,
+      autenticação e assinatura (§6.4) & AES-256-GCM, GMAC e Ed25519 sobre OpenSSL;
+      a mesma implementação em Python para os sensores, verificada pelos mesmos
+      vetores de teste & \texttt{modules/security}, \texttt{msec\_envelope.py} \\
+    ChaCha20-Poly1305 como alternativa (§6.4) & O algoritmo é um atributo da chave:
+      o formato do envelope não muda e um recetor serve os dois & \texttt{chacha20\_poly1305\_cipher.cpp} \\
+    Ordem de verificação (§6.5) & Formato, modo aceite, validade, verificação
+      criptográfica, chave--tópico, janela & \texttt{security\_layer.cpp} \\
+    Validade temporal (§6.6) & $\Delta_a$ e $\Delta_s$ globais e por fluxo (filtro
+      de tópico) & \texttt{FreshnessRule} \\
+    Janela anti-repetição, $w = 64$ (§6.6) & Por chave, em memória, com estado
+      limitado & \texttt{replay\_guard.cpp} \\
+    Restrição chave--tópico (§6.7) & Política com padrões por dono da chave,
+      aplicada depois da autenticação & \texttt{key\_policy.cpp} \\
+    Chaves por época, rotação e revogação (§6.8) & Rotação com período de graça;
+      revogação de chaves, palavras-passe e certificados (CRL) & \texttt{pki.py}, \texttt{lab.py} \\
+    Limitação de tráfego antes da criptografia (§6.9) & \emph{Token bucket} por
+      tópico & \texttt{modules/limits} \\
+    Camada de transporte (§6.3) & TLS~1.3, autenticação mútua, palavras-passe,
+      ACL por utilizador, identificador de cliente ligado ao utilizador, limites de
+      pacote e de ligações & \texttt{broker.py} (Mosquitto) \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Decisões tomadas nesta parte}
+
+\paragraph{Reinício do recetor.} A Parte~1 registou como limitação que a janela
+anti-repetição se perde quando o recetor reinicia. A solução adotada não persiste a
+janela a cada mensagem: o recetor guarda de forma durável apenas a época de chaves
+mais recente que aceitou e, depois de um reinício, só aceita épocas posteriores. A
+gravação faz-se uma vez por rotação, antes de aceitar a primeira mensagem da nova
+época, e uma falha de leitura ou de escrita rejeita a mensagem.
+
+\paragraph{Dependências entre mecanismos.} A validade temporal, a anti-repetição
+e a restrição chave--tópico verificam campos do envelope. Uma configuração que as
+ligue com o envelope desligado é recusada, no arranque e em execução, em vez de as
+ignorar em silêncio.
+
+\paragraph{Fora do âmbito.} Não foram implementados um modo HMAC próprio (o GMAC
+cobre a autenticação sem cifra), \emph{nonces} por contador nem o modo de cifra
+seguida de assinatura, que a Parte~1 apresenta como possível extensão.
+
+\subsection{Testes automatizados}
+
+\PorFazer{Atualizar as contagens no fim.} O protótipo tem 93 testes em C++
+(unitários, de integração e de aceitação), executados com AddressSanitizer e
+UndefinedBehaviorSanitizer, e 56 testes em Python. Os testes de aceitação têm um
+teste por regra da ordem de verificação e foram verificados por mutação: cada um
+falha quando a regra correspondente é removida. Três alvos de \emph{fuzzing}
+exercitam a análise do envelope, a validação de tópicos e todo o caminho de
+receção com octetos arbitrários. A integração contínua compila com
+\texttt{clang-tidy} (avisos tratados como erros) e corre os cenários de ataque
+contra um Mosquitto real.

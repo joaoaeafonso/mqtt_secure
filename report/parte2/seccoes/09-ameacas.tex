@@ -1,0 +1,71 @@
+\section{Ameaças à validade e limitações}
+\label{sec:ameacas}
+
+\subsection{Validade de construção}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{$S(c)$ conta ataques, não a sua gravidade.} Com os pesos usados,
+    todos os ataques valem o mesmo; a exclusão por caso de uso compensa em parte,
+    porque uma propriedade obrigatória em falta não é trocada por custo.
+  \item \textbf{A escuta no \emph{broker} mede um subscritor estranho.} Na matriz
+    de ataques, quem escuta é um cliente sem credenciais, que K1 já impede. Um
+    \emph{broker} curioso ou comprometido lê o conteúdo em K1, K2 e K9, que não
+    cifram perante o \emph{broker}, e $S(c)$ não o mostra. Quem o mostra é o
+    filtro por caso de uso (a telemetria sensível exige o modo de cifra) e o
+    cenário que compara o que um subscritor lê com TLS e com o envelope.
+  \item \textbf{Um ataque travado no \emph{broker} conta como impedido.} As
+    configurações com transporte protegido impedem muitos ataques por o atacante
+    não chegar ao \emph{broker}; isso deixa de valer se o \emph{broker} for o
+    adversário. K10 e os cenários com \emph{broker} ativo medem o que resta sem
+    essa barreira.
+  \item \textbf{\emph{Broker} ativo só em MQTT sem TLS.} O intermediário não
+    termina TLS; um \emph{broker} malicioso real fá-lo-ia. O que o envelope deteta
+    não depende do transporte, pelo que o resultado se mantém, mas não foi medido
+    com TLS.
+\end{itemize}
+
+\subsection{Validade interna}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{O instrumento pesa na medição.} O tempo de processador do
+    \emph{gateway} inclui a contabilidade das medições, e a sua memória inclui as
+    amostras de latência da janela e a tabela de mensagens vistas, que cresce nos
+    primeiros minutos de cada laboratório. As diferenças entre configurações são
+    válidas; os valores absolutos de memória são um majorante.
+  \item \textbf{Tempo de ligação.} Varia em degraus de cerca de 100~ms por esperas
+    internas da biblioteca cliente; usa-se o tempo de processador por ligação.
+  \item \textbf{Relógios.} A latência entre máquinas depende da correção do
+    relógio dos sensores, com incerteza igual a metade do melhor tempo de ida e
+    volta observado. \PorFazer{Indicar o valor e compará-lo com as diferenças de
+    latência entre configurações.}
+  \item \textbf{Temperatura e frequência.} \PorFazer{Indicar se houve
+    \emph{throttling} (coluna \texttt{throttled}) e a gama de temperaturas; a
+    ordem aleatória distribui o efeito pelas configurações.}
+  \item \textbf{Sensores simulados.} Os sensores são processos Python num
+    computador, não dispositivos restritos: o custo no emissor não foi medido no
+    nível~2 (o nível~1 mede envio e receção).
+\end{itemize}
+
+\subsection{Validade externa}
+
+\begin{itemize}[leftmargin=*]
+  \item Um só modelo de \emph{hardware} restrito (Raspberry~Pi~5), um só
+    \emph{broker} (Mosquitto) e uma rede local. Um microcontrolador sem sistema
+    operativo, ou uma rede com perdas, podem ordenar as configurações de outra
+    forma.
+  \item \textbf{Sem AES em \emph{hardware}} foi emulado desligando extensões no
+    OpenSSL do mesmo processador, o que não reproduz a memória nem a
+    \emph{cache} de um processador mais simples.
+  \item Carga sintética: mensagens de tamanho fixo a taxa constante, QoS~0.
+    \PorFazer{Ajustar ao que foi medido.}
+\end{itemize}
+
+\subsection{Limitações do protótipo}
+
+As limitações da \PUm{Secção~6.11} mantêm-se, com uma alteração: o reinício do
+recetor deixou de reabrir a janela anti-repetição (Secção~\ref{sec:prototipo}), à
+custa de exigir uma rotação de chaves depois de cada reinício. Continuam por
+resolver a distribuição de chaves fora do laboratório, o armazenamento de chaves
+(só em memória), a supressão e o atraso de mensagens por um \emph{broker} ativo, e
+a confidencialidade e a prova de origem em simultâneo (cifra seguida de
+assinatura).

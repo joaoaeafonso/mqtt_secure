@@ -1,0 +1,114 @@
+% ===========================================================================
+% Relatório — Projeto, Parte 2
+% Segurança em Redes e Sistemas de Informação (SRSI)
+%
+% Compilar:   make            (pdflatex + bibtex + pdflatex x2)
+% Dados:      make dados PI=<campanha> [DESKTOP=<campanha>]   (ver README.md)
+% Usa o preâmbulo, as figuras e a bibliografia da Parte 1 (pasta acima).
+% ===========================================================================
+\documentclass[11pt, a4paper]{article}
+
+\newcommand{\Mestrado}{Engenharia Informática}
+\newcommand{\UnidadeCurricular}{Segurança em Redes e Sistemas de Informação}
+\newcommand{\Autores}{%
+  Rodrigo Gorjão, N.º 82972\\
+  João Afonso, N.º 97990\\
+  João Tendeiro, N.º 129087\\
+  Jossivalter Leal, N.º 146851}
+\newcommand{\Docente}{Daniel Maximino Caçador}
+\newcommand{\Titulo}{Segurança em Camadas para Comunicações IoT Baseadas em MQTT}
+\newcommand{\Subtitulo}{Implementação, Avaliação num Raspberry Pi e Validação}
+\newcommand{\Entrega}{Projeto --- Parte 2: implementação e avaliação}
+\newcommand{\TituloCurto}{Segurança em camadas para MQTT}
+\newcommand{\Repositorio}{https://github.com/joaoaeafonso/mqtt_secure}
+
+\input{../preambulo}
+\fancyhead[R]{\small\color{cinza}SRSI --- Projeto, Parte 2}
+\hypersetup{pdftitle={\Titulo: \Subtitulo}, pdfsubject={SRSI -- Projeto, Parte 2}}
+\setlength{\emergencystretch}{2em}
+
+% ------------------------------------------------------------ macros -------
+% Texto por escrever: visível no PDF, fácil de encontrar com grep.
+\newcommand{\PorFazer}[1]{\textcolor{mau}{\textbf{[Por fazer:} #1\textbf{]}}}
+% Referência à Parte 1 (documento separado: não há \ref entre os dois).
+\newcommand{\PUm}[1]{Parte~1, #1}
+% Tabela ou figura gerada por tools/analysis/analyze.py (make dados).
+% \gerado{pi5/summary} lê gerado/pi5/summary.tex, ou mostra uma caixa se faltar.
+\newcommand{\gerado}[1]{%
+  \IfFileExists{gerado/#1.tex}{\input{gerado/#1}}{%
+    \begin{center}\fbox{\parbox{0.9\linewidth}{\centering\small\color{mau}
+      Em falta: \texttt{gerado/#1.tex}\\(\texttt{make dados} depois da campanha)}}\end{center}}}
+% O mesmo para a plataforma de referência: as etiquetas ganham o prefixo "ref-",
+% para não colidirem com as do Raspberry Pi.
+\newcommand{\geradoRef}[1]{{%
+  \let\etiquetaOriginal\label
+  \renewcommand{\label}[1]{\etiquetaOriginal{ref-##1}}%
+  \gerado{#1}}}
+% Figura gerada, com legenda e etiqueta.
+\newcommand{\figuraGerada}[3]{%
+  \begin{figure}[ht]\centering\gerado{#1}\caption{#2}\label{#3}\end{figure}}
+
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
+\begin{document}
+
+\pagenumbering{Alph}
+\begin{titlepage}
+  \thispagestyle{empty}
+  \centering
+  \IfFileExists{../figuras/iscte-logo.png}%
+    {\includegraphics[width=0.62\textwidth]{../figuras/iscte-logo.png}}{}
+  \par\vspace{2.2cm}
+  {\Large Mestrado em \Mestrado\par}
+  \vspace{0.6cm}
+  {\LARGE\bfseries\color{iscte} \UnidadeCurricular\par}
+  \vspace{1.6cm}
+  {\Large\bfseries \Titulo\par}
+  \vspace{0.4cm}
+  {\large \Subtitulo\par}
+  \vspace{0.6cm}
+  {\normalsize\itshape \Entrega\par}
+  \vspace{1.6cm}
+  \begin{flushleft}
+    \large
+    \textbf{Autores:}\\[0.2cm]
+    \Autores\\[0.8cm]
+    \textbf{Docente:} \Docente\\[0.8cm]
+    \textbf{Repositório:} \url{\Repositorio}
+  \end{flushleft}
+  \vfill
+\end{titlepage}
+
+\pagenumbering{roman}
+\input{seccoes/00-resumo}
+\clearpage
+\tableofcontents
+\clearpage
+
+\pagenumbering{arabic}
+\input{seccoes/01-introducao}
+\input{seccoes/02-prototipo}
+\input{seccoes/03-metodo}
+\input{seccoes/04-custo}
+\input{seccoes/05-protecao}
+\input{seccoes/06-criterio}
+\input{seccoes/07-hipoteses}
+\input{seccoes/08-validacao}
+\input{seccoes/09-ameacas}
+\input{seccoes/10-conclusoes}
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{\refname}
+\bibliographystyle{../IEEEtran-pt}
+\bibliography{../referencias}
+
+\clearpage
+\appendix
+\renewcommand{\thesection}{\Alph{section}}
+\input{seccoes/anexo-a-reproducao}
+
+\end{document}
