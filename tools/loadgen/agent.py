@@ -10,8 +10,8 @@ deleted when the run ends or the agent exits.
 
 Clock: the gateway measures one-way latency against the controller's clock, so
 the agent estimates its offset to that clock NTP-style over the control
-channel (keeping the lowest-RTT samples) and has its sensors correct their
-timestamps. The remaining uncertainty (best RTT / 2) is reported to the
+channel (a drift-corrected fit over the lowest-RTT samples, see
+ClockEstimator) and has its sensors correct their timestamps. The remaining uncertainty (best RTT / 2) is reported to the
 dashboard; sub-millisecond latency needs it to be small, i.e. a quiet LAN, or
 clocks synced by PTP (then use --no-clock-correction).
 """
@@ -43,27 +43,66 @@ class FatalAgentError(Exception):
 
 
 class ClockEstimator:
-    """Offset of the controller's clock relative to ours, from ping/pong pairs."""
+    """Offset of the controller's clock relative to ours, from ping/pong pairs.
+
+    Two unsynchronised clocks drift apart (≈ 10–20 ppm between a Pi without
+    NTP and a desktop): over a 60 s window that is up to ~1 ms, more than the
+    latencies being measured. So the offset is not taken from one old sample:
+    a line offset(t) = a + b·t is fitted to the lowest-RTT quarter of the
+    window (the samples least disturbed by queueing) and evaluated *now*.
+    Until the window spans MIN_FIT_SPAN_S, or if the fitted drift is not
+    plausible for two quartz clocks, it falls back to the lowest-RTT sample.
+    """
+
+    MIN_FIT_SPAN_S = 10.0
+    MIN_FIT_SAMPLES = 4
+    MAX_DRIFT_PPM = 500.0
 
     def __init__(self, window_s: float = 60.0) -> None:
         self.samples: collections.deque = collections.deque()
         self.window_s = window_s
         self.lock = threading.Lock()
 
-    def add(self, t0: int, t1: int, t2: int) -> None:
+    def add(self, t0: int, t1: int, t2: int, now: float | None = None) -> None:
+        """t0/t2: our send/receive time of the ping (ns), t1: the controller's
+        time in the pong (ns); `now` (monotonic s) is only for tests."""
+        now = time.monotonic() if now is None else now
         rtt = t2 - t0
         offset = t1 - (t0 + t2) // 2
         with self.lock:
-            self.samples.append((time.monotonic(), rtt, offset))
-            while self.samples and time.monotonic() - self.samples[0][0] > self.window_s:
+            self.samples.append((now, rtt, offset))
+            while self.samples and now - self.samples[0][0] > self.window_s:
                 self.samples.popleft()
 
-    def estimate(self) -> dict:
+    def estimate(self, now: float | None = None) -> dict:
+        now = time.monotonic() if now is None else now
         with self.lock:
-            if not self.samples:
-                return {}
-            _, rtt, offset = min(self.samples, key=lambda s: s[1])
-        return {"offset_ns": offset, "uncertainty_ns": rtt // 2, "samples": len(self.samples)}
+            samples = list(self.samples)
+        if not samples:
+            return {}
+        best = sorted(samples, key=lambda s: s[1])
+        # Fallback: the lowest-RTT *recent* sample (after a clock step the
+        # older ones are wrong, and without a fit they are stale anyway).
+        recent = [s for s in best if now - s[0] <= self.MIN_FIT_SPAN_S] or best
+        _, best_rtt, best_offset = recent[0]
+        result = {"offset_ns": best_offset, "uncertainty_ns": best_rtt // 2,
+                  "samples": len(samples), "drift_ppm": 0.0, "fitted": False}
+        chosen = best[:max(self.MIN_FIT_SAMPLES, len(best) // 4)]
+        times = [s[0] for s in chosen]
+        if len(chosen) < self.MIN_FIT_SAMPLES or max(times) - min(times) < self.MIN_FIT_SPAN_S:
+            return result
+        # Least squares, centred on the mean time for numerical stability.
+        mean_t = sum(times) / len(chosen)
+        mean_o = sum(s[2] for s in chosen) / len(chosen)
+        sxx = sum((t - mean_t) ** 2 for t in times)
+        sxy = sum((s[0] - mean_t) * (s[2] - mean_o) for s in chosen)
+        slope_ns_per_s = sxy / sxx
+        drift_ppm = slope_ns_per_s / 1e3          # ns/s → µs/s = ppm
+        if abs(drift_ppm) > self.MAX_DRIFT_PPM:   # e.g. an NTP step inside the window
+            return result
+        result.update({"offset_ns": round(mean_o + slope_ns_per_s * (now - mean_t)),
+                       "drift_ppm": round(drift_ppm, 3), "fitted": True})
+        return result
 
 
 class Run:
@@ -163,8 +202,9 @@ def session(args, stop: threading.Event, log) -> None:
         last_ping = last_report = 0.0
         while not (stop.is_set() or closed.is_set()):
             now = time.monotonic()
-            # Burst of pings at start for a quick estimate, then a steady trickle.
-            if now - last_ping > (0.05 if pings < 40 else 2.0):
+            # Burst of pings at start for a quick estimate, then a steady trickle
+            # (one every 0.5 s: ~120 samples per window for the drift fit).
+            if now - last_ping > (0.05 if pings < 40 else 0.5):
                 last_ping, pings = now, pings + 1
                 try:
                     channel.send({"type": "ping", "t0": time.time_ns()})
