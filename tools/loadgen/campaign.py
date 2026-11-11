@@ -13,6 +13,9 @@ measurements kept, so tools/analysis can rebuild every table from them.
       attacks.csv       π_a(c): one row per level × attack        (--attacks)
       saturation.csv    load sweep per level until loss ≥ 1 %       (--saturate)
 
+--vary factors apply to the cost runs (runs.csv); the attack matrix and the
+saturation sweep run at the base configuration.
+
 Rows are appended as they are measured, so an interrupted campaign keeps
 everything measured so far.
 """
@@ -29,7 +32,7 @@ import time
 from pathlib import Path
 
 import manifest
-from lab import LEVELS, STARTUP_ONLY, Lab, merged
+from lab import LEVELS, STARTUP_ONLY, Lab, level_patch, merged
 
 DEFAULT_PARAMS = Path(__file__).resolve().parents[1] / "analysis" / "params.toml"
 
@@ -138,8 +141,7 @@ def run_campaign(args, base: dict, make_cluster, repo: Path, log) -> Path:
                 lab.start()
                 for level, patch, rep in cells:
                     n += 1
-                    lab.apply(level.patch(lab.config))
-                    lab.apply(patch)
+                    lab.apply(level_patch(level, lab.config, patch))
                     settings = {"level": level.id, "repetition": rep, **label(startup_patch),
                                 **label(patch)}
                     lab.mark(f"campaign run {n}/{total}: {settings}")
@@ -147,6 +149,11 @@ def run_campaign(args, base: dict, make_cluster, repo: Path, log) -> Path:
                     result = lab.measure(args.settle, args.duration, args.connect_test)
                     runs.add({"run": n, "lab": lab_index, "time": time.time(), **settings,
                               **result, **manifest.thermal()})
+                if cells and (attacks_log is not None or saturation is not None):
+                    # The attack matrix and the saturation sweep run at the base
+                    # load, not at whatever --vary cell happened to come last.
+                    lab.apply(level_patch(LEVELS[0], lab.config, {"load": {
+                        k: config["load"][k] for k in ("rate", "payload", "zone")}}))
                 if attacks_log is not None:
                     import attacks as attack_module
                     for rep in range(1, args.attack_repetitions + 1):
@@ -179,8 +186,8 @@ def sweep(lab: Lab, levels, args, rng: random.Random, log_rows: CsvLog, lab_inde
     rng.shuffle(cells)
     for level, rep in cells:
         for rate in rates:
-            lab.apply({"load": {"rate": rate}})
-            lab.apply(level.patch(lab.config))  # the rate limit follows the load
+            # One step: the level's rate limit follows the load.
+            lab.apply(level_patch(level, lab.config, {"load": {"rate": rate}}))
             log(f"saturation {level.id} rep {rep}: {rate} msg/s per sensor")
             result = lab.measure(args.settle, args.saturation_duration)
             log_rows.add({"lab": lab_index, "level": level.id, "repetition": rep,

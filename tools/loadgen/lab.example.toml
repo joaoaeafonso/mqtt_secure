@@ -1,6 +1,6 @@
 # Load-lab configuration. Every key is optional; missing keys use these defaults.
 # The defaults are security level K0: no defence at all. Start from another level
-# with --preset K0 … K10 (or the dashboard's level buttons).
+# with --preset K0 … K11 (or the dashboard's level buttons).
 # All settings can be changed while the lab runs (dashboard or POST /api/config)
 # except the ones marked "startup only".
 
@@ -63,6 +63,8 @@ republish_rate = 0         # captured messages copied to another topic of the sa
 relabel_rate = 0           # captured envelopes with the mode byte changed
 stolen_key = 0             # n > 0: the attacker holds sensor-n's keys, password and certificate
 stolen_rate = 0            #   forged readings sealed with that key, msg/s
+stolen_exclusive = true    #   the real sensor-n is offline while compromised; false: a cloned
+                           #   credential, both fight for the MQTT session (≈ once a second)
 stolen_target = "own"      #   own | other: sensor-n's topic or another device's
 stolen_mode = ""           #   "" = payload.protection; e.g. "auth_only" to try a downgrade
 stolen_age_s = 0           #   date them this far in the past (old, never-seen messages)

@@ -40,6 +40,7 @@ import socket
 import ssl
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -48,7 +49,7 @@ import pki as pki_module
 from attacker import COUNTERS as ATTACK_COUNTERS
 from sensors import summarize
 
-PROTOCOL_VERSION = 2  # 2: key files carry kinds and owners (aead + Ed25519)
+PROTOCOL_VERSION = 3  # 3: on-demand sensor reports ("poll" → "fresh") for exact window edges
 DEFAULT_CONTROL_PORT = 8089
 ROLES = ("sensors", "attacker")
 
@@ -139,6 +140,7 @@ class AgentHandle:
     latest: dict = field(default_factory=dict)
     clock: dict = field(default_factory=dict)
     inbox: queue.Queue = field(default_factory=queue.Queue)
+    fresh: queue.Queue = field(default_factory=queue.Queue)  # answers to "poll"
 
     def send(self, message: dict) -> None:
         if self.connected:
@@ -254,6 +256,8 @@ class ControlServer:
                 elif kind == "report":
                     agent.latest = message.get("data") or {}
                     agent.clock = message.get("clock") or {}
+                elif kind == "fresh":
+                    agent.fresh.put(message.get("data") or {})
                 else:
                     agent.inbox.put(message)
         except (OSError, ssl.SSLError, json.JSONDecodeError):
@@ -333,6 +337,28 @@ class RemoteSensors:
                     "last_error": "agent disconnected" if not self.agent.connected else ""}
         return r
 
+    def fresh_poll(self, timeout: float = 3.0) -> dict:
+        """Totals as of now: the agent asks its workers for a report and answers
+        at once, so a measurement window's edges are off by the control
+        channel's delay (milliseconds on a LAN), not by the 0.5 s report
+        interval. Falls back to the latest periodic report if the agent does
+        not answer."""
+        if not self.agent.connected:
+            return self.poll()
+        while True:  # drop answers to earlier requests that timed out
+            try:
+                self.agent.fresh.get_nowait()
+            except queue.Empty:
+                break
+        self.agent.send({"type": "poll"})
+        try:
+            data = self.agent.fresh.get(timeout=timeout)
+        except queue.Empty:
+            return self.poll()
+        if data:
+            self.agent.latest = data
+        return self.poll()
+
     def stop(self) -> None:
         self.agent.send({"type": "release"})
         try:
@@ -382,13 +408,17 @@ class FleetGroup:
             m.update(epoch=epoch)
 
     def fresh_poll(self) -> dict:
-        """Like poll(), but local sensor groups report as of now; remote agents
-        report every 0.5 s, so their window edges stay that fuzzy."""
+        """Like poll(), but every group reports as of now (a measurement edge);
+        the groups are asked in parallel, so the edge is the same for all."""
         return self.poll(fresh=True)
 
     def poll(self, fresh: bool = False) -> dict:
-        reports = [(name, m.fresh_poll() if fresh and hasattr(m, "fresh_poll") else m.poll())
-                   for name, m in zip(self.names, self.members)]
+        if fresh and len(self.members) > 1:
+            with ThreadPoolExecutor(len(self.members)) as pool:
+                polled = list(pool.map(lambda m: m.fresh_poll(), self.members))
+        else:
+            polled = [m.fresh_poll() if fresh else m.poll() for m in self.members]
+        reports = list(zip(self.names, polled))
         out = summarize([r for _, r in reports], sum(r.get("total", 0) for _, r in reports))
         errors = [f"{name}: {r['last_error']}" for name, r in reports if r.get("last_error")]
         out["last_error"] = errors[-1] if errors else ""

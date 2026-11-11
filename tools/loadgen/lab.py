@@ -12,7 +12,8 @@ in which every security feature can be switched, at startup or while running.
     [response]   revoked: sensors whose credentials are withdrawn everywhere
     [load]       rate, payload, zone (live); sensors, processes, qos (startup)
     [attacker]   enabled, impersonate, inject_rate, replay_rate, republish_rate,
-                 relabel_rate, stolen_key (+ stolen_*), forge_commands_rate,
+                 relabel_rate, stolen_key (+ stolen_*; the real device is silent
+                 while compromised unless stolen_exclusive = false), forge_commands_rate,
                  slow_connections, probe_rate; wiretap (startup), tamper
     [cluster]    sensor_agents, attacker_agents: run those on other machines
                  (see cluster.py / agent.py); 0 = run them on this machine
@@ -77,7 +78,8 @@ DEFAULTS: dict = {
              "processes": 2},
     "attacker": {"enabled": True, "impersonate": False, "inject_rate": 0.0,
                  "replay_rate": 0.0, "republish_rate": 0.0, "relabel_rate": 0.0,
-                 "stolen_key": 0, "stolen_rate": 0.0, "stolen_target": "own",
+                 "stolen_key": 0, "stolen_exclusive": True, "stolen_rate": 0.0,
+                 "stolen_target": "own",
                  "stolen_mode": "", "stolen_age_s": 0.0, "forge_commands_rate": 0.0,
                  "slow_connections": 0, "probe_rate": 0.0,
                  "wiretap": False, "tamper": "none", "tamper_delay_s": 2.0},
@@ -102,7 +104,8 @@ SPEC: dict = {
              "qos": (0, 1, 2), "processes": int},
     "attacker": {"enabled": bool, "impersonate": bool, "inject_rate": float,
                  "replay_rate": float, "republish_rate": float, "relabel_rate": float,
-                 "stolen_key": int, "stolen_rate": float, "stolen_target": ("own", "other"),
+                 "stolen_key": int, "stolen_exclusive": bool, "stolen_rate": float,
+                 "stolen_target": ("own", "other"),
                  "stolen_mode": ("", "auth_only", "encrypt", "sign"), "stolen_age_s": float,
                  "forge_commands_rate": float, "slow_connections": int, "probe_rate": float,
                  "wiretap": bool, "tamper": TAMPER_MODES, "tamper_delay_s": float},
@@ -119,6 +122,8 @@ BROKER_KEYS = ("mode", "tls_version", "auth", "acl", "clientid_binding", "sys_to
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
 # Settings of [attacker] that the lab handles itself (the relay), not the attacker process.
 RELAY_KEYS = ("wiretap", "tamper", "tamper_delay_s")
+# Also the lab's business: whether the real device keeps running while compromised.
+LAB_ATTACK_KEYS = (*RELAY_KEYS, "stolen_exclusive")
 ACCEPTABLE = ("auth_only", "encrypt", "sign")
 # Room for the envelope (≤ 25 + 12 nonce + 64 signature bytes), the topic and
 # the MQTT headers on top of the plaintext.
@@ -204,6 +209,22 @@ LEVELS: list[Level] = [
           True, "encrypt", True, True, True, True, CHACHA20),
 ]
 LEVEL_BY_ID = {level.id: level for level in LEVELS}
+
+
+def level_patch(level: Level, config: dict, extra: dict | None = None) -> dict:
+    """`level` plus `extra` settings as ONE patch, to apply in one step.
+
+    The level's limits follow the load, so they are derived from the load
+    `extra` sets, not from the one in effect: applying the level first and
+    e.g. load.payload = 4096 after it would leave (or be refused by) a
+    max_packet computed for the old payload. `extra` wins over the level."""
+    extra = extra or {}
+    preview = copy.deepcopy(config)
+    preview["load"].update(extra.get("load", {}))
+    out = level.patch(preview)
+    for section, values in extra.items():
+        out.setdefault(section, {}).update(values)
+    return out
 
 
 def current_level(config: dict) -> str | None:
@@ -429,6 +450,8 @@ class Lab:
                 credentials=self.passwords, clients_dir=str(self.pki.clients_dir),
                 **settings)], ["local"])
 
+        if self.silenced_sensors():
+            self.fleet.update(silenced=self.silenced_sensors())
         attack = self.attacker_settings()
         if attacker_agents:
             self.attacker = AttackerGroup([RemoteAttacker(a, self.ca, attack)
@@ -445,8 +468,19 @@ class Lab:
         c = self.config
         return {"transport": self.transport(), "zone": c["load"]["zone"],
                 "protection": c["payload"]["protection"],
-                **{k: v for k, v in c["attacker"].items() if k not in RELAY_KEYS},
+                **{k: v for k, v in c["attacker"].items() if k not in LAB_ATTACK_KEYS},
                 "material": self.stolen_material()}
+
+    def silenced_sensors(self) -> list[int]:
+        """The device the attacker has taken over does not run next to it
+        (attacker.stolen_exclusive, the default). Otherwise both use the
+        device's client id and take the MQTT session from each other about
+        once a second: the attacker is then online only a few percent of the
+        time, which turns every compromised-device attack (the flood above
+        all) into a trickle and the measurement into a session fight."""
+        a = self.config["attacker"]
+        on = a["enabled"] and a["stolen_key"] and a["stolen_exclusive"]
+        return [a["stolen_key"]] if on else []
 
     def stolen_material(self) -> dict:
         """sensor-n's secrets: its payload keys (with the gateway's aead and public
@@ -557,8 +591,12 @@ class Lab:
                 if "zone" in load:
                     self.attacker.update(zone=load["zone"])
                     self.gateway.set("zone", load["zone"])
+            if keys & {("attacker", "stolen_key"), ("attacker", "stolen_exclusive"),
+                       ("attacker", "enabled")}:
+                # Before the attacker connects as the device (and after it left).
+                self.fleet.update(silenced=self.silenced_sensors())
             attack = {k: new["attacker"][k] for s, k in keys
-                      if s == "attacker" and k not in RELAY_KEYS}
+                      if s == "attacker" and k not in LAB_ATTACK_KEYS}
             if ("attacker", "stolen_key") in keys or ("payload", "key_epoch") in keys:
                 attack["material"] = self.stolen_material()
             if attack:
@@ -740,9 +778,10 @@ class Lab:
         received = summary["received"]
 
         def share(part: float, of: float = sent) -> float:
-            # Local sensors report on demand at both edges (fresh_poll); remote
-            # agents every 0.5 s, so with agents shares are accurate to roughly
-            # ±0.5 s / duration.
+            # Sensors report on demand at both edges (fresh_poll), local ones
+            # and those on agents alike, so the shares are exact up to the
+            # control channel's delay. The attacker reports every 0.5 s:
+            # leak_pct is accurate to roughly ±0.5 s / duration.
             return round(min(max(100.0 * part / of, 0.0), 100.0), 1) if of else 0.0
 
         def delta(key: str) -> int:
