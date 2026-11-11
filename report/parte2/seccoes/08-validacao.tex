@@ -8,9 +8,39 @@ A validação tem três níveis. Os \textbf{testes automatizados}
 teste do envelope (partilhados pela implementação em C++ e pela em Python, que
 assim não podem divergir) e os vetores do RFC~8439 para o ChaCha20-Poly1305. Os
 \textbf{cenários} (Secção~\ref{sec:protecao}) verificam o sistema completo contra
-um \emph{broker} real: \PorFazer{39/39} com o resultado previsto no Raspberry~Pi.
+um \emph{broker} real: os 39 cenários deram o resultado previsto no
+Raspberry~Pi, antes da campanha (\texttt{results/validation/pi5-20261111/}). No
+mesmo \emph{commit} da campanha, os 93 testes em C++ e os 60 testes em Python do
+laboratório passaram no Raspberry~Pi (\PorFazer{confirmar \texttt{tests-campaign.txt} no
+\emph{commit} final}); só os sete testes que dependem do \texttt{tshark} não
+correram, por o Wireshark não estar instalado no Raspberry~Pi.
 A \textbf{matriz de ataques} confirma que cada configuração impede o que o desenho
 prevê.
+
+\subsection{Validação do instrumento de medição}
+
+Os pilotos no Raspberry~Pi validaram também o próprio laboratório, e revelaram
+dois defeitos que teriam falseado a campanha:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Deriva dos relógios.} No primeiro piloto, a latência mediana de K0
+    saiu negativa ($-455~\mu$s) e variava de 300 a 1\,055~$\mu$s entre repetições
+    da mesma configuração. O desvio entre os relógios crescia de forma regular
+    (de 32,9 para 51,8~ms ao longo da subida de carga, cerca de 13~ppm), e a
+    estimação usava a melhor amostra do último minuto, que podia estar 0,8~ms
+    atrasada. Com a reta ajustada às amostras
+    (Secção~\ref{sec:metodo}), a latência mediana de K0 ficou entre 132 e
+    133~$\mu$s nas três repetições do terceiro piloto. Um teste reproduz a
+    deriva observada e exige um erro inferior a 50~$\mu$s.
+  \item \textbf{Contaminação entre patamares.} No segundo piloto, uma execução
+    de K8 no primeiro patamar (500~mensagens/s) registou 77\,388 rejeições e p99
+    de 1,3~s: seguia-se a um patamar de K11 em sobrecarga, cujas mensagens retidas
+    chegaram depois da mudança de chave e de limite de débito. Se a perda tivesse
+    passado de 1\,\%, a subida de carga de K8 teria parado logo nesse patamar e o
+    seu débito máximo ficaria por medir. Com a espera
+    pelo escoamento, nenhuma execução posterior a uma saturação teve rejeições no
+    terceiro piloto.
+\end{itemize}
 
 \subsection{Calibração da validade temporal}
 
@@ -33,5 +63,9 @@ depois da rotação, o tráfego retoma. Indicar o tempo sem serviço.}
 
 \subsection{Rotação e revogação}
 
-\PorFazer{Cenários \texttt{key-rotation} e \texttt{revocation}: sem rejeições
-durante a rotação; o dispositivo revogado fica de fora e os outros continuam.}
+Os dois cenários passaram no Raspberry~Pi. Em \texttt{key-rotation}, todas as
+chaves do conteúdo são substituídas com o tráfego a correr, sem nenhuma rejeição e
+sem perda (0,0\,\%). Em \texttt{revocation}, o sensor~1 é revogado (chaves e
+palavra-passe): fica de fora e os outros nove continuam, com o débito entregue a
+descer de 200 para 180~mensagens/s, exatamente a parte do sensor revogado.
+\PorFazer{Confirmar com os cenários da campanha (\texttt{results/<campanha>/scenarios}).}
