@@ -49,6 +49,7 @@
 //   key revoke <id>     remove every key with that id (revocation)
 //   reconnect           apply transport/credential settings
 //   connect-test N      time N reconnects (TLS + CONNECT); prints a JSON line
+//   sync                prints {"type":"sync"}: every earlier command is in effect
 //   reset               start a new measurement window
 //   summary             print the window's summary as a JSON line
 //   quit
@@ -248,7 +249,7 @@ downlink (applied immediately):
 process:
   --report MS           stats interval                      (1000)
   --stats json|text     JSON lines on stdout or text on stderr (text)
-  --control stdin       accept `set`/`reconnect`/`reset`/`summary`/`quit` on stdin
+  --control stdin       accept `set`/`reconnect`/`sync`/`reset`/`summary`/`quit` on stdin
   --duration S          stop after S seconds                (until SIGINT)
   --json FILE           write the exit summary there instead of stdout
   --verbose             log every rejected message
@@ -1288,6 +1289,10 @@ void handle_command(Gateway& gateway, const std::string& line, Clock::time_point
         if (auto ok = gateway.connect(); !ok) {
             warn(std::format("reconnect: {}", ok.error().message));
         }
+    } else if (verb == "sync") {
+        // Commands are handled in order: the answer tells the controller that
+        // everything it sent before (e.g. `key add`) is in effect.
+        emit(R"({"type":"sync"})");
     } else if (verb == "reset") {
         gateway.stats().reset();
     } else if (verb == "summary") {

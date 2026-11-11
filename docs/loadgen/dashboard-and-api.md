@@ -13,8 +13,11 @@ external dependencies) from a stdlib `ThreadingHTTPServer`
 Layout, top to bottom:
 
 - **Security level** — one button per configuration of the report (K0–K11, see
-  [configuration.md](configuration.md#security-levels-k0k10)); the active one is
+  [configuration.md](configuration.md#security-levels-k0k11)); the active one is
   highlighted with what it adds. Settings changed by hand show as **Custom**.
+- **Defence ladder** — a second row of buttons, D0–D10, for demonstrations
+  ([below](#defence-ladder-d0d10-demonstrations-only)). They are not
+  configurations of the report and nothing is measured on them.
 - **Three summaries**, averaged over the last 5 s:
   - *Is traffic flowing?* — legitimate messages delivered vs. sent (accepted
     forgeries and replays excluded), sensors up, gateway rejections.
@@ -27,11 +30,21 @@ Layout, top to bottom:
   eavesdrop (`attacker.enabled`; stopping it disconnects the attacker),
   impersonate the gateway (`impersonate`), inject forged readings
   (`inject_rate` = 20), replay captured messages (`replay_rate` = 20), flood a
-  topic (`inject_rate` = 150, replacing the injection). Each running attack
+  topic (`inject_rate` = 150, replacing the injection). Stopping the eavesdrop
+  clears every other attack too. Three more rows run **with a compromised
+  device** (`stolen_key = 1`: the attacker holds sensor-1's keys, password and
+  certificate, so it gets past authentication and mutual TLS, and the real
+  sensor-1 is offline meanwhile): an old message never seen before
+  (`stolen_age_s = 120`), the stolen key on another device's topic
+  (`stolen_target = other`; replaces the former), and forging the gateway's
+  commands (`forge_commands_rate`, with `downlink.rate = 20`). Stopping the last
+  of them gives the device back and rotates every key, because messages
+  accepted under the stolen key moved its replay window ahead. **Start all
+  outsider attacks** and **Stop everything** act on all rows. Each running attack
   gets a verdict — *blocked* (and by what), *partly blocked*, or *succeeds* (and
   which disabled defence lets it through) — derived from the attacker's state,
   the gateway's rejections by reason and the accepted forgeries/replays. Verdicts
-  wait 4 s after any change.
+  wait 4 s after any change and use only points measured after it.
 - **Charts**, last 3 minutes, one point per second: throughput, end-to-end
   latency and CPU; **More charts** holds the rejections by reason, what the
   attacker achieves, and the downlink. Each burst of changes is a dashed line
@@ -56,6 +69,41 @@ The page polls `/api/state?since=<last t>` every second, keeps ~210 points,
 re-renders on resize and on colour-scheme change (light/dark themes via CSS
 custom properties). Every control posts the single changed key to
 `/api/config`; errors are shown inline.
+
+## Defence ladder D0–D10 (demonstrations only)
+
+K0–K11 add mechanisms in the order that isolates each one's **cost**, and K1
+switches the whole broker layer on at once: from K1 on the outside attacker
+cannot connect, every attack reads "blocked — mutual TLS", and nothing shows
+what K2–K9 add. The ladder shows the layers stacking up instead: the
+end-to-end layers first, over plain TCP with the attacker still on the broker,
+the broker layers last, and finally the broker layer taken away again.
+
+| Step | Adds | Outsider attacks: what changes | What it teaches |
+|---|---|---|---|
+| D0 | nothing (= K0) | all succeed | an open broker gives everything away |
+| D1 | `protection = auth_only` | Inject and Flood blocked (envelope check) | integrity is not confidentiality |
+| D2 | `protection = encrypt` | Eavesdrop blocked (ciphertext only) | confidential even from the broker; a copy is still authentic |
+| D3 | `freshness` | **nothing** (Replay still succeeds) | a 60 s validity alone lets recent copies through |
+| D4 | `replay` | Replay blocked | sequence numbers stop copies |
+| D5 | `key_binding` | **nothing** | it contains a compromised device, not an outsider |
+| D6 | `rate_limit` | Flood dropped before parsing | excess traffic costs no work |
+| D7 | `acl` | reasons move to "broker ACL"; Impersonate still succeeds | an ACL without authentication trusts any claimed name |
+| D8 | `auth` | everything blocked at the broker | the perimeter stops the outsider at the door |
+| D9 | `mode = mtls`, `clientid_binding` | nothing new; the cost tile changes | each hop encrypted, identity bound to a certificate |
+| D10 | breach: D9 without the broker layer (= D6) | only Impersonate succeeds again | defence in depth: the inner layers hold |
+
+With a compromised device: the old message succeeds up to D2 and is stopped by
+the timestamp check from D3; the stolen key on another topic succeeds up to D4
+and is stopped by the key–topic restriction from D5 (by the ACL first from D7);
+forged commands succeed with the shared key at every step without an ACL and
+are stopped only by signatures (D5, then *Advanced settings → Payload → sign*)
+or, with the ACL on, by the broker.
+
+Every step is a full configuration (`POST /api/preset {"name": "D4"}`), so any
+step can be picked from anywhere. Suggested run for a video: **Start all
+outsider attacks**, D0 → D9, then D10; then the three compromised-device
+rows at D9 and at D2–D5.
 
 ## HTTP API
 
@@ -90,6 +138,7 @@ curl -s 'localhost:8088/api/state?since=0' | jq '.history[-1]'
 | `config` | the full current configuration |
 | `level` | the security level the configuration matches (`"K6"`), or `null` |
 | `levels` | `[{id, name, adds}]` for K0–K11, in order |
+| `demo_step`, `demo_steps` | the demo step the configuration is at (`"D4"`) or `null`; `[{id, name, teaches}]` for D0–D10 |
 | `startup_only` | `["broker.host", …, "load.sensors", …]` |
 | `history` | metric points with `t > since` (max 900 kept) |
 | `events` | `[{t, text}]` (max 200) — "lab started", every change, "security level K6 — Full envelope", "keys of epoch N revoked" |

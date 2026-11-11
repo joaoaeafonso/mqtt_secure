@@ -178,7 +178,8 @@ class Level:
                 and (not on or t["tls_version"] == "1.3")
                 and p["protection"] == self.protection and p["freshness"] == self.freshness
                 and p["replay"] == self.replay and p["key_binding"] == self.key_binding
-                and (p["rate_limit"] > 0) == self.limits and not p["accept"]
+                and (p["rate_limit"] > 0) == self.limits
+                and (t["max_connections"] > 0) == self.limits and not p["accept"]
                 and p["cipher"] == self.cipher)
 
 
@@ -237,7 +238,98 @@ def hardened(config: dict) -> dict:
     return LEVEL_BY_ID["K9"].patch(config)
 
 
-PRESETS = {"hardened": hardened, **{level.id: level.patch for level in LEVELS}}
+@dataclass(frozen=True)
+class DemoStep:
+    """One step of the defence ladder: a DEMONSTRATION order, not an evaluation
+    configuration (those are LEVELS, K0–K11, and nothing is measured on these).
+
+    K0–K11 add mechanisms in the order that isolates each one's cost, and K1
+    switches the whole broker layer on at once: from then on the outside
+    attacker cannot connect and no attack reaches the layers behind it. The
+    ladder goes inside out instead: the end-to-end layers first, over plain
+    TCP with the attacker on the broker, the perimeter last, and finally the
+    perimeter taken away again (the breach), to show the inner layers holding.
+    Every step is a full configuration, so any step can be picked from anywhere."""
+    id: str
+    name: str
+    teaches: str
+    protection: str = "none"
+    freshness: bool = False
+    replay: bool = False
+    key_binding: bool = False
+    rate_limit: bool = False
+    acl: bool = False
+    auth: bool = False
+    mtls: bool = False
+
+    def patch(self, config: dict) -> dict:
+        load = config["load"]
+        return {
+            "transport": {"mode": "mtls" if self.mtls else "plain", "tls_version": "1.3",
+                          "protocol": "5", "auth": self.auth, "acl": self.acl,
+                          "clientid_binding": self.mtls, "sys_topics": False,
+                          "max_packet": 0, "max_connections": 0},
+            "payload": {"protection": self.protection, "cipher": AES_GCM, "accept": "",
+                        "freshness": self.freshness, "replay": self.replay,
+                        "key_binding": self.key_binding,
+                        "rate_limit": max(10, int(load["rate"] * 2) + 1) if self.rate_limit else 0},
+            "load": {"zone": "restricted"},
+        }
+
+    def matches(self, config: dict) -> bool:
+        return all(config[section][key] == value
+                   for section, values in self.patch(config).items()
+                   for key, value in values.items())
+
+
+_INNER = {"protection": "encrypt", "freshness": True, "replay": True, "key_binding": True,
+          "rate_limit": True}
+DEMO_STEPS: list[DemoStep] = [
+    DemoStep("D0", "Open", "an open broker gives everything away"),
+    DemoStep("D1", "+ Authentication",
+             "integrity is not confidentiality: forgeries stop, contents are still readable",
+             protection="auth_only"),
+    DemoStep("D2", "+ Encryption",
+             "confidentiality end to end, even from the broker; but an authentic copy is "
+             "still authentic", protection="encrypt"),
+    DemoStep("D3", "+ Timestamp",
+             "nothing changes for a replay: a 60 s validity alone lets recent copies through "
+             "(it does stop an old message never seen before)",
+             protection="encrypt", freshness=True),
+    DemoStep("D4", "+ Replay window", "sequence numbers stop copies",
+             protection="encrypt", freshness=True, replay=True),
+    DemoStep("D5", "+ Key–topic",
+             "nothing changes for an outsider: it contains a compromised device, whose key "
+             "now only works on its own topics",
+             protection="encrypt", freshness=True, replay=True, key_binding=True),
+    DemoStep("D6", "+ Rate limit", "excess traffic is dropped before any work is done",
+             **_INNER),
+    DemoStep("D7", "+ ACL",
+             "an ACL without authentication trusts whatever name a client claims",
+             **_INNER, acl=True),
+    DemoStep("D8", "+ Passwords", "the perimeter stops the outsider at the door",
+             **_INNER, acl=True, auth=True),
+    DemoStep("D9", "+ Mutual TLS",
+             "each hop encrypted and identity bound to a certificate; the price shows in "
+             "the cost tile", **_INNER, acl=True, auth=True, mtls=True),
+    DemoStep("D10", "Breach",
+             "defence in depth: the broker layer is gone again and the inner layers still hold",
+             **_INNER),
+]
+DEMO_BY_ID = {step.id: step for step in DEMO_STEPS}
+
+
+def current_demo_step(config: dict, chosen: str | None = None) -> str | None:
+    """The step `config` is at. D6 and D10 (the breach) are the same
+    configuration reached from different sides: `chosen`, the step last
+    picked, decides between them while it still matches."""
+    if chosen in DEMO_BY_ID and DEMO_BY_ID[chosen].matches(config):
+        return chosen
+    return next((s.id for s in DEMO_STEPS if s.matches(config)), None)
+
+
+PRESETS = {"hardened": hardened, **{level.id: level.patch for level in LEVELS},
+           **{step.id: step.patch for step in DEMO_STEPS}}
 
 
 def uses_agents(config: dict) -> bool:
@@ -311,7 +403,8 @@ def check_dependencies(config: dict) -> None:
     if p["protection"] == "none":
         on = [k for k in ("freshness", "replay", "key_binding") if p[k]]
         if on:
-            raise ValueError(f"payload.{', payload.'.join(on)} need the envelope: turn "
+            raise ValueError(f"payload.{', payload.'.join(on)} need{'' if len(on) > 1 else 's'} "
+                             "the envelope: turn "
                              f"{'them' if len(on) > 1 else 'it'} off or set payload.protection")
         if p["accept"]:
             raise ValueError("payload.accept needs the envelope (payload.protection is none)")
@@ -375,7 +468,12 @@ class Lab:
         self.events: collections.deque = collections.deque(maxlen=200)
         self.listeners: list = []  # called with the text of every event (e.g. Capture.mark)
         self._stop = threading.Event()
+        # Lab time: the wall clock at start plus monotonic time since. The wall
+        # clock itself can step (NTP; WSL2 steps back seconds at a time), which
+        # would give negative or inflated intervals and points out of order.
+        self._wall0, self._mono0 = time.time(), time.monotonic()
         self.broker = self.gateway = self.fleet = self.attacker = self.relay = None
+        self.demo_step: str | None = None  # the demo step last picked (see current_demo_step)
         self.sensor_agents: list = []
 
     # ---------------------------------------------------------------- setup ---
@@ -615,8 +713,10 @@ class Lab:
             raise ValueError(f"unknown preset {name!r} (known: {', '.join(PRESETS)})")
         with self.lock:
             changes = self.apply(PRESETS[name](self.config))
-            level = LEVEL_BY_ID.get(name)
+            self.demo_step = name if name in DEMO_BY_ID else None
+            level, step = LEVEL_BY_ID.get(name), DEMO_BY_ID.get(name)
             self._event(f"security level {level.id} — {level.name}" if level
+                        else f"demo step {step.id} — {step.name}" if step
                         else f"preset {name}")
             return changes
 
@@ -630,6 +730,9 @@ class Lab:
         self.keys.merge(fresh)
         for line in pki_module.gateway_view(fresh).lines():
             self.gateway.add_key(line)
+        # Senders switch only once the gateway holds the new keys: a message
+        # under a key id it does not know yet fails authentication by design.
+        self.gateway.sync()
         self.fleet.rotate(fresh, epoch)
         self.gateway.set("sending_key", pki_module.key_id(pki_module.GATEWAY, epoch))
         old_ids = [kid for kid in self.keys.owners if kid // pki_module.EPOCH_STRIDE == old_epoch]
@@ -656,8 +759,12 @@ class Lab:
         pki_module.write_passwd(self.pki, self.passwords, revoked)
         pki_module.write_crl(self.pki, self.ca, revoked)
 
+    def now(self) -> float:
+        """Seconds since the epoch that never go backwards (see __init__)."""
+        return self._wall0 + (time.monotonic() - self._mono0)
+
     def _event(self, text: str) -> None:
-        self.events.append({"t": time.time(), "text": text})
+        self.events.append({"t": self.now(), "text": text})
         for listener in self.listeners:
             listener(text)
         self.log(f"· {text}")
@@ -669,13 +776,22 @@ class Lab:
     # --------------------------------------------------------------- metrics ---
 
     def _sampler(self) -> None:
-        prev = None
+        prev, waited = None, False
         while not self._stop.wait(1.0):
-            now = time.time()
+            gateway = dict(self.gateway.latest)
+            stale = prev is not None and gateway.get("_seq") == prev["gateway"].get("_seq")
+            if stale and not waited:
+                # No new report from the gateway (it reports every ≈ 1.01 s, we
+                # sample every 1.00 s): wait one tick for the next one instead
+                # of recording a second with nothing delivered. If it is still
+                # missing then, the gateway really is silent: record that.
+                waited = True
+                continue
+            waited = False
             raw = {
-                "t": now,
+                "t": self.now(),
                 "fleet": self.fleet.poll(),
-                "gateway": dict(self.gateway.latest),
+                "gateway": gateway,
                 "attacker": self.attacker.poll(),
                 "broker_cpu_s": self.broker.cpu_seconds(),
                 "broker_pid": self.broker.proc.pid,
@@ -686,16 +802,19 @@ class Lab:
 
     @staticmethod
     def _point(prev: dict, cur: dict) -> dict:
-        dt = max(cur["t"] - prev["t"], 1e-6)
+        dt = max(cur["t"] - prev["t"], 1e-3)
 
-        def rate(new, old):
+        def rate(new, old, over=dt):
             # Counters restart from 0 on a gateway `reset` or a broker restart.
-            return max(new - old if new >= old else new, 0) / dt
+            return max(new - old if new >= old else new, 0) / over
 
         f0, f1 = prev["fleet"], cur["fleet"]
         g0, g1 = prev["gateway"], cur["gateway"]
         a0, a1 = prev["attacker"], cur["attacker"]
         g = lambda d, k: d.get(k, 0)  # noqa: E731
+        # The gateway's counters cover the time between ITS reports, not ours.
+        gdt = max(g1.get("_mono", 0.0) - g0.get("_mono", 0.0), 1e-3) if "_mono" in g0 else dt
+        grate = lambda new, old: rate(new, old, gdt)  # noqa: E731
         reasons = set(g1.get("rejected_by", {})) | set(g0.get("rejected_by", {}))
         cmd_reasons = set(f1.get("cmd_rejected_by", {})) | set(f0.get("cmd_rejected_by", {}))
         same_broker = prev["broker_pid"] == cur["broker_pid"]
@@ -707,14 +826,14 @@ class Lab:
             "sensors_up": f1["up"], "sensors_total": f1["total"],
             "sensor_error": f1["last_error"],
             "gw_connected": bool(g1.get("connected")),
-            "delivered": rate(g(g1, "delivered"), g(g0, "delivered")),
-            "rejected": rate(g(g1, "rejected"), g(g0, "rejected")),
-            "rejected_by": {r: rate(g1.get("rejected_by", {}).get(r, 0),
+            "delivered": grate(g(g1, "delivered"), g(g0, "delivered")),
+            "rejected": grate(g(g1, "rejected"), g(g0, "rejected")),
+            "rejected_by": {r: grate(g1.get("rejected_by", {}).get(r, 0),
                                     g0.get("rejected_by", {}).get(r, 0)) for r in reasons},
-            "forged_ok": rate(g(g1, "forged_accepted"), g(g0, "forged_accepted")),
-            "replays_ok": rate(g(g1, "replays_accepted"), g(g0, "replays_accepted")),
-            "dup_rejected": rate(g(g1, "duplicates_rejected"), g(g0, "duplicates_rejected")),
-            "cmd_sent": rate(g(g1, "commands_sent"), g(g0, "commands_sent")),
+            "forged_ok": grate(g(g1, "forged_accepted"), g(g0, "forged_accepted")),
+            "replays_ok": grate(g(g1, "replays_accepted"), g(g0, "replays_accepted")),
+            "dup_rejected": grate(g(g1, "duplicates_rejected"), g(g0, "duplicates_rejected")),
+            "cmd_sent": grate(g(g1, "commands_sent"), g(g0, "commands_sent")),
             "cmd_ok": rate(g(f1, "cmd_ok"), g(f0, "cmd_ok")),
             "cmd_rejected": rate(g(f1, "cmd_rejected"), g(f0, "cmd_rejected")),
             "cmd_rejected_by": {r: rate(f1.get("cmd_rejected_by", {}).get(r, 0),
@@ -729,6 +848,8 @@ class Lab:
             "eavesdropped": rate(a1["received"], a0["received"]),
             "injected": rate(a1["injected"], a0["injected"]),
             "replayed": rate(a1["replayed"], a0["replayed"]),
+            "stolen_sent": rate(g(a1, "stolen_sent"), g(a0, "stolen_sent")),
+            "commands_forged": rate(g(a1, "commands_forged"), g(a0, "commands_forged")),
             "attacker": {k: a1[k] for k in ("connected", "detail", "identity", "enabled",
                                             "captured")},
         }
@@ -739,6 +860,9 @@ class Lab:
                     "level": current_level(self.config),
                     "levels": [{"id": lv.id, "name": lv.name, "adds": lv.adds}
                                for lv in LEVELS],
+                    "demo_step": current_demo_step(self.config, self.demo_step),
+                    "demo_steps": [{"id": s.id, "name": s.name, "teaches": s.teaches}
+                                   for s in DEMO_STEPS],
                     "startup_only": [f"{s}.{k}" for s, k in sorted(STARTUP_ONLY)],
                     "history": [p for p in self.history if p["t"] > since],
                     "events": list(self.events),
@@ -765,12 +889,12 @@ class Lab:
         r0 = self.relay.snapshot() if self.relay else {}
         tcp0 = procstats.tcp_bytes(self.gateway.pid, self.gateway_port)
         rss = procstats.RssSampler({"gateway": self.gateway.pid, "broker": self.broker.proc.pid})
-        b0, pid0, t0 = self.broker.cpu_seconds(), self.broker.proc.pid, time.time()
+        b0, pid0, t0 = self.broker.cpu_seconds(), self.broker.proc.pid, time.monotonic()
         time.sleep(duration)
         f1 = self.fleet.fresh_poll()
         summary = self.gateway.summary()
         a1 = self.attacker.poll()
-        b1, pid1, t1 = self.broker.cpu_seconds(), self.broker.proc.pid, time.time()
+        b1, pid1, t1 = self.broker.cpu_seconds(), self.broker.proc.pid, time.monotonic()
         tcp1 = procstats.tcp_bytes(self.gateway.pid, self.gateway_port)
         peaks = rss.stop()
         r1 = self.relay.snapshot() if self.relay else {}
@@ -890,9 +1014,9 @@ class Lab:
         """Seconds until the gateway delivers again at `fraction` of the
         pre-attack rate (polled from the per-second stats); '' if it does not
         recover within `timeout`."""
-        t0 = time.time()
+        t0 = self.now()
         last = None
-        while time.time() - t0 < timeout:
+        while self.now() - t0 < timeout:
             time.sleep(0.25)
             point = self.history[-1] if self.history else None
             if point is not None and point is not last and point["t"] > t0:

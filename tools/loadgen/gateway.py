@@ -7,6 +7,7 @@ import json
 import queue
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import keylog
@@ -49,6 +50,8 @@ class GatewayProcess:
         self.log: collections.deque[str] = collections.deque(maxlen=5000)
         self._summaries: queue.Queue = queue.Queue()
         self._connects: queue.Queue = queue.Queue()
+        self._syncs: queue.Queue = queue.Queue()
+        self._reports = 0
         self._ready = threading.Event()
         threading.Thread(target=self._read_stdout, daemon=True).start()
         threading.Thread(target=self._read_stderr, daemon=True).start()
@@ -63,7 +66,13 @@ class GatewayProcess:
             except json.JSONDecodeError:
                 continue
             if msg.get("type") == "stats":
+                # When it arrived and which one it is: the sampler computes
+                # rates over the gateway's own report interval.
+                self._reports += 1
+                msg["_seq"], msg["_mono"] = self._reports, time.monotonic()
                 self.latest = msg
+            elif msg.get("type") == "sync":
+                self._syncs.put(msg)
             elif msg.get("type") == "summary":
                 self._summaries.put(msg)
             elif msg.get("type") == "connect":
@@ -96,6 +105,23 @@ class GatewayProcess:
 
     def revoke_key(self, key_id: int) -> None:
         self.send(f"key revoke {key_id}")
+
+    def sync(self, timeout: float = 10) -> bool:
+        """Returns once the gateway has processed every command sent so far
+        (commands are handled in order). False if it did not answer."""
+        if self.proc.poll() is not None:
+            return False
+        while True:  # answers to earlier calls that timed out
+            try:
+                self._syncs.get_nowait()
+            except queue.Empty:
+                break
+        self.send("sync")
+        try:
+            self._syncs.get(timeout=timeout)
+        except queue.Empty:
+            return False
+        return True
 
     def reconnect(self) -> None:
         self.send("reconnect")

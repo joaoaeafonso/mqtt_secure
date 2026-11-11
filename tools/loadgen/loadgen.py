@@ -383,7 +383,8 @@ def main() -> None:
                        help="override one setting; repeatable")
         p.add_argument("--preset", choices=list(PRESETS),
                        help="start from a named profile: K0 … K11 (the report's security "
-                            "levels) or hardened (= K9, every defence on)")
+                            "levels), D0 … D10 (the demo ladder, not measured) or hardened "
+                            "(= K9, every defence on)")
         p.add_argument("--gateway", type=Path, default=DEFAULT_GATEWAY)
         p.add_argument("--verbose", action="store_true", help="gateway logs every rejection")
         p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE,

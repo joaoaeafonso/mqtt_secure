@@ -201,7 +201,11 @@
   .tip b { font-variant-numeric: tabular-nums; }
   .tip .when { color: var(--muted); margin-bottom: 2px; }
   .tip .ev { color: var(--ink-2); margin-top: 3px; border-top: 1px solid var(--border); padding-top: 3px; }
+  .attack-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 8px; }
+  .attack-bar small { color: var(--muted); }
+  .attacks tr.group th { text-align: left; padding-top: 12px; color: var(--ink-2); font-weight: 600; }
 </style>
+<link rel="icon" href="data:,">
 </head>
 <body>
 <header>
@@ -213,6 +217,11 @@
     <h2 id="h-level">Security level · the report's configurations</h2>
     <div class="ladder" id="ladder" role="group" aria-labelledby="h-level"></div>
     <p class="level-desc" id="level-desc"></p>
+  </section>
+  <section class="card" aria-labelledby="h-demo">
+    <h2 id="h-demo">Defence ladder · demonstration order (not the report's configurations)</h2>
+    <div class="ladder" id="demo-ladder" role="group" aria-labelledby="h-demo"></div>
+    <p class="level-desc" id="demo-desc"></p>
   </section>
 
   <div class="summary">
@@ -235,6 +244,11 @@
 
   <section class="card" aria-labelledby="h-attacks">
     <h2 id="h-attacks">Attacks · what the attacker tries, and what stops it</h2>
+    <div class="attack-bar">
+      <button type="button" class="action" id="atk-all">Start all outsider attacks</button>
+      <button type="button" class="action stop" id="atk-none">Stop everything</button>
+      <small>Outsider: no credentials at all. Compromised device: the attacker holds sensor-1's keys, password and certificate.</small>
+    </div>
     <div class="table-wrap">
       <table class="attacks">
         <thead><tr><th>Attack</th><th>Status</th><th>Why</th><th></th></tr></thead>
@@ -395,6 +409,8 @@ const COLORS = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7"];
 let config = null;
 let level = null;
 let levels = [];
+let demoStep = null;
+let demoSteps = [];
 let history = [];
 let events = [];
 let lastT = 0;
@@ -418,10 +434,12 @@ function el(tag, attrs = {}, ...children) {
 
 // ------------------------------------------------------------------- windows --
 const now = () => history.length ? history[history.length - 1].t : Date.now() / 1000;
-const recent = () => history.filter(p => p.t > now() - RECENT_S);
+const lastChange = () => events.length ? events[events.length - 1].t : 0;
+// Only points measured entirely after the last change (a point covers the second
+// before its time): the first verdict after a click must not mix in the old state.
+const recent = () => history.filter(p => p.t > Math.max(now() - RECENT_S, lastChange() + 1));
 const mean = (pts, f) => pts.length ? pts.reduce((s, p) => s + (f(p) || 0), 0) / pts.length : 0;
 const rejection = (pts, code) => mean(pts, p => (p.rejected_by || {})[code]);
-const lastChange = () => events.length ? events[events.length - 1].t : 0;
 const settling = () => now() - lastChange() < SETTLE_S;
 
 // CPU µs per delivered message: CPU % of one core × 10⁴ / msg/s.
@@ -472,6 +490,8 @@ function initControls() {
       const v = Number(input.value);
       if (input.value !== "" && v >= 0) apply(input.dataset.key, input.step === "1" ? Math.round(v) : v);
     }));
+  document.getElementById("atk-all").addEventListener("click", () => post("/api/config", START_OUTSIDER));
+  document.getElementById("atk-none").addEventListener("click", () => post("/api/config", stopAll(config)));
   document.getElementById("p-rotate").addEventListener("click", () =>
     apply("payload.key_epoch", config.payload.key_epoch + 1));
   document.getElementById("r-revoke").addEventListener("click", () => {
@@ -516,13 +536,35 @@ function renderLevels() {
   desc.replaceChildren(...(lv
     ? [el("b", {}, `${lv.id} — ${lv.name}`), `: ${lv.adds}.`]
     : [el("b", {}, "Custom settings"),
-       ": no report level matches what is set now (changed under Advanced settings). " +
+       ": no report level matches what is set now (a demo step, or changed under Advanced settings). " +
        "Pick a level to return to a configuration of the report."]));
+}
+
+function renderDemoLadder() {
+  const ladder = document.getElementById("demo-ladder");
+  if (!ladder.childElementCount && demoSteps.length) {
+    for (const st of demoSteps) {
+      if (st.id === "D7" || st.id === "D10") ladder.append(el("span", { class: "sep", "aria-hidden": "true" }));
+      const b = el("button", { type: "button", "data-level": st.id, title: st.teaches },
+                   el("b", {}, st.id), st.name);
+      b.addEventListener("click", () => applyPreset(st.id));
+      ladder.append(b);
+    }
+  }
+  ladder.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.level === demoStep)));
+  const st = demoSteps.find(x => x.id === demoStep);
+  document.getElementById("demo-desc").replaceChildren(...(st
+    ? [el("b", {}, `${st.id} — ${st.name}`), `: ${st.teaches}.`]
+    : ["Inside out: the end-to-end layers first (D1–D6, over plain TCP, the attacker still on the broker), " +
+       "then the broker layers (D7–D9), then the breach (D10). Start the attacks, then climb."]));
 }
 
 // ------------------------------------------------------------------- attacks --
 function brokerBlock() {
   const t = config.transport;
+  const last = history.length ? history[history.length - 1].attacker : null;
+  if (config.attacker.stolen_key) return last ? last.detail : "not connected";
   if (t.mode === "mtls") return "broker: mutual TLS — it has no client certificate";
   if (t.auth) return "broker: password authentication";
   return history.length ? history[history.length - 1].attacker.detail : "broker refused it";
@@ -533,10 +575,12 @@ const layers = (pts, codes) => codes.filter(c => rejection(pts, c) > 0.05).map(c
 const ATTACKS = [
   { name: "Eavesdrop", what: "subscribes to # and reads what it receives; stopping it disconnects the attacker",
     running: c => c.attacker.enabled,
-    start: { attacker: { enabled: true } }, stop: { attacker: { enabled: false } },
+    start: { attacker: { enabled: true } }, stop: c => stopAll(c),
     verdict(pts, a) {
       if (!a.connected) return ["blocked", brokerBlock()];
       const got = mean(pts, p => p.eavesdropped);
+      if (config.attacker.stolen_key && config.transport.acl)
+        return ["blocked", "broker ACL: logged in as sensor-1, it receives only sensor-1's own commands"];
       if (got < 0.05) return ["blocked", config.transport.acl ? "broker ACL: # delivers nothing to it"
                                                                : "nothing reaches it"];
       const prot = config.payload.protection;
@@ -544,12 +588,15 @@ const ATTACKS = [
         return ["blocked", `encryption: it gets ${fmt(got)} msg/s of ciphertext (sees topics and timing, not contents)`];
       return ["succeeds", `reads ${fmt(got)} msg/s in clear — ` +
         (prot === "none" ? "the payload is not encrypted"
-                         : `${prot === "sign" ? "signatures" : "authentication-only mode"} keep the payload readable`)];
+                         : prot === "sign" ? "signatures keep the payload readable"
+                                           : "authentication-only mode keeps the payload readable")];
     } },
   { name: "Impersonate the gateway", what: "logs in with username “gateway” and no password",
     running: c => c.attacker.enabled && c.attacker.impersonate,
     start: { attacker: { enabled: true, impersonate: true } }, stop: { attacker: { impersonate: false } },
     verdict(pts, a) {
+      if (config.attacker.stolen_key)
+        return ["paused", "the attacker is logged in as the compromised sensor-1 instead"];
       if (!a.connected) return ["blocked", brokerBlock()];
       return ["succeeds", "the broker accepted the name without a password" +
         (config.transport.acl ? " — it inherits the gateway's ACL rights" : "")];
@@ -578,7 +625,10 @@ const ATTACKS = [
         (p.protection === "none" ? "no envelope, so a copy looks like a new message"
          : p.freshness ? "the timestamp check alone lets copies younger than 60 s through"
          : "replay window and timestamp check are off")];
-      const by = layers(pts, ["ReplayDetected", "MessageExpired", "AuthenticationFailed", "PermissionDenied"]);
+      // While the old-message attack runs, the expired messages are its own, not replays.
+      const old = byName("Old message").running(config);
+      const by = layers(pts, ["ReplayDetected", ...(old ? [] : ["MessageExpired"]), "AuthenticationFailed",
+                              "PermissionDenied"]);
       if (by.length) return ["blocked", `stopped by the ${by.join(", ")}`];
       if (!a.captured) return ["blocked", "it has captured nothing to replay (broker ACL)"];
       if (mean(pts, q => q.replayed) > 0) return ["blocked", "broker ACL drops its publications"];
@@ -592,17 +642,108 @@ const ATTACKS = [
       const limited = rejection(pts, "RateLimited");
       if (limited > 0.05) return ["blocked", `rate limit drops ${fmt(limited)} msg/s before any crypto`];
       if (mean(pts, p => p.forged_ok) > 0.05) return ["succeeds", "the gateway accepts the flood as readings"];
-      const by = layers(pts, ["MalformedMessage", "AuthenticationFailed", "PermissionDenied"]);
+      // The checks run in this order: envelope format, mode policy, timestamp,
+      // then the AEAD or signature, then the key–topic restriction. The first
+      // three cost no cryptography; the plaintext flood always stops at the first.
+      const cheap = layers(pts, ["MalformedMessage", "ProtectionNotAccepted", "MessageExpired"]);
+      if (cheap.length) return ["blocked", `rejected by the ${cheap.join(", ")}, before any crypto`];
+      const by = layers(pts, ["AuthenticationFailed", "PermissionDenied"]);
       if (by.length) return ["partial", `rejected by the ${by.join(", ")}, but only after crypto — ` +
                                         `gateway CPU ${fmt(mean(pts, p => p.gw_cpu))}%`];
       if (mean(pts, p => p.injected) > 0) return ["blocked", "broker ACL drops its publications"];
       return ["settling", "measuring…"];
     } },
+  // ---- a compromised device: the attacker holds sensor-1's keys, password and certificate
+  { name: "Old message, never seen before", insider: true,
+    what: `as sensor-1, sends valid messages dated 2 minutes ago, with new sequence numbers (${INJECT_RATE}/s)`,
+    running: c => stolenRunning(c) && c.attacker.stolen_age_s > 0,
+    start: { attacker: { enabled: true, stolen_key: 1, stolen_rate: INJECT_RATE, stolen_age_s: 120,
+                         stolen_target: "own", stolen_mode: "" } },
+    stop: c => stopInsider(c, { stolen_rate: 0, stolen_age_s: 0 }),
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const p = config.payload, ok = mean(pts, q => q.forged_ok);
+      if (ok > 0.05) return ["succeeds", `the gateway accepts ${fmt(ok)} old msg/s — ` +
+        (p.protection === "none" ? "no envelope, so no timestamp to check"
+         : p.replay ? "the replay window alone accepts them: their sequence numbers are new"
+         : "the timestamp check is off")];
+      const by = layers(pts, ["MessageExpired", "ProtectionNotAccepted", "AuthenticationFailed", "RateLimited"]);
+      if (by.length) return ["blocked", `stopped by the ${by.join(", ")}`];
+      return ["settling", "measuring…"];
+    } },
+  { name: "Stolen key on another device's topic", insider: true,
+    what: `as sensor-1, publishes valid messages on sensor-2's topic (${INJECT_RATE}/s; replaces the old messages)`,
+    running: c => stolenRunning(c) && !(c.attacker.stolen_age_s > 0) && c.attacker.stolen_target === "other",
+    start: { attacker: { enabled: true, stolen_key: 1, stolen_rate: INJECT_RATE, stolen_age_s: 0,
+                         stolen_target: "other", stolen_mode: "" } },
+    stop: c => stopInsider(c, { stolen_rate: 0, stolen_target: "own" }),
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const ok = mean(pts, q => q.forged_ok);
+      if (ok > 0.05) return ["succeeds", `the gateway accepts ${fmt(ok)} msg/s as sensor-2's readings — ` +
+        (config.payload.protection === "none" ? "no envelope: any client may write any topic"
+                                              : "the key is authentic and nothing ties it to its owner's topics")];
+      const by = layers(pts, ["PermissionDenied", "AuthenticationFailed", "ProtectionNotAccepted", "RateLimited"]);
+      if (by.length) return ["blocked", `stopped by the ${by.join(", ")}`];
+      if (mean(pts, q => q.stolen_sent) > 0)
+        return ["blocked", "broker ACL: sensor-1 may only publish on its own topics"];
+      return ["settling", "measuring…"];
+    } },
+  { name: "Forge the gateway's commands", insider: true,
+    what: `as actuator sensor-1, sends commands to sensor-2 with the key material every actuator holds (${INJECT_RATE}/s)`,
+    running: c => c.attacker.enabled && c.attacker.stolen_key > 0 && c.attacker.forge_commands_rate > 0,
+    start: { attacker: { enabled: true, stolen_key: 1, forge_commands_rate: INJECT_RATE }, downlink: { rate: 20 } },
+    stop: c => ({ ...stopInsider(c, { forge_commands_rate: 0 }), downlink: { rate: 0 } }),
+    verdict(pts, a) {
+      if (!a.connected) return ["blocked", brokerBlock()];
+      const prot = config.payload.protection, ok = mean(pts, q => q.cmd_forged_ok);
+      if (ok > 0.05) return ["succeeds", `actuators accept ${fmt(ok)} forged commands/s — ` +
+        (prot === "none" ? "commands are not protected"
+                         : "every actuator holds the gateway's shared key, so any of them can forge")];
+      if (mean(pts, q => q.cmd_rejected) > 0.05)
+        return ["blocked", prot === "sign" ? "signatures: only the gateway's private key can sign a command"
+                                           : "the actuators reject them"];
+      if (mean(pts, q => q.commands_forged) > 0)
+        return ["blocked", "broker ACL: a device cannot publish on another device's command topic"];
+      return ["settling", "measuring…"];
+    } },
 ];
 
+const byName = name => ATTACKS.find(a => a.name.startsWith(name));
+// Stolen-key messages on a sensor topic (the two rows above share that stream).
+const stolenRunning = c => c.attacker.enabled && c.attacker.stolen_key > 0 && c.attacker.stolen_rate > 0;
+const insiderRunning = c => ATTACKS.filter(a => a.insider && a.running(c)).length;
+
+// Stops one compromised-device attack. When it was the last one, the attacker
+// gives the device back and every key is rotated: messages accepted under the
+// stolen key pushed the device's replay window ahead, and rotation is the remedy.
+function stopInsider(c, off) {
+  const patch = { attacker: { ...off } };
+  if (insiderRunning(c) <= 1 && c.attacker.stolen_key) {
+    Object.assign(patch.attacker, { stolen_key: 0, stolen_rate: 0, stolen_age_s: 0, stolen_target: "own",
+                                    forge_commands_rate: 0 });
+    patch.payload = { key_epoch: c.payload.key_epoch + 1 };
+  }
+  return patch;
+}
+
+// Everything off (also what stopping Eavesdrop means: it disconnects the attacker).
+function stopAll(c) {
+  const patch = { attacker: { enabled: false, impersonate: false, inject_rate: 0, replay_rate: 0,
+                              stolen_key: 0, stolen_rate: 0, stolen_age_s: 0, stolen_target: "own",
+                              forge_commands_rate: 0 } };
+  if (c.attacker.stolen_key) patch.payload = { key_epoch: c.payload.key_epoch + 1 };
+  if (c.attacker.forge_commands_rate > 0) patch.downlink = { rate: 0 };
+  return patch;
+}
+const heldDevices = c => c.attacker.enabled && c.attacker.stolen_key && c.attacker.stolen_exclusive ? 1 : 0;
+const START_OUTSIDER = { attacker: { enabled: true, impersonate: true, inject_rate: INJECT_RATE,
+                                     replay_rate: REPLAY_RATE } };
+
 const STATUS_LABEL = { idle: "not running", settling: "settling…", blocked: "blocked",
-                       partial: "partly blocked", succeeds: "succeeds" };
-const STATUS_DOT = { idle: "idle", settling: "idle", blocked: "good", partial: "warning", succeeds: "critical" };
+                       partial: "partly blocked", succeeds: "succeeds", paused: "paused" };
+const STATUS_DOT = { idle: "idle", settling: "idle", blocked: "good", partial: "warning", succeeds: "critical",
+                     paused: "idle" };
 
 function verdicts() {
   const pts = recent(), last = history[history.length - 1];
@@ -614,17 +755,21 @@ function verdicts() {
 }
 
 function renderAttacks(vs) {
-  document.getElementById("attacks").replaceChildren(...ATTACKS.map((atk, i) => {
+  const firstInsider = ATTACKS.findIndex(a => a.insider);
+  document.getElementById("attacks").replaceChildren(...ATTACKS.flatMap((atk, i) => {
     const [state, why] = vs[i];
     const on = atk.running(config);
     const button = el("button", { type: "button", class: `action${on ? " stop" : ""}` }, on ? "Stop" : "Start");
-    button.addEventListener("click", () => post("/api/config", on ? atk.stop : atk.start));
-    return el("tr", {},
+    button.addEventListener("click", () => post("/api/config",
+      on ? (typeof atk.stop === "function" ? atk.stop(config) : atk.stop) : atk.start));
+    const header = i === firstInsider ? [el("tr", { class: "group" }, el("th", { colspan: "4" },
+      "With a compromised device — these get past the broker's authentication and mutual TLS"))] : [];
+    return [...header, el("tr", {},
       el("td", { class: "name" }, el("b", {}, atk.name), el("small", {}, atk.what)),
       el("td", {}, el("span", { class: `status ${state}` },
                       el("span", { class: `dot ${STATUS_DOT[state]}`, "aria-hidden": "true" }), STATUS_LABEL[state])),
       el("td", { class: "why" }, why),
-      el("td", {}, button));
+      el("td", {}, button))];
   }));
 }
 
@@ -643,7 +788,9 @@ function renderSummaries(vs) {
   const sent = mean(pts, p => p.sent);
   const delivered = Math.max(0, mean(pts, p => p.delivered - p.forged_ok - p.replays_ok));
   const revoked = config.response.revoked ? config.response.revoked.split(",").length : 0;
-  const expected = last.sensors_total - revoked;
+  // The device the attacker has taken over is offline on purpose, not down.
+  const held = heldDevices(config);
+  const expected = last.sensors_total - revoked - held;
   const pct = sent > 0 ? Math.min(100, 100 * delivered / sent) : 0;
   const trafficState = !last.gw_connected ? "critical"
     : pct < 95 || last.sensors_up < expected ? "warning" : "good";
@@ -651,10 +798,11 @@ function renderSummaries(vs) {
        !last.gw_connected ? "Gateway disconnected" : `${pct.toFixed(0)}% delivered`,
        [["Delivered ", el("b", {}, `${fmt(delivered)}`), ` of ${fmt(sent)} msg/s sent`],
         ["Sensors up ", el("b", {}, `${last.sensors_up}/${expected}`),
-         revoked ? ` (${revoked} revoked)` : "", last.sensor_error ? ` — ${last.sensor_error}` : ""],
+         revoked ? ` (${revoked} revoked)` : "", held ? " (sensor-1 is in the attacker's hands)" : "",
+         last.sensor_error && !held ? ` — ${last.sensor_error}` : ""],
         ["Gateway rejects ", el("b", {}, fmt(mean(pts, p => p.rejected))), " msg/s"]]);
   // Security
-  const running = vs.filter(([s]) => s !== "idle");
+  const running = vs.filter(([s]) => s !== "idle" && s !== "paused");
   const failed = running.filter(([s]) => s === "succeeds").length;
   const partial = running.filter(([s]) => s === "partial").length;
   const judged = running.filter(([s]) => s !== "settling").length;
@@ -666,12 +814,14 @@ function renderSummaries(vs) {
        : judged < running.length && !failed ? "Measuring…"
        : failed ? `${failed} of ${running.length} attacks succeed`
        : `${running.length - partial} of ${running.length} attacks blocked`,
-       [["Level ", el("b", {}, level || "custom"),
-         level ? ` — ${levels.find(l => l.id === level).name}` : ""],
+       [["Level ", el("b", {}, level || (demoStep ? `demo ${demoStep}` : "custom")),
+         level ? ` — ${levels.find(l => l.id === level).name}`
+               : demoStep ? ` — ${demoSteps.find(x => x.id === demoStep).name}` : ""],
         ["Broker ", el("b", {}, { plain: "plain TCP", tls: "TLS", mtls: "mutual TLS" }[t.mode]),
          t.mode === "plain" ? "" : ` ${t.tls_version}`, `, auth ${t.auth ? "on" : "off"}, ACL ${t.acl ? "on" : "off"}`],
         ["Payload ", el("b", {}, { none: "unprotected", auth_only: "authenticated (GMAC)",
-                                   encrypt: "encrypted (AES-GCM)", sign: "signed (Ed25519)" }[config.payload.protection])]]);
+                                   encrypt: `encrypted (${config.payload.cipher === "chacha20-poly1305" ? "ChaCha20-Poly1305" : "AES-256-GCM"})`,
+                                   sign: "signed (Ed25519)" }[config.payload.protection])]]);
   // Cost
   const before = beforeLastChange();
   const delta = (cur, prev, unit) => prev === null || cur === null ? ""
@@ -693,7 +843,7 @@ function renderBanner() {
   const last = history[history.length - 1];
   const restart = events.some(e => now() - e.t < 10 &&
     BROKER_RESTART_KEYS.some(k => e.text.startsWith(`transport.${k}:`)));
-  const reconnecting = last && last.sensors_up < last.sensors_total -
+  const reconnecting = last && last.sensors_up < last.sensors_total - heldDevices(config) -
     (config.response.revoked ? config.response.revoked.split(",").length : 0);
   let text = "", critical = false;
   if (connectionLost) { text = "Lost connection to the lab controller"; critical = true; }
@@ -879,11 +1029,13 @@ async function poll() {
     config = s.config;
     level = s.level;
     levels = s.levels || [];
+    demoStep = s.demo_step || null;
+    demoSteps = s.demo_steps || [];
     history = history.concat(s.history).slice(-(WINDOW_S + 30));
     if (history.length) lastT = history[history.length - 1].t;
     events = s.events;
     const vs = verdicts();
-    renderControls(); renderLevels(); renderAttacks(vs); renderSummaries(vs);
+    renderControls(); renderLevels(); renderDemoLadder(); renderAttacks(vs); renderSummaries(vs);
     renderBanner(); renderEvents(); renderAgents(s.agents || []);
     charts.forEach(c => c.draw());
   } catch (e) {

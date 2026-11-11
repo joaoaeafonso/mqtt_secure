@@ -59,7 +59,7 @@ Common options (`live`, `matrix`, `scenarios`):
 |---|---|
 | `--config FILE` | TOML config (see `lab.example.toml`) |
 | `--set section.key=value` | override one setting; repeatable; values parsed as bool (`true/on/yes`, `false/off/no`), int, float, else string |
-| `--preset NAME` | `K0` … `K10` (the report's security levels, see [configuration.md](configuration.md#security-levels-k0k10)) or `hardened` (= K9, every defence on); limits derived from the load |
+| `--preset NAME` | `K0` … `K11` (the report's security levels, see [configuration.md](configuration.md#security-levels-k0k11)), `D0` … `D10` (the demo ladder) or `hardened` (= K9, every defence on); limits derived from the load |
 | `--gateway PATH` | gateway binary (default `build/bench/apps/load_gateway/msec_load_gateway`) |
 | `--verbose` | gateway logs every rejection |
 | `--state-dir DIR` | controller CA/cert/token (default `build/loadtest/controller`) |
