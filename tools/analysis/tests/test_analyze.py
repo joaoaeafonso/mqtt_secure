@@ -128,6 +128,52 @@ class Analysis(unittest.TestCase):
         self.assertNotIn("PROVISÓRIO", (out / "README.md").read_text())
 
 
+class Presentation(unittest.TestCase):
+    def test_contexts_are_ordered_by_value_not_by_run_order(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            root = tmp / "camp"
+            root.mkdir()
+            make_campaign(root)
+            with open(root / "runs.csv", newline="") as f:
+                rows = list(csv.DictReader(f))
+            # The randomised order starts with the largest payload.
+            rows = ([{**r, "load.payload": 4096} for r in rows]
+                    + [{**r, "load.payload": 256} for r in rows] + rows)
+            with open(root / "runs.csv", "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=list(rows[0]))
+                w.writeheader()
+                w.writerows(rows)
+            c = analyze.Campaign(root, None)
+            self.assertEqual(c.contexts(), [("64",), ("256",), ("4096",)])
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_thousands_separator_is_latex_only_in_tex(self):
+        self.assertEqual(analyze.fmt(12345.6), "12\\,346")
+        self.assertNotIn("\\", analyze.fmt_md(12345.6))
+        self.assertEqual(analyze.fmt_md(""), "--")
+
+    def test_microbench_variants(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            root = tmp / "camp"
+            (root / "microbench").mkdir(parents=True)
+            make_campaign(root)
+            for stem, ns in (("aes-on", 1000), ("aes-armcap0", 9000), ("aes-armcap1", 8000)):
+                (root / "microbench" / f"{stem}.json").write_text(json.dumps({"benchmarks": [
+                    {"name": "noacl/3_aead/payload:16", "run_name": "noacl/3_aead/payload:16",
+                     "run_type": "iteration", "cpu_time": ns}]}))
+            (root / "microbench" / "microbench-manifest.json").write_text("{}")
+            out = analyze.analyze(root, tmp / "out", None)
+            with open(out / "microbench.csv", newline="") as f:
+                got = {r["variant"]: float(r["ns_per_msg"]) for r in csv.DictReader(f)}
+            self.assertEqual(got, {"aes-on": 1000, "aes-off": 9000, "aes-off-neon": 8000})
+            self.assertIn("não (NEON)", (out / "microbench.tex").read_text())
+        finally:
+            shutil.rmtree(tmp)
+
+
 class Calibration(unittest.TestCase):
     """Δa / Δs proposals from latency and clock skew (report §6.6)."""
 
