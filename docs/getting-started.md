@@ -26,7 +26,7 @@ sudo apt-get install -y cmake ninja-build g++ libssl-dev libpaho-mqtt-dev \
 ```bash
 cmake --preset dev            # Debug + ASan/UBSan into build/dev
 cmake --build --preset dev
-ctest --preset dev            # 69 C++ tests
+ctest --preset dev            # 93 C++ tests
 ./build/dev/apps/gateway/msec_gateway_demo   # narrated demo; exit 0 = all checks passed
 ```
 

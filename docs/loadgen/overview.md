@@ -19,7 +19,7 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway (C++) �
 | this page | purpose, setup, the four commands, how a run works |
 | [configuration.md](configuration.md) | every setting, its default, how it is applied, validation, presets |
 | [components.md](components.md) | each Python module in detail |
-| [scenarios.md](scenarios.md) | the 16 attack-vs-defence experiments |
+| [scenarios.md](scenarios.md) | the 39 attack-vs-defence experiments |
 | [dashboard-and-api.md](dashboard-and-api.md) | the web dashboard, the HTTP API, metric definitions, matrix columns |
 | [dashboard-test-findings.md](dashboard-test-findings.md) | a full dashboard test run: what works, bugs found, a proposed defence ladder for demos |
 | [distributed-agents.md](distributed-agents.md) | running sensors/attackers on other machines: trust bootstrap, protocol, clock correction |
@@ -158,8 +158,9 @@ the gateway for its `summary` and computes the result row.
 
 - On one machine, the Python sensors compete with the gateway and broker for
   CPU; use agents for clean absolute numbers.
-- `loss_pct` and `leak_pct` are accurate to about ±0.5 s of the window (sensors
-  report twice a second).
+- `loss_pct` is exact up to a few milliseconds of the window: sensors, local or
+  on agents, report on demand at both edges. `leak_pct` is accurate to about
+  ±0.5 s of the window (the attacker reports twice a second).
 - Sensor sequence numbers start from the current time in µs, so a restarted
   sensor keeps moving forward through the gateway's replay window.
 - Credentials are generated fresh per run in a temp directory (deleted on stop

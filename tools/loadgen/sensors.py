@@ -30,6 +30,7 @@ import collections
 import multiprocessing as mp
 import queue
 import ssl
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -91,6 +92,7 @@ class Sensor:
     topic: str = ""
     topic_bytes: bytes = b""
     command_topic: str = ""
+    silenced: bool = False         # taken over by the attacker: stays offline
     seen_commands: collections.OrderedDict = field(default_factory=collections.OrderedDict)
 
     @property
@@ -222,7 +224,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
     counters = Counters()
     state = {"transport": cfg.transport, "rate": cfg.rate, "payload": cfg.payload,
              "zone": cfg.zone, "protection": cfg.protection, "clock_offset_ns": 0,
-             "freshness": cfg.freshness, "replay": cfg.replay, "epoch": cfg.epoch}
+             "freshness": cfg.freshness, "replay": cfg.replay, "epoch": cfg.epoch,
+             "silenced": []}
 
     def make_verifier() -> Verifier:
         mode = SENDER_PROTECTION_MODES[state["protection"]]
@@ -246,7 +249,8 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
 
     def connect_all() -> None:
         for s in sensors:
-            s.connect(state["transport"], cfg.clients_dir)
+            if not s.silenced:
+                s.connect(state["transport"], cfg.clients_dir)
 
     def apply_policy() -> None:
         mode = SENDER_PROTECTION_MODES[state["protection"]]
@@ -290,6 +294,11 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
                 if change.keys() & {"protection", "freshness", "replay", "add_keys",
                                     "drop_keys", "epoch"}:
                     apply_policy()
+                if "silenced" in change:  # devices the attacker has taken over
+                    for s in sensors:
+                        s.silenced = s.sid in state["silenced"]
+                        if s.silenced:
+                            s.close()
                 if "zone" in change:
                     for s in sensors:
                         if s.client is not None and s.state == "up":
@@ -315,7 +324,7 @@ def _worker(index: int, cfg: WorkerSettings, control: mp.Queue, reports: mp.Queu
             mono = time.monotonic()
             for s in sensors:
                 if s.state == "down":
-                    if mono - s.since > RECONNECT_INTERVAL:
+                    if not s.silenced and mono - s.since > RECONNECT_INTERVAL:
                         s.connect(state["transport"], cfg.clients_dir)
                 else:
                     s.poll(cfg.qos)
@@ -381,6 +390,10 @@ class SensorFleet:
         self.workers = []
         self.ids = list(ids)
         self.latest: dict[int, WorkerReport] = {}
+        # poll() and fresh_poll() are called from different threads (the lab's
+        # sampler or an agent's reporter, and a measurement): one at a time, or
+        # a periodic poll could consume the report a fresh poll is waiting for.
+        self._poll_lock = threading.Lock()
         for index in range(processes):
             control = ctx.Queue()
             cfg = WorkerSettings(ids=ids[index::processes], **settings)
@@ -397,31 +410,36 @@ class SensorFleet:
 
     def poll(self) -> dict:
         """Latest totals: cumulative counters, connected sensors, last error."""
+        with self._poll_lock:
+            self._drain()
+            return summarize(list(self.latest.values()), self.count)
+
+    def _drain(self) -> None:
         while True:
             try:
                 r = self.reports.get_nowait()
             except queue.Empty:
-                break
+                return
             self.latest[r.worker] = r
-        return summarize(list(self.latest.values()), self.count)
 
     def fresh_poll(self, timeout: float = 2.0) -> dict:
         """Totals as of now (within milliseconds): every worker is asked for a
         report and each one's next report is awaited. Periodic reports are up
         to 0.5 s old, which over a measurement window is a loss error of
         ±0.5 s / window — too much for a 1 % loss criterion."""
-        self.poll()
-        self.update(report_now=True)
-        pending = set(range(len(self.controls)))
-        deadline = time.monotonic() + timeout
-        while pending and time.monotonic() < deadline:
-            try:
-                r = self.reports.get(timeout=max(deadline - time.monotonic(), 0.01))
-            except queue.Empty:
-                break
-            self.latest[r.worker] = r
-            pending.discard(r.worker)
-        return summarize(list(self.latest.values()), self.count)
+        with self._poll_lock:
+            self._drain()
+            self.update(report_now=True)
+            pending = set(range(len(self.controls)))
+            deadline = time.monotonic() + timeout
+            while pending and time.monotonic() < deadline:
+                try:
+                    r = self.reports.get(timeout=max(deadline - time.monotonic(), 0.01))
+                except queue.Empty:
+                    break
+                self.latest[r.worker] = r
+                pending.discard(r.worker)
+            return summarize(list(self.latest.values()), self.count)
 
     def stop(self) -> None:
         self.stop_event.set()

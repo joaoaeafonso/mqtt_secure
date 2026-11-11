@@ -62,8 +62,10 @@ control port (8089).
 
 ## Protocol
 
-Newline-delimited JSON over the TLS connection; `PROTOCOL_VERSION = 2`
-(version 2: key files carry kinds and owners).
+Newline-delimited JSON over the TLS connection; `PROTOCOL_VERSION = 3`
+(version 2: key files carry kinds and owners; version 3: on-demand reports).
+Controller and agents must run the same version of the repository: an agent
+with another protocol version is rejected at `hello`.
 
 ```mermaid
 sequenceDiagram
@@ -99,6 +101,7 @@ sequenceDiagram
 | `release` / `released` | C→A / A→C | end of run; agent stops workers and deletes the temp dir |
 | `ping` / `pong` | A→C / C→A | `t0` (agent ns) / `t0`, `t1` (controller ns) |
 | `report` | A→C | `data` (fleet or attacker poll), `clock` (`offset_ns`, `uncertainty_ns`, `samples`, `corrected`) |
+| `poll` / `fresh` | C→A / A→C | a measurement edge: the agent asks its sensor workers for a report now and answers with `data` as of this moment, so `loss_pct` does not depend on the 0.5 s report interval |
 | `error` | A→C | `message` — a failed command; the controller raises it in `expect()` |
 
 Timeouts: `csrs` 120 s, `started` 60 s, `released` 15 s.

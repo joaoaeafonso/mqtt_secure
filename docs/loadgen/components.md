@@ -28,7 +28,7 @@ flowchart TB
 
 ## `loadgen.py`
 
-Entry point. Subcommands `live`, `matrix`, `scenarios`, `agent` (see
+Entry point. Subcommands `live`, `matrix`, `scenarios`, `attacks`, `campaign`, `agent` (see
 [overview](overview.md#commands-loadgenpy)).
 
 - `parse_value(text)` — `true/on/yes` → `True`, `false/off/no` → `False`, then
@@ -46,6 +46,9 @@ Entry point. Subcommands `live`, `matrix`, `scenarios`, `agent` (see
   writes CSV and prints a Markdown table.
 - `cmd_scenarios` — runs `scenarios.run`, writes `.md` and `.csv`, exits
   non-zero listing failed scenarios.
+- `cmd_attacks` — `attacks.run_matrix` on one lab: every attack against every
+  level, one CSV row per pair (`prevented` = π_a(c)).
+- `cmd_campaign` — `campaign.run_campaign` (see [evaluation.md](../evaluation.md)).
 - `cmd_agent` — `agent.run_agent`; a `FatalAgentError` (wrong fingerprint or
   token) exits.
 
@@ -266,6 +269,34 @@ See [distributed-agents.md](distributed-agents.md).
 
 See [scenarios.md](scenarios.md).
 
+## `attacks.py`, `relay.py`
+
+`attacks.py` holds the report's attack set 𝒜 (13 attacks: the settings that
+mount each one and the predicate that says it succeeded in a measured window)
+and `run_matrix(lab, levels, …)`, which meets every level as configured, unlike
+the scenarios, which isolate one defence. Attacks with a compromised device
+(`stolen_key`) are followed by a key rotation (`scenarios.clean_up_compromise`).
+
+`relay.py` is the attacker on the gateway's link (`attacker.wiretap`, startup
+only): a local TCP relay between the gateway and the broker. Passive, it counts
+PUBLISH packets and how many carry a readable reading (`wire_publishes`,
+`wire_readable_pct`; under TLS only `wire_opaque_bytes`). With
+`attacker.tamper` = `alter` | `redirect` | `delay` | `drop` it plays a malicious
+broker on every second message (plain MQTT only). It adds a hop, so keep it off
+for cost measurements.
+
+## `campaign.py`, `manifest.py`, `procstats.py`
+
+| Item | Role |
+|---|---|
+| `campaign.run_campaign` | the report's procedure: plan (levels × `--vary` × repetitions, shuffled with a recorded seed) → `plan.csv`; parameters frozen (`params.toml` + SHA-256); one row per run appended to `runs.csv`; optional `attacks.csv` and `saturation.csv` (both at the base load) |
+| `lab.level_patch(level, config, extra)` | a level plus a cell's own settings as one patch, so load-derived limits match the cell's load |
+| `manifest.collect`, `manifest.thermal` | git commit and dirty flag, binary hash, CPU, memory, kernel, OS, OpenSSL, Mosquitto, compiler; temperature, frequency and (Pi) throttling flags per run |
+| `procstats.RssSampler`, `tcp_bytes`, `wire_breakdown` | peak resident memory over a window; bytes received on the gateway's socket (`ss`, no root); octets per message split into payload, envelope, MQTT and the rest |
+
+The analysis that reads these files is `tools/analysis/analyze.py`
+([evaluation.md](../evaluation.md)).
+
 ## `dashboard.py`, `dashboard.html`
 
 See [dashboard-and-api.md](dashboard-and-api.md).
@@ -279,7 +310,7 @@ tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t to
 | File | Tests |
 |---|---|
 | `test_envelope.py` | shared vectors reproduced; round trip in every mode; tampering, topic rebinding, unknown keys; mode policy and plaintext; replay window and reordering; freshness; allowed senders; key-file round trip |
-| `test_lab_config.py` | defaults valid and equal to level K0; security levels K0–K10 match the report; choices as text or numbers; bad values rejected; revoked list parsing and bounds; flattening; hardened preset turns everything on; limits follow the load; packet limit must fit the payload |
+| `test_lab_config.py` | defaults valid and equal to level K0; security levels K0–K11 match the report; a level plus extra settings as one patch (`level_patch`); dependency rules; choices as text or numbers; bad values rejected; revoked list parsing and bounds; flattening; hardened preset turns everything on; limits follow the load; packet limit must fit the payload |
 | `test_pki.py` | gateway never holds sensor private keys; device views; epochs never reuse ids; CRL and passwd generation (needs `mosquitto_passwd`); listener options follow `listener`; ACL off ⇒ no `acl_file`; `apply` chooses reload vs restart; TLS 1.2 is capped via `OPENSSL_CONF` |
 | `test_wireshark.py` | dissector on a generated capture (modes, overhead, replay, deliveries, forgery, malformed); real TLS 1.2 / 1.3 sessions to `broker.Broker` decrypted with the shim's secrets; capture post-processing (timestamps, embedded secrets, comments) — needs tshark |
 

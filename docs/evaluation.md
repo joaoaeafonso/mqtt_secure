@@ -26,8 +26,11 @@ campaign directory before the first run and records its SHA-256 in the
 manifest, and the analysis uses that frozen copy.
 
 The file in the repository is a **proposal** (`status = "proposal"`):
-ω_a = 1; v_m = 0.4 CPU per message, 0.4 p99 latency, 0.05 each for maximum
-throughput, octets per message, gateway memory and connection establishment.
+ω_a = 1 per row of the report's attack table (the two rows measured as two
+attacks each, eavesdropping and injection/tampering, weigh 0.5 + 0.5);
+v_m = 0.4 CPU per message, 0.4 p99 latency, 0.05 each for maximum throughput,
+octets per message, gateway memory and connection establishment (CPU per
+connection, `connect_cpu_ms`).
 R_alvo and L_max are left commented out until a pilot on the Pi. While the
 status is not `fixed` or either limit is missing, every analysis output says
 **PROVISIONAL** and the feasibility filter is not applied.
@@ -39,6 +42,22 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
     --levels K0,K8,K9,K11 --repetitions 3 --duration 15 --saturate 10,20,50,100,200,400 \
     --out build/pilot
 ```
+
+### On the Raspberry Pi 5
+
+- **Toolchain**: the code needs GCC ≥ 13 (`std::format`, `std::ranges::contains`).
+  Raspberry Pi OS based on Debian 12 "bookworm" ships GCC 12 and cannot build it;
+  use the Debian 13 "trixie" based release or Ubuntu 24.04 for the Pi. The rest
+  is in the distribution: `cmake ninja-build g++ libssl-dev libpaho-mqtt-dev
+  libpaho-mqttpp-dev mosquitto python3-venv iproute2` (`ss` is used for the
+  octets per message). The first configure downloads google-benchmark, so the
+  Pi needs network access once.
+- Stop the system broker so it does not compete for CPU: `sudo systemctl stop
+  mosquitto` (the lab starts its own on port 18830).
+- Record whether NTP was running; a governor other than `performance`, a
+  missing heatsink or a non-zero `throttled` column all show up in the data.
+- The same checkout on the Pi and on every agent machine (same commit, clean
+  tree: the manifest records `git describe` and marks a dirty tree).
 
 ## 2. Level 1: microbenchmarks
 
@@ -55,6 +74,17 @@ the first day that `OPENSSL_armcap=0` really slows AES-GCM down (plan, risks):
 if AES and ChaCha20 cost the same with and without it, the variable is not
 taking effect.
 
+`OPENSSL_armcap=0` (the report's setting) switches off **every** ARM extension
+OpenSSL uses, NEON included, so it also slows ChaCha20-Poly1305 down. A device
+without the crypto extensions still has NEON, so on ARM the script adds a
+third run, `aes-armcap1.json` (`OPENSSL_armcap=1`: NEON only); the table shows
+it as "não (NEON)". Use that row for the AES-vs-ChaCha20 comparison of QP4 and
+say in the report which one is which.
+
+Level 1 has a pipeline profile for K0, K2–K7, K9 and K11. K1, K8 and K10
+differ from their neighbours only in transport and limits, which exist only at
+level 2.
+
 ## 3. Level 2: the campaign
 
 ```bash
@@ -68,13 +98,21 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
 - **Order**: per lab, every (level × `--vary` combination × repetition) is
   shuffled with the seed (recorded in the manifest; drawn and recorded if not
   given) and written to `plan.csv` before the first measurement.
+- **Extra factors** (`--vary load.payload=16,256,4096`, repeatable): each
+  combination is a context of its own in the analysis; the first one in value
+  order is the context of the headline tables and figures. A level's limits
+  (`max_packet`, rate limit) are derived from the cell's load. The attack
+  matrix and the saturation sweep run at the base load only.
 - **Each run**: apply the level, wait `--settle` s, measure `--duration` s,
   then time `--connect-test` gateway reconnections. One row in `runs.csv`
   with every metric, the settings, and the Pi's temperature, frequency and
   throttling flags at the end of the run.
 - **Attacks** (`--attacks`): every attack of `attacks.py` against every level
   (levels in random order), one row per pair in `attacks.csv` with
-  `prevented` = π_a(c) and all the evidence columns. The attacks that need an
+  `prevented` = π_a(c) and all the evidence columns. Attacks from a compromised
+  device (`stolen_key`) run with the real device offline
+  (`attacker.stolen_exclusive`, the default): otherwise both fight for the
+  device's MQTT session and the attack is throttled to a trickle. The attacks that need an
   on-path attacker turn on `attacker.wiretap` for the whole campaign: the
   gateway's link then runs through a local relay, which adds a hop to every
   run's latency. To keep the cost measurements clean, run `campaign` without
@@ -86,6 +124,10 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
   throughput.
 - Rows are appended as they are measured; an interrupted campaign keeps what
   it measured. A campaign never writes into a non-empty directory.
+- **Agents** must run the same checkout as the controller (the control
+  protocol is versioned and an older agent is rejected). Sensors on agents
+  report on demand at both window edges, so `loss_pct` is as exact with agents
+  as locally (a few milliseconds of the window).
 
 Raw data goes to `results/`, outside `build/`, and can be committed.
 
@@ -98,6 +140,19 @@ received in the window (Linux `tcp_info` via `ss`, no capture or root
 needed) divided by the messages received, and `bytes_tls_other` the rest: TLS
 records plus MQTT control traffic in the window. For a packet-level view, use
 `--capture` (docs/network-analysis.md).
+
+### Known limits of the instrument
+
+- `gw_rss_peak_kb` includes the gateway's own bookkeeping (latency samples of
+  the window, and the table of seen messages, which grows over the first
+  ≈ 260 000 messages of a lab and then stays flat). Differences between levels
+  are meaningful; the first minutes of a lab read a few MiB lower.
+- `connect_ms_p50` moves in steps of about 100 ms (waits inside the Paho C
+  library), which hide a TLS handshake of a few ms; `connect_cpu_ms` is the
+  indicator for H4.
+- `republished_ok` is keyed by device and send time. (Until 2026-11-11 it was
+  keyed by send time alone and showed 1–2 false positives per window at
+  saturation rates: two sensors drawing the same nanosecond.)
 
 ### Clock skew (calibration of Δa / Δs)
 
@@ -128,7 +183,7 @@ the raw data. Output in `build/analysis/<campaign>/`:
 
 | File | Content |
 |---|---|
-| `summary.csv`, `summary.tex` | per configuration and metric: median over runs, 95 % percentile-bootstrap CI (resampling runs) |
+| `summary.csv`, `summary.tex` | per configuration and metric: median over runs, 95 % percentile-bootstrap CI (resampling runs); the `.tex` holds two tables (`tab:resumo`: CPU, p50, p99; `tab:resumo-b`: memory, octets, connection) |
 | `marginal.csv`, `marginal.tex` | m(c_ℓ=1) − m(c_ℓ=0) for the pairs that differ in one layer: K0→K1 transport, K1→K2 GMAC envelope, K2→K3 encryption, K3→K4 validity, K3→K5 window, K6→K7 key–topic, K7→K8 limits, K8→K9 signatures, K10→K7 TLS with envelope, K8→K11 ChaCha20 |
 | `interaction.csv` | difference of differences: validity × anti-replay ((K6−K5) − (K4−K3)), TLS × envelope ((K7−K10) − (K1−K0)) |
 | `protection.csv` | π_a(c) (majority over attack repetitions) and S(c) = Σω_aπ_a(c)/Σω_a |
