@@ -9,7 +9,8 @@ the broker (e.g. an outsider without credentials under mTLS) counts as
 prevented by that level, which is what S(c) should measure.
 
 Insider attacks use a compromised sensor-1 (`stolen_key`): its payload keys,
-its broker password and certificate. Network attacks use the relay on the
+its broker password and certificate; the real sensor-1 is offline while the
+attacker holds it (`attacker.stolen_exclusive`). Network attacks use the relay on the
 gateway's link (`wiretap`, startup), which can only read and rewrite
 plaintext MQTT: under TLS it is an on-path attacker who sees ciphertext.
 
@@ -50,9 +51,11 @@ ATTACKS: list[Attack] = [
            wiretap=True),
     Attack("republish-topic", "copy captured messages to another topic",
            _a(republish_rate=20.0),
-           # Relative, not "> 0": long campaigns showed a background of 1–2
-           # republished_ok per window with no attacker connected (cause not
-           # yet found); success means most of the attacker's copies got in.
+           # Relative, not "> 0": success means most of the attacker's copies
+           # got in. (The gateway used to count 1–2 republished_ok per window
+           # at high rates with no attacker: two sensors drawing the same
+           # nanosecond. It now keys the detection by device, see
+           # Stats::delivered in apps/load_gateway/main.cpp.)
            lambda r: r["attack_republished"] > 0
            and r["republished_ok"] >= 0.5 * r["attack_republished"]),
     Attack("stolen-key-other-topic", "publish with a device's key on another device's topic",
@@ -73,8 +76,9 @@ ATTACKS: list[Attack] = [
            _a(impersonate=True), lambda r: r["attacker_connected"] and r["leak_pct"] > 1),
     Attack("flood", "a compromised device floods its own topic (300 msg/s)",
            _a(stolen_key=1, stolen_rate=300.0),
-           lambda r: r["attacker_connected"] and r["attack_stolen_sent"] > 0
-           and r["rate_limited"] == 0),
+           # Not `attacker_connected`: that is the state at the window's last
+           # instant only; messages sent in the window are the evidence.
+           lambda r: r["attack_stolen_sent"] > 0 and r["rate_limited"] == 0),
     Attack("slow-connections", "hold 200 half-open connections (SlowITe)",
            _a(slow_connections=200), lambda r: r["slow_held"] >= 180),
 ]

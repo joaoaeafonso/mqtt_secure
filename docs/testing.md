@@ -60,8 +60,8 @@ analysis tests run `analyze.py` on a synthetic campaign (bootstrap, marginal
 cost, S(c), cost(c), use-case filter, Pareto frontier, c*, feasibility and the
 PROVISIONAL flag).
 
-31 tests across `test_envelope.py`, `test_lab_config.py`, `test_pki.py` and
-`test_wireshark.py` (details in
+46 tests across `test_envelope.py`, `test_lab_config.py`, `test_pki.py` and
+`test_wireshark.py`, and 10 in `tools/analysis/tests` (details in
 [loadgen/components.md](loadgen/components.md#tests-toolsloadgentests)). The
 first three need no broker (the passwd/CRL test is skipped without
 `mosquitto_passwd`). `test_wireshark.py` needs `tshark` (or `TSHARK=/path`);

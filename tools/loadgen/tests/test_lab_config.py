@@ -2,8 +2,8 @@
 
 import unittest
 
-from lab import (DEFAULTS, LEVELS, PACKET_OVERHEAD, PRESETS, current_level, merged, parse_accept,
-                 parse_revoked, validate)
+from lab import (DEFAULTS, LEVEL_BY_ID, LEVELS, PACKET_OVERHEAD, PRESETS, current_level,
+                 level_patch, merged, parse_accept, parse_revoked, validate)
 from msec_envelope import AES_GCM, CHACHA20
 
 
@@ -84,6 +84,29 @@ class HardenedPreset(unittest.TestCase):
     def test_packet_limit_must_fit_the_payload(self):
         with self.assertRaises(ValueError):
             merged(DEFAULTS, {"transport": {"max_packet": 100}})
+
+
+class LevelWithExtraSettings(unittest.TestCase):
+    """level_patch: a level and a campaign cell's own settings as one step."""
+
+    def test_limits_follow_the_load_the_cell_sets(self):
+        k8 = LEVEL_BY_ID["K8"]
+        small = merged(DEFAULTS, level_patch(k8, DEFAULTS, {"load": {"payload": 16}}))
+        # From K8 at 16 B to K8 at 4096 B: level first and payload second would be
+        # refused (max_packet computed for 16 B); as one patch it is consistent.
+        with self.assertRaises(ValueError):
+            merged(merged(small, k8.patch(small)), {"load": {"payload": 4096}})
+        big = merged(small, level_patch(k8, small, {"load": {"payload": 4096, "rate": 100.0}}))
+        self.assertEqual(big["transport"]["max_packet"], 4096 + PACKET_OVERHEAD)
+        self.assertEqual(big["payload"]["rate_limit"], 201)
+        self.assertEqual(current_level(big), "K8")
+
+    def test_extra_settings_win_and_the_config_is_not_modified(self):
+        before = merged(DEFAULTS, {})
+        patch = level_patch(LEVEL_BY_ID["K3"], before, {"transport": {"tls_version": "1.2"}})
+        self.assertEqual(patch["transport"]["tls_version"], "1.2")
+        self.assertEqual(patch["payload"]["protection"], "encrypt")
+        self.assertEqual(before, merged(DEFAULTS, {}))
 
 
 class SecurityLevels(unittest.TestCase):

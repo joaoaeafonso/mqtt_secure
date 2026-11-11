@@ -701,7 +701,7 @@ Full CLI, protocol and schemas: [`apps/load-gateway.md`](apps/load-gateway.md).
 
 | Module | Responsibility |
 |---|---|
-| `loadgen.py` | CLI: `live`, `matrix`, `scenarios`, `agent`; config layering defaults < `--config` TOML < `--preset` < `--set` |
+| `loadgen.py` | CLI: `live`, `matrix`, `scenarios`, `attacks`, `campaign`, `agent`; config layering defaults < `--config` TOML < `--preset` < `--set` |
 | `lab.py` | `Lab`: config schema (`DEFAULTS`, `SPEC`, `STARTUP_ONLY`), validation (`validate`, `merged`), `hardened` preset, start/stop of every part, `apply(patch)` performing the minimal action per change, key rotation (epochs, 3 s grace), revocation, 1 Hz metrics sampler, `measure()` windows |
 | `broker.py` | `Broker`: writes `mosquitto.conf` + ACL, starts/stops Mosquitto, `apply()` = reload (`SIGHUP`) or restart as measured for Mosquitto 2.0.18; CPU from `/proc` |
 | `gateway.py` | `GatewayProcess`: spawns `msec_load_gateway` with stdin control, parses JSON stats/summary |
@@ -711,7 +711,12 @@ Full CLI, protocol and schemas: [`apps/load-gateway.md`](apps/load-gateway.md).
 | `msec_envelope.py` | Python `Protector`/`Verifier` byte-compatible with the C++ envelope; `KeySet` and key-file format |
 | `cluster.py` | `ControlServer` (TLS, token, agent registry, `claim`), `ControllerIdentity` (persistent CA/cert/token), `RemoteSensors`/`RemoteAttacker`, `FleetGroup`/`AttackerGroup` |
 | `agent.py` | agent main loop: pinned-fingerprint TLS, hello/token, CSR enrolment, provisioning into a 0700 temp dir, NTP-style clock offset estimation |
-| `scenarios.py` | 16 named attack-vs-defence experiments with PASS/FAIL predicates |
+| `scenarios.py` | 39 named attack-vs-defence experiments with PASS/FAIL predicates (each attack of the report with a negative control) |
+| `attacks.py` | the report's attack set 𝒜 against every level K0–K11: π_a(c), the input of S(c) |
+| `relay.py` | the on-path attacker: a TCP relay on the gateway's link that counts readable readings and, on plain MQTT, alters, redirects, delays or drops messages |
+| `campaign.py`, `manifest.py` | the report's measurement procedure: repetitions in a seeded random order, raw data per run, manifest (code, platform, software, thermal state), frozen analysis parameters |
+| `procstats.py` | peak RSS of gateway and broker, bytes on the gateway's socket (`ss`), octets per message split by layer |
+| `tools/analysis/` | `analyze.py` (bootstrap CIs, marginal cost, S(c), cost(c), Pareto, c*, Δa/Δs calibration, tables and figures) and `microbench.py` (level 1); see [evaluation.md](evaluation.md) |
 | `dashboard.py` / `.html` | stdlib HTTP server + single-page dashboard (canvas charts, controls, event markers) |
 | `keylog.py` | `SSLKEYLOGFILE` handling: Python TLS contexts log their secrets; `LD_PRELOAD` environment for mosquitto and the gateway |
 | `capture.py` | `--capture`: dumpcap recording, then editcap embeds TLS secrets and a packet comment per lab event |
@@ -992,7 +997,7 @@ Verification: the `tsan` preset (ThreadSanitizer; with GCC 13 run under
 | **Scalability (lab)** | sensors in worker processes driving sockets by hand; distributed agents; Mosquitto `max_queued_messages 100000`, `set_tcp_nodelay true` | matrix runs |
 | **Reliability** | gateway auto-reconnect; sensors reconnect every 1 s; agents reconnect; legitimate clients always present credentials so auth toggles don't interrupt them | scenarios `hardened`, `key-rotation` |
 | **Maintainability** | strict module boundaries; one composition root per app; `msec_add_module`; consistent naming (clang-tidy) | CI clang-tidy job |
-| **Testability** | all effects injected; loopback broker; FakeClock; FixedRandom | 69 C++ tests, 31 Python tests |
+| **Testability** | all effects injected; loopback broker; FakeClock; FixedRandom | 93 C++ tests, 56 Python tests |
 | **Portability** | standard C++23; OpenSSL/Paho optional via options; Linux-specific only in lab (`/proc`, `getrusage`) | presets |
 | **Memory safety** | RAII, `_GLIBCXX_ASSERTIONS`, ASan/UBSan, fuzzing | `dev`, `fuzz` presets |
 
@@ -1020,7 +1025,7 @@ third-party code. See [`build-system.md`](build-system.md).
 | Fuzz | `envelope::parse` round-trip; topic validation/matching; whole inbound `SecurityLayer` must accept nothing | `fuzz/` |
 | Static | clang-tidy (bugprone, CERT, Core Guidelines, …) as errors | `ci` preset |
 | Dynamic | ASan + UBSan, TSan | `dev`, `tsan` presets |
-| System | 16 attack-vs-defence scenarios against real Mosquitto | `loadgen.py scenarios` (CI runs it) |
+| System | 39 attack-vs-defence scenarios against real Mosquitto | `loadgen.py scenarios` (CI runs it) |
 | Performance | 3 zones × 11 profiles × 4 payload sizes, with attack probes | `benchmarks/` |
 
 ### 12.3 Continuous integration
@@ -1074,7 +1079,8 @@ See [`testing.md`](testing.md) and [`benchmarks.md`](benchmarks.md).
   latency measurements depend on the agent clock estimate (uncertainty = best
   RTT/2).
 - **Measurement noise**: on one machine Python sensors compete with the gateway
-  for CPU; window edges are ±0.5 s.
+  for CPU; the attacker's counters have window edges of ±0.5 s (the sensors'
+  are exact to a few milliseconds).
 - **Toolchain quirks**: libstdc++ 13 + Clang 18 need `-D__cpp_concepts=202002L`
   for `std::expected`; GCC 13 TSan needs ASLR disabled.
 

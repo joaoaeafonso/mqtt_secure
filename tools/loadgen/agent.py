@@ -213,6 +213,11 @@ def session(args, stop: threading.Event, log) -> None:
                     channel.send({"type": "started"})
                 elif kind == "update" and run:
                     run.update(message["change"])
+                elif kind == "poll":
+                    # A measurement edge: totals as of now, not the last 0.5 s report.
+                    worker = run.worker if run else None
+                    data = worker.fresh_poll() if hasattr(worker, "fresh_poll") else {}
+                    channel.send({"type": "fresh", "data": data})
                 elif kind == "release":
                     if run:
                         run.stop()

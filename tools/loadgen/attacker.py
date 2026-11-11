@@ -18,7 +18,10 @@ else: no password, no client certificate, no payload key. While enabled it
 
 With `stolen_key` = n it is a compromised sensor-n: it holds that device's
 payload keys, its broker password and (mtls) certificate — what an attacker
-gets by taking over the device — and connects as sensor-n. Then it also
+gets by taking over the device — and connects as sensor-n. The lab keeps the
+real sensor-n offline meanwhile (attacker.stolen_exclusive); with that off,
+both use the same client id and take the session from each other about once
+a second. Then it also
 
   - seals forged readings with sensor-n's key at `stolen_rate` msg/s, on
     sensor-n's own topic or another device's (`stolen_target` own|other), in
@@ -61,6 +64,7 @@ from sensors import make_client
 REPORT_INTERVAL = 0.5
 FORGED_MARKER = b"FORGED!!"
 FORGED_COMMAND = b"FORGED-C"
+STOLEN_BURST = 16   # stolen-key messages per pass of the main loop, at most
 # A payload is "readable" if it starts with a plausible send time (ns).
 READABLE_WINDOW_NS = 300 * 1_000_000_000
 RELABEL = {MODES[ENCRYPT]: MODES[AUTH_ONLY], MODES[AUTH_ONLY]: MODES[ENCRYPT]}
@@ -314,6 +318,16 @@ def _run(settings: dict, control: mp.Queue, reports: mp.Queue, stop: mp.Event) -
         next_at[name] = max(next_at[name] + 1 / rate, now - 1)
         return True
 
+    protectors: dict = {}
+
+    def stolen_protector(mode: str, age_s: float):
+        """One Protector (one sequence counter) per compromised device, mode and age."""
+        key = (id(material), material.own_key(), mode, age_s)
+        if key not in protectors:
+            protectors.clear()
+            protectors[key] = material.protector(mode, age_s)
+        return protectors[key]
+
     def sample(pred=None):
         with lock:
             pool = [c for c in captured if pred is None or pred(c)]
@@ -364,12 +378,15 @@ def _run(settings: dict, control: mp.Queue, reports: mp.Queue, stop: mp.Event) -
                     client.publish(s[0], bytes(data), qos=0)
                     counters["relabelled"] += 1
             if material is not None:
-                if due("stolen", state.get("stolen_rate", 0.0), now):
+                # Several per pass: the loop sleeps 5 ms, and a flood is faster than that.
+                for _ in range(STOLEN_BURST):
+                    if not due("stolen", state.get("stolen_rate", 0.0), now):
+                        break
                     # Without an envelope at the receiver there is nothing to downgrade
                     # or to authenticate: plaintext is what it accepts.
                     mode = (NONE if protection == NONE else
                             SENDER_PROTECTION_MODES.get(state.get("stolen_mode") or "", protection))
-                    p = material.protector(mode, state.get("stolen_age_s", 0.0))
+                    p = stolen_protector(mode, state.get("stolen_age_s", 0.0))
                     target = (material.sensor if state.get("stolen_target", "own") == "own"
                               else other_sensor(material.sensor))
                     topic = f"{zone}/sensors/sensor-{target}/temp"

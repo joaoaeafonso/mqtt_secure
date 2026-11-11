@@ -89,6 +89,7 @@ something to turn on, one at a time with the levels below or individually.
 | `relabel_rate` | `0.0` | captured envelopes re-published with the mode byte changed (encrypt ↔ auth_only) per second |
 | `stolen_key` | `0` | n > 0: the attacker is a **compromised sensor-n**: it gets that device's payload keys (with the gateway's aead and public key every actuator holds), its password and, with mtls, its certificate, and connects as sensor-n |
 | `stolen_rate` | `0.0` | forged readings sealed with sensor-n's key per second (needs `stolen_key`) |
+| `stolen_exclusive` | `true` | the real sensor-n stays offline while the attacker holds it (a taken-over device). `false`: a cloned credential — both use the device's client id and take the session from each other about once a second, which starves the attack and the device alike |
 | `stolen_target` | `"own"` | `own` (sensor-n's topic) · `other` (another device's topic) |
 | `stolen_mode` | `""` | protection for those messages; `""` = `payload.protection` (e.g. `auth_only` to try a downgrade) |
 | `stolen_age_s` | `0.0` | date them this many seconds in the past (an old message never seen) |

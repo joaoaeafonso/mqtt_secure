@@ -24,7 +24,8 @@
 // first 8 bytes of the plaintext, so latency is measured after the pipeline
 // (decryption included); sensors and gateway must share a clock. Payloads with
 // "FORGED!!" at offset 8 come from the attacker; re-delivered send times are
-// replays (same topic) or republications (another topic). All are counted when
+// replays (same topic) or republications (another topic of the same device,
+// i.e. the same topic up to its last level). All are counted when
 // the gateway accepts them, so the effect of each switch on attacks is visible.
 //
 // Key file: "<key id> <kind> <hex> [owner]" per line, kind = aead (AES-256-GCM)
@@ -820,9 +821,17 @@ public:
             ++window_.replays_accepted;
             return;
         }
-        // The same send time on another topic: a copy moved to a new topic.
-        const bool republished = !seen_ns_.insert(*sent_ns).second;
-        seen_order_.emplace_back(fingerprint, *sent_ns);
+        // The same send time from the same device on another topic: a copy
+        // moved to a new topic (".../sensor-1/temp" → ".../sensor-1/humidity").
+        // Keyed by device and not by send time alone: at thousands of messages
+        // per second, two sensors in different processes do draw the same
+        // nanosecond now and then (a birthday effect, ≈ N²/(T·10⁹) pairs per
+        // window), which is not a republication.
+        const std::string_view topic = message.topic.str();
+        const std::string_view device = topic.substr(0, topic.rfind('/'));
+        const std::uint64_t origin = *sent_ns ^ std::hash<std::string_view>{}(device);
+        const bool republished = !seen_ns_.insert(origin).second;
+        seen_order_.emplace_back(fingerprint, origin);
         if (seen_order_.size() > kSeenCapacity) {
             seen_.erase(seen_order_.front().first);
             seen_ns_.erase(seen_order_.front().second);
@@ -891,8 +900,8 @@ private:
     Clock::time_point last_;
     double cpu_at_first_{0};
     std::unordered_set<std::uint64_t> seen_;
-    std::unordered_set<std::uint64_t> seen_ns_;
-    std::deque<std::pair<std::uint64_t, std::uint64_t>> seen_order_;  // fingerprint, send time
+    std::unordered_set<std::uint64_t> seen_ns_;  // send time ^ hash(device part of the topic)
+    std::deque<std::pair<std::uint64_t, std::uint64_t>> seen_order_;  // fingerprint, origin
 };
 
 std::string rejected_by_json(const Stats::Counters& c) {

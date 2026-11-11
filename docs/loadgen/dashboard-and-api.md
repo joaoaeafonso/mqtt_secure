@@ -12,7 +12,7 @@ external dependencies) from a stdlib `ThreadingHTTPServer`
 
 Layout, top to bottom:
 
-- **Security level** — one button per configuration of the report (K0–K10, see
+- **Security level** — one button per configuration of the report (K0–K11, see
   [configuration.md](configuration.md#security-levels-k0k10)); the active one is
   highlighted with what it adds. Settings changed by hand show as **Custom**.
 - **Three summaries**, averaged over the last 5 s:
@@ -64,7 +64,7 @@ custom properties). Every control posts the single changed key to
 | `GET` | `/` | — | the page |
 | `GET` | `/api/state?since=T` | — | `200 {config, level, levels, startup_only, history, events, agents}` |
 | `POST` | `/api/config` | partial config JSON | `200 {changed, config}` · `400 {error, config}` |
-| `POST` | `/api/preset` | `{"name": "K0"…"K10"}` or `{"name": "hardened"}` | `200 {changed, config}` · `400 {error, config}` |
+| `POST` | `/api/preset` | `{"name": "K0"…"K11"}` or `{"name": "hardened"}` | `200 {changed, config}` · `400 {error, config}` |
 | any other | | | `404 {"error": "not found"}` |
 
 Responses carry `Cache-Control: no-store`. HTTP access logging is suppressed
@@ -89,7 +89,7 @@ curl -s 'localhost:8088/api/state?since=0' | jq '.history[-1]'
 |---|---|
 | `config` | the full current configuration |
 | `level` | the security level the configuration matches (`"K6"`), or `null` |
-| `levels` | `[{id, name, adds}]` for K0–K10, in order |
+| `levels` | `[{id, name, adds}]` for K0–K11, in order |
 | `startup_only` | `["broker.host", …, "load.sensors", …]` |
 | `history` | metric points with `t > since` (max 900 kept) |
 | `events` | `[{t, text}]` (max 200) — "lab started", every change, "security level K6 — Full envelope", "keys of epoch N revoked" |
@@ -137,5 +137,7 @@ All rates are per second over the last sampling interval; counter resets
 | `broker_cpu_pct` | empty if the broker restarted within the window |
 | `sensors_up`, `attacker_connected`, `attacker` | state at the end |
 
-Shares are accurate to roughly ±0.5 s / duration because sensors report twice
-a second.
+`loss_pct` is exact up to a few milliseconds of the window (sensors, local or on
+agents, report on demand at both edges). The attacker's shares (`leak_pct`,
+`leak_readable_pct`) are accurate to roughly ±0.5 s / duration because the
+attacker reports twice a second.

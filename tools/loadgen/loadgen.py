@@ -42,8 +42,8 @@ from pathlib import Path
 import keylog
 from capture import Capture
 from cluster import DEFAULT_CONTROL_PORT, ControllerIdentity, ControlServer
-from lab import (DEFAULTS, LEVEL_BY_ID, LEVELS, PRESETS, SPEC, STARTUP_ONLY, Lab, merged,
-                 uses_agents)
+from lab import (DEFAULTS, LEVEL_BY_ID, LEVELS, PRESETS, SPEC, STARTUP_ONLY, Lab, level_patch,
+                 merged, uses_agents)
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_GATEWAY = REPO / "build" / "bench" / "apps" / "load_gateway" / "msec_load_gateway"
@@ -222,9 +222,8 @@ def cmd_matrix(args) -> None:
             lab.start()
             for level, patch in itertools.product(levels, inner):
                 n += 1
-                if level:
-                    lab.apply(level.patch(lab.config))
-                lab.apply(patch)
+                # One step, so a level's load-derived limits match the cell's load.
+                lab.apply(level_patch(level, lab.config, patch) if level else patch)
                 settings = {**({"level": level.id} if level else {}),
                             **label(startup_patch), **label(patch)}
                 cell = "  ".join(f"{k}={v}" for k, v in settings.items())
@@ -354,6 +353,9 @@ def cmd_campaign(args) -> None:
     from campaign import run_campaign
 
     base = load_config(args)
+    # "16,256,4096" → [16, 256, 4096]: the campaign takes each factor's values as a list.
+    args.vary = [(s, k, [parse_value(v) for v in values.split(",")])
+                 for s, k, values in args.vary or []]
     run_campaign(args, base, lambda cfg: control_server(args, cfg), REPO, log)
 
 
