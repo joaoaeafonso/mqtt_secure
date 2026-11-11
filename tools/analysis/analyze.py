@@ -410,6 +410,14 @@ def criterion(c: Campaign, out: Path, table: dict, scores: dict[str, float]) -> 
     """cost(c), feasibility, use-case filter, Pareto frontier and c* (report Eqs. custo, melhor)."""
     feas = c.params.get("feasibility", {})
     r_target, l_max = feas.get("r_target_msg_s"), feas.get("l_max_us")
+    # R_alvo may differ per use case (commands are a downlink trickle, not the
+    # sensors' uplink); a use case without its own value uses r_target_msg_s.
+    by_use_case = dict(feas.get("r_target_by_use_case", {}))
+    unknown = sorted(set(by_use_case) - set(USE_CASES))
+    if unknown:
+        raise SystemExit(f"[feasibility.r_target_by_use_case]: unknown use case(s) {unknown}; "
+                         f"known: {sorted(USE_CASES)}")
+    targets = {u: by_use_case.get(u, r_target) for u in USE_CASES}
     weights = dict(c.params.get("cost_weights", {}))
     throughput = max_throughput(c, l_max)
     rows = []
@@ -435,11 +443,15 @@ def criterion(c: Campaign, out: Path, table: dict, scores: dict[str, float]) -> 
                     continue
                 ratio = val / ref if LOWER_IS_BETTER.get(m, True) else ref / val
                 cost += (w / total_w) * ratio
-            feasible = ""
-            if r_target is not None and l_max is not None:
-                rate = throughput.get(level, metric(level, "delivered_msg_s"))
-                p99 = metric(level, "lat_p99_us")
-                feasible = int(bool(rate and p99 and rate >= r_target and p99 <= l_max))
+            rate = throughput.get(level, metric(level, "delivered_msg_s"))
+            p99 = metric(level, "lat_p99_us")
+
+            def feasible_at(target) -> int | str:
+                if target is None or l_max is None:
+                    return ""
+                return int(bool(rate and p99 and rate >= target and p99 <= l_max))
+
+            feasible = feasible_at(r_target)
             props = properties(c.levels[level])
             rows.append({"level": level, **dict(zip(c.factors, ctx)),
                          "S": scores.get(level, ""),
@@ -447,6 +459,7 @@ def criterion(c: Campaign, out: Path, table: dict, scores: dict[str, float]) -> 
                          "cost": "" if incomplete or not usable else round(cost, 4),
                          "incomplete": " ".join(incomplete),
                          "feasible": feasible,
+                         **{f"feasible_{u}": feasible_at(targets[u]) for u in USE_CASES},
                          **{f"uc_{u}": int(req <= props) for u, req in USE_CASES.items()},
                          "missing_cost_metrics": " ".join(missing)})
     # Pareto frontier and c*, per context and use case.
@@ -454,7 +467,7 @@ def criterion(c: Campaign, out: Path, table: dict, scores: dict[str, float]) -> 
         group = [r for r in rows if c.context(r) == ctx]
         for use_case in USE_CASES:
             cand = [r for r in group if r[f"uc_{use_case}"] and r["S"] != "" and r["cost"] != ""
-                    and r["feasible"] != 0]
+                    and r[f"feasible_{use_case}"] != 0]
             frontier = [r for r in cand if not any(
                 (o["S"] >= r["S"] and o["cost"] <= r["cost"])
                 and (o["S"] > r["S"] or o["cost"] < r["cost"]) for o in cand)]
@@ -474,17 +487,29 @@ def criterion(c: Campaign, out: Path, table: dict, scores: dict[str, float]) -> 
     write_csv(out / "criterion.csv", rows)
     if rows and scores:
         ctx0 = c.contexts()[0]
+        shorts = dict(zip(USE_CASES, ("T", "TS", "O")))
+        per_use_case = len({targets[u] for u in USE_CASES}) > 1
         body = []
         for r in (r for r in rows if c.context(r) == ctx0):
             marks = []
-            for u, short in zip(USE_CASES, ("T", "TS", "O")):
+            for u, short in shorts.items():
                 if r[f"best_{u}"]:
                     marks.append(f"\\textbf{{{short}*}}")
                 elif r[f"pareto_{u}"]:
                     marks.append(short)
+            if per_use_case:  # the use cases whose R_alvo this configuration sustains
+                ok = [s for u, s in shorts.items() if r[f"feasible_{u}"] == 1]
+                unknown = all(r[f"feasible_{u}"] == "" for u in shorts)
+                feasible_cell = "--" if unknown else (" ".join(ok) or "nenhum")
+            else:
+                feasible_cell = {1: "sim", 0: "não", "": "--"}[r["feasible"]]
             body.append([r["level"], fmt(r["S"], 2), fmt(r["cost"], 2),
-                         {1: "sim", 0: "não", "": "--"}[r["feasible"]], " ".join(marks) or "--"])
+                         feasible_cell, " ".join(marks) or "--"])
         note = " Resultados provisórios: parâmetros ainda não fixados." if c.provisional else ""
+        if per_use_case and l_max is not None:
+            note = (" $R_{\\text{alvo}}$ por caso de uso: " + ", ".join(
+                f"{s} {targets[u]:,.0f}".replace(",", "\\,") for u, s in shorts.items())
+                + f" mensagens/s; $L_{{\\max}} = {l_max / 1000:g}$~ms." + note)
         tex_table(out / "criterion.tex",
                   "Proteção $S(c)$, custo $\\operatorname{custo}(c)$, exequibilidade e fronteira "
                   "de Pareto por caso de uso (T telemetria não sensível, TS telemetria sensível, "

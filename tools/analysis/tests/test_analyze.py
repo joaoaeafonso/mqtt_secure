@@ -127,6 +127,40 @@ class Analysis(unittest.TestCase):
         self.assertEqual(rows["K9"]["best_ordens"], "0")
         self.assertNotIn("PROVISÓRIO", (out / "README.md").read_text())
 
+    def test_r_target_per_use_case(self):
+        """Telemetry at a rate only the cheap levels sustain; commands at a lower
+        one: K9 (the only level with proof of origin) is infeasible for telemetry
+        but still the recommended configuration for commands."""
+        sweep = {"K0": 4000, "K1": 4000, "K3": 4000, "K6": 4000, "K7": 4000, "K9": 1000}
+        make_campaign(self.root, feasibility=(
+            "r_target_msg_s = 3000\nl_max_us = 5000\n"
+            "[feasibility.r_target_by_use_case]\nordens = 500"))
+        with open(self.root / "saturation.csv", "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["level", "repetition", "rate_per_sensor",
+                                              "delivered_msg_s", "loss_pct", "lat_p99_us"])
+            w.writeheader()
+            for level, limit in sweep.items():
+                for rep in (1, 2, 3):
+                    w.writerow({"level": level, "repetition": rep, "rate_per_sensor": 1,
+                                "delivered_msg_s": limit, "loss_pct": 0.0, "lat_p99_us": 2000})
+                    w.writerow({"level": level, "repetition": rep, "rate_per_sensor": 2,
+                                "delivered_msg_s": limit, "loss_pct": 20.0, "lat_p99_us": 9e6})
+        out = self.run_analysis()
+        rows = {r["level"]: r for r in self.rows(out, "criterion.csv")}
+        self.assertEqual(rows["K9"]["feasible_telemetria-nao-sensivel"], "0")
+        self.assertEqual(rows["K9"]["feasible_ordens"], "1")
+        self.assertEqual(rows["K9"]["best_ordens"], "1")
+        self.assertEqual(rows["K7"]["feasible_telemetria-sensivel"], "1")
+        tex = (out / "criterion.tex").read_text()
+        self.assertIn("por caso de uso", tex)
+
+    def test_unknown_use_case_in_r_target_is_an_error(self):
+        make_campaign(self.root, feasibility=(
+            "r_target_msg_s = 3000\nl_max_us = 5000\n"
+            "[feasibility.r_target_by_use_case]\ncomandos = 500"))
+        with self.assertRaises(SystemExit):
+            self.run_analysis()
+
 
 class Presentation(unittest.TestCase):
     def test_contexts_are_ordered_by_value_not_by_run_order(self):
