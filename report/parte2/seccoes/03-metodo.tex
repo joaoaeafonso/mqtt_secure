@@ -3,11 +3,54 @@
 
 \subsection{Plataforma}
 
-\PorFazer{Preencher a partir de \texttt{manifest.json} de cada campanha: modelo e
-memória do Raspberry~Pi~5, sistema operativo e \emph{kernel}, versões do OpenSSL,
-do Mosquitto e do compilador, \emph{commit} do código; o mesmo para o computador de
-secretária e para as máquinas dos sensores e do atacante; rede (cabo ou Wi-Fi);
-dissipador; regulador de frequência; se o NTP esteve ativo.}
+A Tabela~\ref{tab:plataforma} descreve as duas máquinas. O Raspberry~Pi~5 executa
+o \emph{broker} e o \emph{gateway}; o computador de secretária executa os sensores
+simulados (dois agentes) e o atacante (um agente). As duas máquinas estão ligadas
+por cabo, a 1~Gb/s, a um mesmo comutador Ethernet simples, sem router no caminho
+medido. No Raspberry~Pi, o regulador de frequência estava em
+\texttt{performance}, o arrefecimento ativo oficial estava montado e os serviços
+alheios ao ensaio (incluindo o Docker) estavam parados durante a campanha.
+
+\begin{table}[ht]
+  \centering
+  \caption{Plataforma do nível~2.}
+  \label{tab:plataforma}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}L{3.2cm}YY@{}}
+    \toprule
+    & \textbf{Raspberry~Pi~5} (\emph{broker} e \emph{gateway}) &
+      \textbf{Computador de secretária} (sensores e atacante) \\
+    \midrule
+    Processador & Raspberry~Pi~5 Model~B rev.~1.1 (4 núcleos Cortex-A76,
+      2,4~GHz) & AMD Ryzen~7 3700X (8 núcleos) \\
+    Memória & \PorFazer{RAM do Pi (\texttt{manifest.json})} & 32~GB \\
+    Armazenamento & SSD NVMe de 256~GB & -- \\
+    Sistema & Debian (Raspberry~Pi), \emph{kernel} 6.18.60 (aarch64) &
+      Ubuntu 24.04.5, \emph{kernel} 7.0.0 \\
+    Alimentação e arrefecimento & Fonte oficial de 27~W; arrefecimento ativo
+      oficial & -- \\
+    Rede & Ethernet 1~Gb/s & Ethernet 1~Gb/s \\
+    \emph{Software} & GCC 14.2.0, CMake 3.31.6, Mosquitto 2.0.21, Python 3.13.5,
+      OpenSSL \PorFazer{versão (\texttt{manifest.json})} & Python 3.12.3 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+O código medido é o do \emph{commit} \PorFazer{\texttt{manifest.json}}, o mesmo nas
+duas máquinas: o controlador recusa agentes de outra versão.
+
+\paragraph{Relógios.} A latência é medida entre máquinas: o sensor escreve na
+mensagem o instante de envio e o \emph{gateway} subtrai-o do instante de entrega.
+Cada agente estima o desvio do seu relógio em relação ao do Raspberry~Pi por trocas
+de pedido e resposta no canal de controlo (duas por segundo) e os sensores corrigem
+o instante que escrevem. Dois relógios de quartzo independentes afastam-se a um
+ritmo quase constante (nos pilotos, cerca de 13~ppm, ou seja, 0,8~ms por minuto,
+mais do que as latências a medir), pelo que o desvio não é o da última amostra:
+ajusta-se uma reta ao quarto das amostras do último minuto com menor tempo de ida
+e volta e avalia-se no instante presente. Os relógios foram sincronizados por NTP
+antes da campanha e o NTP foi desligado nas duas máquinas durante ela, porque o
+NTP altera o ritmo do relógio enquanto corrige um desvio, e essa variação não é
+uma reta.
 
 Tal como planeado, a avaliação tem dois níveis. No \textbf{nível~1}, os
 \emph{microbenchmarks} medem o tempo de processador da cadeia de camadas por
@@ -84,8 +127,26 @@ e, em MQTT sem TLS, altera, redireciona, atrasa ou suprime mensagens, fazendo de
 
 \subsection{Procedimento}
 
-Cada configuração foi repetida \PorFazer{10} vezes, em ordem aleatória com semente
-registada, com 3~s de estabilização e 30~s de medição por execução. Os intervalos
+Cada configuração foi repetida 10 vezes, em ordem aleatória com semente
+registada, com 3~s de estabilização e 30~s de medição por execução, a
+1\,000~mensagens/s (50 sensores a 20~mensagens/s cada).
+
+O débito máximo foi medido por uma subida de carga, três vezes por configuração,
+em ordem aleatória: 10, 20, 50, 100, 125, 150, 200, 300, 400, 500, 600, 700, 800,
+1\,000, 1\,200 e 1\,600~mensagens/s por sensor (de 500 a 80\,000~mensagens/s no
+total), 15~s cada, parando no primeiro patamar com perda de pelo menos 1\,\%. Os
+patamares são mais densos entre 100 e 800 porque é aí que os pilotos situaram os
+limites. Depois do patamar que satura, a carga volta ao mínimo e espera-se até o
+\emph{gateway} receber apenas o que os sensores enviam: sem esta espera, as
+mensagens retidas na sobrecarga chegavam à configuração seguinte, que as rejeitava
+(outra chave, outro limite de débito) como se fossem tráfego dela.
+
+A campanha foi precedida de três pilotos (quatro configurações, três repetições,
+15~s), que serviram para fixar os patamares de carga e $R_{\text{alvo}}$ e para
+validar o próprio instrumento: o primeiro revelou latências negativas (a deriva
+dos relógios, corrigida com a estimação descrita acima) e o segundo a
+contaminação entre patamares (corrigida com a espera). Os dados dos pilotos não são
+resultados e não entram nas tabelas. Os intervalos
 de confiança são de 95\,\%, por \emph{bootstrap} de percentis sobre as execuções.
 O custo marginal de uma camada é a diferença de medianas entre as duas
 configurações que só diferem nela, e a diferença das diferenças mede a interação
@@ -113,10 +174,15 @@ resumo criptográfico fica no registo do ambiente.
   \item \textbf{Pesos do custo.} Processador por mensagem 0,4; latência p99 0,4;
     débito máximo, octetos por mensagem, memória do \emph{gateway} e
     estabelecimento de ligação 0,05 cada.
-  \item \textbf{Exequibilidade.} $R_{\text{alvo}} = $ \PorFazer{valor}~mensagens/s
-    e $L_{\max} = $ \PorFazer{valor}~ms, escolhidos depois de um piloto no
-    Raspberry~Pi (\PorFazer{justificar com o cenário de aplicação}) e antes da
-    campanha.
+  \item \textbf{Exequibilidade.} O cenário de aplicação é a monitorização
+    industrial: um \emph{gateway} de periferia por área de uma instalação, que
+    agrega 1\,000 sensores de condição e vibração a 10~Hz e envia ordens a 100
+    atuadores, até 10 por segundo cada. Daí $R_{\text{alvo}} = 10\,000$~mensagens/s
+    para a telemetria (os dois casos de uso) e $R_{\text{alvo}} = 1\,000$~mensagens/s
+    para as ordens, com $L_{\max} = 50$~ms, um limite de tempo real não estrito
+    adequado à supervisão e ao controlo. Os pilotos serviram apenas para confirmar
+    que nenhum dos valores coincide com o limite de uma configuração, onde o
+    veredicto mudaria de uma repetição para outra.
 \end{itemize}
 
 \subsection{Desvios ao plano}
@@ -140,6 +206,17 @@ resumo criptográfico fica no registo do ambiente.
   \item \textbf{Dispositivo comprometido.} O sensor verdadeiro fica desligado
     durante o ataque. Com os dois ligados, disputam a sessão MQTT e o ataque fica
     reduzido a uma fração do tempo (Secção~\ref{sec:observacoes}).
+  \item \textbf{$R_{\text{alvo}}$ por caso de uso.} O plano previa um só
+    $R_{\text{alvo}}$. As ordens a atuadores são um fluxo muito menor do que a
+    telemetria e só o modo de assinatura (K9) dá a prova de origem que exigem;
+    com um só valor de 10\,000~mensagens/s, que K9 não sustenta, esse caso de uso
+    ficaria sem nenhuma configuração exequível por causa de um débito que as
+    ordens nunca têm. Cada caso de uso tem por isso o seu $R_{\text{alvo}}$, fixado
+    antes da campanha como os restantes parâmetros.
+  \item \textbf{Instrumento corrigido depois dos pilotos.} A estimação do desvio
+    dos relógios passou a corrigir a deriva e a subida de carga passou a esperar
+    pelo escoamento das mensagens retidas (Secção~\ref{sec:metodo}, Procedimento).
+    Não muda o que se mede, só a sua exatidão.
   \item \PorFazer{Outros desvios que surjam na campanha (repetições a mais,
     execuções repetidas, energia).}
 \end{itemize}
