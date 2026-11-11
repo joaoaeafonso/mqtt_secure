@@ -12,7 +12,13 @@ status = "proposal"          # set to "fixed" once agreed, before the campaign
 
 [attack_weights]             # ω_a in S(c); every attack weighs 1 unless listed
 default = 1.0
-# replay = 2.0               # example: weigh one attack more
+# The report's attack table has 11 rows; two of them are measured as two
+# attacks each (capture point: network / broker; injection / tampering).
+# Half weight each, so every row of the table weighs 1.
+eavesdrop-network = 0.5
+eavesdrop-broker = 0.5
+inject = 0.5
+tamper-on-path = 0.5
 
 [cost_weights]               # v_m in cost(c); must sum to 1
 gw_cpu_us_per_msg = 0.4      # processor per message (gateway)
@@ -20,7 +26,10 @@ lat_p99_us = 0.4             # p99 latency, sensor → application
 throughput = 0.05            # maximum sustained throughput (needs --saturate; higher is better)
 bytes_total = 0.05           # octets per message on the gateway's socket
 gw_rss_peak_kb = 0.05        # peak resident memory of the gateway
-connect_ms_p50 = 0.05        # connection establishment (needs --connect-test)
+connect_cpu_ms = 0.05        # connection establishment: CPU per connection (needs
+                             # --connect-test). Not connect_ms_p50: the elapsed time moves
+                             # in ~100 ms steps (waits inside the Paho C library), which
+                             # hide the few ms of a TLS handshake.
 
 [feasibility]
 # A configuration is a candidate only if, on the Pi, it sustains R_alvo with

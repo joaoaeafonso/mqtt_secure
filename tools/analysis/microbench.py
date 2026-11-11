@@ -6,10 +6,14 @@ instructions, repeated, in a random interleaved order, raw results kept.
     tools/analysis/microbench.py --out results/<campaign>/microbench [--repetitions 10]
 
 Writes aes-on.json and aes-armcap0.json (google-benchmark JSON, one entry per
-repetition) and microbench-manifest.json. `OPENSSL_armcap=0` disables OpenSSL's
-ARM crypto extensions (AES, PMULL), the way a device without them would run;
-on x86 the equivalent is `OPENSSL_ia32cap=~0x200000200000000` (AES-NI and
-PCLMULQDQ off), used automatically there. analyze.py turns them into
+repetition) and microbench-manifest.json. `OPENSSL_armcap=0` (the report's
+setting) disables every ARM extension OpenSSL uses: AES and PMULL, but also
+NEON, which ChaCha20-Poly1305 relies on. A real device without the crypto
+extensions (e.g. a Cortex-A53 without them) still has NEON, so on ARM a third
+run, aes-armcap1.json (`OPENSSL_armcap=1`: NEON only), gives the fair
+AES-vs-ChaCha20 comparison. On x86 the equivalent of that run is
+`OPENSSL_ia32cap=~0x200000200000000` (AES-NI and PCLMULQDQ off, SIMD kept),
+used automatically and stored as aes-armcap0.json. analyze.py turns them into
 microbench.csv/.tex.
 """
 
@@ -29,8 +33,12 @@ sys.path.insert(0, str(REPO / "tools" / "loadgen"))
 import manifest  # noqa: E402
 
 
+def is_arm() -> bool:
+    return platform.machine().lower() in ("aarch64", "arm64", "armv7l", "armv8l")
+
+
 def no_aes_env() -> dict[str, str]:
-    if platform.machine().lower() in ("aarch64", "arm64", "armv7l", "armv8l"):
+    if is_arm():
         return {"OPENSSL_armcap": "0"}
     return {"OPENSSL_ia32cap": "~0x200000200000000"}
 
@@ -48,10 +56,13 @@ def main() -> None:
         sys.exit(f"{args.binary} not found: cmake --preset bench && cmake --build --preset bench")
     args.out.mkdir(parents=True, exist_ok=True)
     runs = {"aes-on": {}, "aes-armcap0": no_aes_env()}
+    if is_arm():
+        runs["aes-armcap1"] = {"OPENSSL_armcap": "1"}  # ARMV7_NEON only
+    for name in runs:
+        if (args.out / f"{name}.json").exists():
+            sys.exit(f"{args.out / name}.json exists: raw data is never overwritten")
     for name, extra in runs.items():
         path = args.out / f"{name}.json"
-        if path.exists():
-            sys.exit(f"{path} exists: raw data is never overwritten")
         cmd = [str(args.binary), f"--benchmark_filter={args.filter}",
                f"--benchmark_repetitions={args.repetitions}",
                "--benchmark_enable_random_interleaving=true",
