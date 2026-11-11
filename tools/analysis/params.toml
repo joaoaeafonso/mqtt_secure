@@ -5,10 +5,11 @@
 # and limits provably were not chosen after seeing the results. The analysis
 # uses the frozen copy, never this file, unless told otherwise (--params).
 #
-# STATUS: proposal. The group still has to validate the weights below, and
-# R_alvo / L_max are only fixed after a pilot run on the Raspberry Pi. Until
-# then the analysis labels every S(c)/cost(c)/c* result as PROVISIONAL.
-status = "proposal"          # set to "fixed" once agreed, before the campaign
+# STATUS: fixed (2026-11-11). Weights agreed by the group; R_alvo / L_max
+# fixed by the group after three pilot runs on the Raspberry Pi 5 (pilot 3,
+# per-level limits: K9 sustains 5,000 msg/s and loses ≈ 11 % at 6,250; K8 and
+# K11 sustain 25,000; K0 ≥ 40,000), before the campaign.
+status = "fixed"
 
 [attack_weights]             # ω_a in S(c); every attack weighs 1 unless listed
 default = 1.0
@@ -33,9 +34,15 @@ connect_cpu_ms = 0.05        # connection establishment: CPU per connection (nee
 
 [feasibility]
 # A configuration is a candidate only if, on the Pi, it sustains R_alvo with
-# p99 ≤ L_max. Uncomment both after the pilot, before the campaign:
-# r_target_msg_s = 1000      # R_alvo, messages/s at the gateway
-# l_max_us = 50000           # L_max, p99 latency in µs
+# p99 ≤ L_max.
+# R_alvo is set clearly away from any level's limit, so no verdict depends on
+# which repetition is looked at: 10,000 msg/s is 2× above K9's limit (so
+# signatures are infeasible) and 2.5× below the AEAD levels' (K8, K11 at
+# ≈ 35 % gateway CPU there). 5,000 msg/s was rejected: it is exactly K9's limit.
+# L_max = 50 ms keeps the maximum throughput loss-limited; 10 ms would make it
+# depend on the noisy p99 knee (20–27 ms) seen at 300–400 msg/s per sensor.
+r_target_msg_s = 10000       # R_alvo, messages/s at the gateway
+l_max_us = 50000             # L_max, p99 latency in µs
 
 [calibration]                # report §6.6: Δa and Δs from measured latency and clock skew
 safety_factor = 2.0          # margin over the worst observed value
