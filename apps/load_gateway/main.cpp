@@ -1166,16 +1166,18 @@ public:
             if (!topic) {
                 continue;
             }
-            msec::Bytes payload;
-            auto append_u64 = [&](std::uint64_t v) {
-                for (int shift = 56; shift >= 0; shift -= 8) {
-                    payload.push_back(static_cast<std::byte>((v >> static_cast<unsigned>(shift)) & 0xFFU));
+            // Sized up front and filled in place: GCC 14 at -O2 reports a false
+            // -Wstringop-overflow on vector::insert after push_backs.
+            const auto text = msec::to_bytes("CMD:" + device);
+            msec::Bytes payload(16 + text.size());
+            auto put_u64 = [&](std::size_t at, std::uint64_t v) {
+                for (std::size_t i = 0; i < 8; ++i) {
+                    payload[at + i] = static_cast<std::byte>((v >> (56U - 8U * i)) & 0xFFU);
                 }
             };
-            append_u64(static_cast<std::uint64_t>(unix_ns()));
-            append_u64(++command_id_);
-            const auto text = msec::to_bytes("CMD:" + device);
-            payload.insert(payload.end(), text.begin(), text.end());
+            put_u64(0, static_cast<std::uint64_t>(unix_ns()));
+            put_u64(8, ++command_id_);
+            std::ranges::copy(text, payload.begin() + 16);
             stats_.command(endpoint_
                                ->publish(Message{.topic = std::move(*topic),
                                                  .payload = std::move(payload),
