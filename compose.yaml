@@ -1,0 +1,75 @@
+# mqtt-secure lab in Docker: nothing to install on the host but Docker.
+#
+#   docker compose up -d --build       start; dashboard on http://127.0.0.1:8088/
+#   docker compose logs -f lab         follow the lab
+#   docker compose down                stop
+#
+#   LAB_ARGS="--preset hardened" docker compose up -d    extra `loadgen.py live` arguments
+#   SENSOR_AGENTS=3 docker compose up -d                 sensors spread over 3 containers
+#   docker compose run --rm lab scenarios                one-off lab commands
+#
+# Results land in ./build/loadtest and ./build/analysis, campaigns in ./results.
+
+name: mqtt-secure
+
+services:
+  # Broker (Mosquitto), C++ gateway and dashboard. Waits for the sensors and
+  # the attacker below to join, then hands them their work.
+  lab:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: lab
+    image: mqtt-secure-lab
+    init: true                    # forwards Ctrl-C/stop, reaps the lab's child processes
+    command: >-
+      live --config tools/loadgen/lab.example.toml --set load.sensors=100
+      --set broker.host=0.0.0.0 --set broker.advertise=lab
+      --set cluster.sensor_agents=${SENSOR_AGENTS:-2} --set cluster.attacker_agents=1
+      ${LAB_ARGS:-}
+    environment:
+      MSEC_JOIN_DIR: /join        # where the sensors and attacker get their join token
+    ports:
+      - "127.0.0.1:8088:8088"     # dashboard: no authentication, so this machine only
+    volumes:
+      - ./build:/mnt/build        # results, captures, the lab's CA
+      - ./results:/app/results    # campaigns
+      - join:/join
+    healthcheck:                  # healthy once the dashboard answers
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/')"]
+      interval: 5s
+      start_period: 60s
+    stop_grace_period: 30s        # time to stop the broker and finish a capture
+
+  # Mock sensors: load.sensors is split evenly over the replicas.
+  sensors:
+    image: mqtt-secure-lab
+    pull_policy: never            # the image `lab` builds
+    init: true
+    command: agent sensors --processes 2
+    environment:
+      MSEC_CONTROLLER: lab
+    volumes:
+      - join:/join:ro
+    depends_on:
+      lab:
+        condition: service_healthy
+    deploy:
+      replicas: ${SENSOR_AGENTS:-2}
+
+  # The attacker: no secrets, only network access to the broker.
+  attacker:
+    image: mqtt-secure-lab
+    pull_policy: never
+    init: true
+    command: agent attacker
+    environment:
+      MSEC_CONTROLLER: lab
+    volumes:
+      - join:/join:ro
+    depends_on:
+      lab:
+        condition: service_healthy
+
+volumes:
+  join:                           # join token + certificate fingerprint, nothing else

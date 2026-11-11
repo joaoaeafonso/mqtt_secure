@@ -1,0 +1,15 @@
+# Build context for docker/Dockerfile: sources only, no local state.
+.git
+.github
+.idea
+.cache
+build/
+cmake-build-*/
+results/
+**/.venv/
+**/__pycache__/
+*.pcapng
+# The report and its review data (some of it must not be published) are not
+# needed to build or run anything.
+report/
+docs/

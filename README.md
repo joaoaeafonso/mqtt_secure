@@ -17,6 +17,15 @@ repository is the Part 2 prototype. The report's configurations are K0–K11; K1
 ./run.sh --preset hardened  # the same, with every defence on
 ```
 
+Or with nothing installed but Docker (usage in the comments at the top of `compose.yaml`):
+
+```bash
+docker compose up -d --build                    # the lab, sensors and attacker in their own
+                                                # containers; dashboard at http://127.0.0.1:8088/
+LAB_ARGS="--preset hardened" docker compose up -d
+docker compose down
+```
+
 ## Build
 
 ```bash
