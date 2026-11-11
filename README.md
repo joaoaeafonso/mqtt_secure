@@ -7,8 +7,9 @@ Full documentation, including the Software Design Document, is in [`docs/`](docs
 The Part 1 report (systematic literature review, proposed architecture and the
 Part 2 evaluation plan) is in [`report/`](report/README.md), with the review data in
 [`report/rsl/`](report/rsl/). The report is theoretical by design; the code in this
-repository is the Part 2 prototype. The report's configurations are K0–K11; K11
-(K8 with ChaCha20-Poly1305) is not implemented yet.
+repository is the Part 2 prototype and implements all of the report's
+configurations, K0–K11 (K11 is K8 with ChaCha20-Poly1305). How the evaluation is
+run is in [`docs/evaluation.md`](docs/evaluation.md).
 
 ## Quick start
 
@@ -35,10 +36,11 @@ ctest --preset dev
 ./build/dev/apps/gateway/msec_gateway_demo
 ```
 
-Load-lab unit tests (Python, no broker needed):
+Load-lab and analysis unit tests (Python, no broker needed):
 
 ```bash
 tools/loadgen/.venv/bin/python -m unittest discover -s tools/loadgen/tests -t tools/loadgen
+tools/loadgen/.venv/bin/python -m unittest discover -s tools/analysis/tests -t tools/analysis
 ```
 
 Fuzzing (Clang + `libclang-rt-18-dev`): `envelope::parse`, topic validation and
@@ -101,6 +103,7 @@ cmake --preset bench && cmake --build --preset bench
 | `8_full_persist_at_rest` | `[security, persistence]`        | stores envelopes                                   |
 | `9_sign`                 | security, `Sign` (Ed25519)       | proof of origin; payload readable                  |
 | `10_full_key_binding`    | security + `KeyTopicPolicy`      | a key may only publish on its owner's topics       |
+| `11_full_key_binding_chacha20` | the same with ChaCha20-Poly1305 keys | the alternative AEAD (report level K11)      |
 
 Every profile runs in three topic zones (benchmark name `zone/profile/payload:N`):
 
@@ -161,7 +164,7 @@ mock sensors (Python) ─▶ private mosquitto ─▶ msec_load_gateway ─▶ m
 | `downlink.rate` | gateway → actuator commands/s | gateway; every sensor verifies its commands |
 | `response.revoked` | e.g. `"3,7"`, can only grow | gateway drops the keys, broker the passwords, CRL the certificates (mtls) |
 | `load.rate`, `load.payload`, `load.zone` | numbers / `open` · `restricted` | sensors |
-| `attacker.*` | `enabled`, `impersonate`, `inject_rate`, `replay_rate` | attacker |
+| `attacker.*` | `enabled`, `impersonate`, `inject_rate`, `replay_rate`, `republish_rate`, `relabel_rate`, `stolen_key` (+ `stolen_*`), `forge_commands_rate`, `slow_connections`, `probe_rate`, `tamper` (`wiretap` at startup) | attacker; relay on the gateway's link |
 | `load.sensors`, `load.processes`, `load.qos` (0 · 1 · 2), `broker.*` | | startup only |
 
 Which Mosquitto (2.0.18) options apply on `SIGHUP` and which need a restart was
@@ -245,6 +248,7 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py scenarios --set load.sen
 | `downlink-commands` | gateway → actuators, protected | every command verified |
 | `modern-transport` | TLS 1.3 + MQTT 5 | works |
 | `hardened` | eavesdrop + impersonate + inject + replay vs. the `hardened` preset | attacker gets nothing; all traffic, both ways, flows |
+| `eavesdrop-network-*`, `republish-topic`, `stolen-key-*`, `old-unseen-message`, `downgrade-*`, `receiver-forgery`, `slow-connections`, `active-broker-*` | the report's attack table, each with a negative control (the same configuration without the defence) | see [docs/loadgen/scenarios.md](docs/loadgen/scenarios.md): 39 scenarios in all |
 | `key-rotation` | rotate every key while traffic flows | no rejections |
 | `revocation` | revoke sensor-1 | sensor-1 locked out, others continue |
 
@@ -349,8 +353,10 @@ How it works:
   `reconnect`, `reset`, `summary`) and reports JSON lines; its pipeline holds
   every layer from the start inside `SwitchableLayer`s, so no switch rebuilds it.
 - When everything runs on one machine, absolute numbers include the Python
-  sensors competing for CPU; use agents for clean numbers. `loss_pct` and
-  `leak_pct` are accurate to about ±0.5 s of the window (sensors report twice a second).
+  sensors competing for CPU; use agents for clean numbers. `loss_pct` is exact up
+  to a few milliseconds of the window (sensors, local or on agents, report on
+  demand at both edges); `leak_pct` is accurate to about ±0.5 s of the window
+  (the attacker reports twice a second).
 - Sensor sequence numbers start from the current time in µs, so a sensor that
   restarts keeps moving forward through the gateway's replay window.
 
