@@ -31,9 +31,15 @@ attacks each, eavesdropping and injection/tampering, weigh 0.5 + 0.5);
 v_m = 0.4 CPU per message, 0.4 p99 latency, 0.05 each for maximum throughput,
 octets per message, gateway memory and connection establishment (CPU per
 connection, `connect_cpu_ms`).
-R_alvo and L_max are left commented out until a pilot on the Pi. While the
-status is not `fixed` or either limit is missing, every analysis output says
-**PROVISIONAL** and the feasibility filter is not applied.
+R_alvo and L_max come from the application scenario, checked against a pilot
+on the Pi (fixed 2026-11-11: telemetry 10,000 msg/s, commands 1,000 msg/s,
+L_max 50 ms). R_alvo can differ per use case
+(`[feasibility.r_target_by_use_case]`; a use case without its own value uses
+`r_target_msg_s`): commands are a far lower flow than telemetry, and only the
+signature level gives the proof of origin they require. `criterion.csv` has a
+`feasible_<use case>` column per use case. While the status is not `fixed` or
+either limit is missing, every analysis output says **PROVISIONAL** and the
+feasibility filter is not applied.
 
 Pilot (gives realistic R_alvo / L_max candidates without committing data):
 

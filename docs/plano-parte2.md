@@ -252,7 +252,15 @@ Revisão completa do código, da documentação e do procedimento. Corrigido:
 - Documentação desatualizada (README dizia que o K11 não estava implementado;
   contagens de testes e de cenários; módulos novos por descrever).
 
-Decisões tomadas em 2026-11-11 (falta só R_alvo e L_max, após o piloto, para `status = "fixed"`):
+Decisões tomadas em 2026-11-11 (`status = "fixed"`):
+
+- **R_alvo e L_max** (decidido 2026-11-11, após três pilotos no Pi): cenário de
+  monitorização industrial, 1 000 sensores a 10 Hz → R_alvo = 10 000 mensagens/s
+  para a telemetria; ordens a 100 atuadores, até 10/s cada → R_alvo = 1 000
+  mensagens/s para as ordens; L_max = 50 ms. R_alvo por caso de uso é um desvio
+  ao plano da Parte 1 (um só R_alvo): com um só valor de 10 000, o caso
+  "ordens" ficava sem configuração exequível (só K9 dá prova de origem e
+  sustenta ≈ 5 000 mensagens/s). Declarar em `03-metodo.tex` (Desvios ao plano).
 
 - **Pesos dos ataques** (decidido 2026-11-11): o conjunto 𝒜 do código tem 13
   ataques para as 11 linhas da tabela do relatório (escuta = rede + *broker*;

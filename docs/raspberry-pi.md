@@ -183,8 +183,10 @@ Look at `build/pilot/saturation.csv` and `build/analysis/pilot/summary.csv`:
 - [ ] The confidence intervals in `summary.csv` separate the levels; if they
       overlap everywhere, plan more than 10 repetitions (the report allows it).
 
-Then, **as a group**, choose R_alvo (messages/s the gateway must sustain) and
-L_max (p99 latency limit) for the application scenario, write them in
+Then, **as a group**, choose R_alvo (messages/s the gateway must sustain,
+per use case if the flows differ: `[feasibility.r_target_by_use_case]`) and
+L_max (p99 latency limit) for the application scenario, away from any level's
+limit seen in the pilot, write them in
 `tools/analysis/params.toml` (`[feasibility]`), set `status = "fixed"`,
 **commit**, and pull that commit on every machine (restart the agents). The
 pilot data is not a result: it stays in `build/`.
