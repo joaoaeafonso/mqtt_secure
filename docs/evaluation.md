@@ -40,7 +40,7 @@ Pilot (gives realistic R_alvo / L_max candidates without committing data):
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
     --levels K0,K8,K9,K11 --repetitions 3 --duration 15 \
-    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600 \
     --out build/pilot
 ```
 
@@ -55,7 +55,8 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
   Pi needs network access once.
 - Stop the system broker so it does not compete for CPU: `sudo systemctl stop
   mosquitto` (the lab starts its own on port 18830).
-- Record whether NTP was running; a governor other than `performance`, a
+- Sync the clocks with NTP, then turn NTP off on every machine for the
+  campaign (see Clock below); a governor other than `performance`, a
   missing heatsink or a non-zero `throttled` column all show up in the data.
 - The same checkout on the Pi and on every agent machine (same commit, clean
   tree: the manifest records `git describe` and marks a dirty tree).
@@ -91,7 +92,7 @@ level 2.
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
     --repetitions 10 --seed 20261201 --settle 3 --duration 30 --connect-test 5 \
-    --attacks --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
+    --attacks --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600 \
     --set broker.host=0.0.0.0 --set cluster.sensor_agents=2 --set cluster.attacker_agents=1 \
     --out results/pi5-<date>
 ```
@@ -171,8 +172,10 @@ sensors on other machines (`cluster.sensor_agents`); with local sensors the
 clock is shared and `calibration.md` says so. The agents fit the drift
 between the two clocks over the last minute of pings (`ClockEstimator`), which
 handles a constant drift; a clock whose rate changes during the run (NTP still
-slewing a large offset) is not handled until the fit catches up, so let NTP
-settle first and record that it was on.
+slewing a large offset) is not handled until the fit catches up. So: sync
+with NTP first, then turn NTP off on the Pi and the agent machines for the
+whole campaign (two free-running clocks drift at a near-constant rate), and
+turn it back on afterwards.
 
 ### Receiver restarts
 

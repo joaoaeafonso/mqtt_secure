@@ -78,17 +78,29 @@ dirty tree, and agents from another version are rejected.
 
    Close everything else on the Pi (desktop session, browsers).
 
-   **Clock.** Turn NTP on and let it settle before any run with agents:
+   **Clock.** Sync with NTP now, on the Pi **and** on every load machine:
 
    ```bash
    sudo timedatectl set-ntp true
    timedatectl timesync-status      # Offset: within ±1 ms, twice, a few minutes apart
    ```
 
-   While NTP is still pulling a large offset in, it changes the clock's rate,
-   and the agents' drift correction lags for a few runs (pilot 2 showed
-   latencies off by ≈ 200 µs, some negative). Say in the report that NTP was
-   on.
+   Then, right before a run with agents (the pilot, the campaign), turn NTP
+   **off** on all of them, and back on afterwards:
+
+   ```bash
+   sudo timedatectl set-ntp false   # before the run (Pi and load machines)
+   sudo timedatectl set-ntp true    # after the run
+   ```
+
+   Why: the agents correct a *constant* drift between the clocks (a fit over
+   the last minute of pings), which is what two free-running quartz clocks
+   have. NTP changes the clock's rate while it pulls an offset in, and the fit
+   lags for a few runs: pilot 2 (NTP slewing 16 → 5 ms) had latencies off by
+   ≈ 200 µs, pilot 3 (NTP still adjusting early on) one run off by ≈ 100 µs;
+   with a steady offset every run was clean. For the report: "clocks synced
+   with NTP before the campaign, NTP off during it, drift corrected by the
+   agents".
 
 ## 2. Prepare each load machine (once)
 
@@ -156,7 +168,7 @@ PY=tools/loadgen/.venv/bin/python
 ```bash
 $PY tools/loadgen/loadgen.py campaign $AGENTS \
     --levels K0,K8,K9,K11 --repetitions 3 --duration 15 \
-    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 --out build/pilot
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600 --out build/pilot
 tools/analysis/analyze.py build/pilot
 ```
 
@@ -195,7 +207,9 @@ this step into the directory it created.
 
 ## 7. Level 2: the campaign (≈ 3–4 hours of machine time)
 
-Do not touch the Pi or the load machines while it runs.
+Do not touch the Pi or the load machines while it runs. Clocks first (§1,
+step 5): synced with NTP, then NTP **off** on the Pi and on every load machine
+for the whole of steps 6–7 (`sudo timedatectl set-ntp false`).
 
 ```bash
 NAME=pi5-$(date +%Y%m%d)
@@ -203,7 +217,7 @@ NAME=pi5-$(date +%Y%m%d)
 # 7a. cost: 12 levels × 10 repetitions, random order, + saturation   (≈ 2.5 h)
 $PY tools/loadgen/loadgen.py campaign $AGENTS \
     --repetitions 10 --seed 20261201 --settle 3 --duration 30 --connect-test 5 \
-    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600 \
     --out results/$NAME
 
 # 7b. attacks: every attack against every level, 3 repetitions       (≈ 1.2 h)
@@ -258,7 +272,8 @@ tools/analysis/analyze.py results/$NAME
 - [ ] `calibration.md` proposes Δa and Δs (it needs the agents: with local
       sensors it says the skew was not measured).
 
-Copy `results/$NAME` off the Pi (`git add results/$NAME`, or `scp -r`).
+Copy `results/$NAME` off the Pi (`git add results/$NAME`, or `scp -r`), and
+turn NTP back on everywhere (`sudo timedatectl set-ntp true`).
 
 ## 9. The same on the desktop (reference platform)
 
@@ -283,5 +298,5 @@ Part 2 report with `make dados` in `report/parte2/` (see its README).
 | `…:18830 is already in use` | the system Mosquitto is still running (step 1.3), or a previous lab did not exit: `pgrep -a mosquitto` |
 | sensors never come up with TLS levels | `broker.advertise` is not the address the agents use; it must be in the broker certificate |
 | `… is not empty: campaigns never overwrite raw data` | choose a new `--out` directory |
-| latencies negative or huge with agents | clocks: let the agents run a minute before starting, and do not step the clock (NTP) during a run |
+| latencies negative or huge with agents | clocks: NTP off on every machine during the run (§1, step 5), and let the agents run a minute before starting |
 | `gateway did not start` | the bench build is missing: `cmake --build --preset bench` |
