@@ -39,7 +39,8 @@ Pilot (gives realistic R_alvo / L_max candidates without committing data):
 
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
-    --levels K0,K8,K9,K11 --repetitions 3 --duration 15 --saturate 10,20,50,100,200,400 \
+    --levels K0,K8,K9,K11 --repetitions 3 --duration 15 \
+    --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
     --out build/pilot
 ```
 
@@ -90,7 +91,7 @@ level 2.
 ```bash
 tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
     --repetitions 10 --seed 20261201 --settle 3 --duration 30 --connect-test 5 \
-    --attacks --saturate 10,20,50,100,200,400,800 \
+    --attacks --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1600 \
     --set broker.host=0.0.0.0 --set cluster.sensor_agents=2 --set cluster.attacker_agents=1 \
     --out results/pi5-<date>
 ```
@@ -121,7 +122,12 @@ tools/loadgen/.venv/bin/python tools/loadgen/loadgen.py campaign \
 - **Saturation** (`--saturate R1,R2,…`): per level, raise the per-sensor rate
   until a run loses ≥ 1 % (`saturation.csv`); the analysis takes the largest
   rate with loss < 1 % (and p99 ≤ L_max once fixed) as the maximum sustained
-  throughput.
+  throughput. After the run that saturates, the lab goes back to the lowest
+  rate and waits until the overload's backlog has reached the gateway
+  (`Lab.drain`), so it cannot leak into the next cell as rejections or loss.
+  The rates are dense between 100 and 800 per sensor because that is where
+  the Pi pilot put the limits (K9 between 100 and 150; K0, K8, K11 between
+  400 and 800).
 - Rows are appended as they are measured; an interrupted campaign keeps what
   it measured. A campaign never writes into a non-empty directory.
 - **Agents** must run the same checkout as the controller (the control
@@ -162,8 +168,11 @@ estimated NTP-style over the control channel), `clock_uncertainty_ms_max`
 (the residual after correction, best RTT / 2), `clock_corrected`, and the
 latency tail `lat_p999_us` / `lat_max_us`. Skew can only be measured with
 sensors on other machines (`cluster.sensor_agents`); with local sensors the
-clock is shared and `calibration.md` says so. On the Pi campaign, run the
-agents **without** NTP adjustments during the run (or record that NTP was on).
+clock is shared and `calibration.md` says so. The agents fit the drift
+between the two clocks over the last minute of pings (`ClockEstimator`), which
+handles a constant drift; a clock whose rate changes during the run (NTP still
+slewing a large offset) is not handled until the fit catches up, so let NTP
+settle first and record that it was on.
 
 ### Receiver restarts
 

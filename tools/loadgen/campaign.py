@@ -194,4 +194,10 @@ def sweep(lab: Lab, levels, args, rng: random.Random, log_rows: CsvLog, lab_inde
                           "rate_per_sensor": rate, **label(startup_patch), **result,
                           **manifest.thermal()})
             if result["loss_pct"] >= 1.0:
+                # Back to the lowest rate, still at this level, until the
+                # overload's backlog is through: it must not leak into the
+                # next cell (another key, a lower rate limit).
+                lab.apply(level_patch(level, lab.config, {"load": {"rate": rates[0]}}))
+                waited = lab.drain()
+                log(f"saturation {level.id} rep {rep}: backlog drained in {waited} s")
                 break
