@@ -40,11 +40,13 @@ AGENTS=(--set broker.host=0.0.0.0 --set "broker.advertise=$PI_IP"
         --set cluster.sensor_agents=2 --set cluster.attacker_agents=1)
 DEFAULT_CAMPAIGN="--repetitions 10 --seed 20261201 --settle 3 --duration 30 --connect-test 5
   --saturate 10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600"
-read -r -a CAMPAIGN <<< "${CAMPAIGN_ARGS:-$DEFAULT_CAMPAIGN}"
-read -r -a MICROBENCH <<< "${MICROBENCH_ARGS:---repetitions 10}"
+# read -d '': split on every whitespace, newlines included (plain read -a stops
+# at the first line and silently dropped --saturate from the first campaign).
+read -r -d '' -a CAMPAIGN <<< "${CAMPAIGN_ARGS:-$DEFAULT_CAMPAIGN}"
+read -r -d '' -a MICROBENCH <<< "${MICROBENCH_ARGS:---repetitions 10}"
 ATTACK_REPS=${ATTACK_REPS:-3}
-read -r -a ATTACK_EXTRA <<< "${ATTACK_ARGS:-}"
-read -r -a SCENARIO_EXTRA <<< "${SCENARIO_ARGS:-}"
+read -r -d '' -a ATTACK_EXTRA <<< "${ATTACK_ARGS:-}"
+read -r -d '' -a SCENARIO_EXTRA <<< "${SCENARIO_ARGS:-}"
 
 # ------------------------------------------------------------- preflight ---
 problems=()
@@ -69,6 +71,7 @@ throttled=$(vcgencmd get_throttled 2>/dev/null || echo "throttled=?")
 
 echo "commit:    $(git rev-parse --short HEAD) ($(git log -1 --format=%s))"
 echo "campaign:  $OUT     log: $LOG"
+echo "7a args:   ${CAMPAIGN[*]}"
 echo "pi:        $PI_IP   $throttled"
 echo
 echo "Agents (on the load machine, from the repository root; once, before or after this):"

@@ -133,15 +133,25 @@ class _Material:
 
 
 class _SlowConnections:
-    """SlowITe: occupy broker connections with a CONNECT that never completes."""
+    """SlowITe: occupy broker connections with a CONNECT that never completes.
+
+    `held` counts only sockets that have stayed open for HOLD_GRACE seconds.
+    A broker at its connection limit accepts and then closes the extra
+    sockets, but that takes a moment, so right after a refill every fresh
+    socket still looks open. Counting those made the verdict depend on whether
+    the last report came just after a refill (1 s fill cycle vs. 0.5 s
+    reports): K8/K9 flipped between prevented and succeeded across repetitions.
+    """
+
+    HOLD_GRACE = 2.0
 
     def __init__(self) -> None:
-        self.socks: list[socket.socket] = []
+        self.socks: list[tuple[socket.socket, float]] = []
         self.last_fill = 0.0
 
     def maintain(self, target: int, host: str, port: int, mode: str) -> None:
         alive = []
-        for s in self.socks:
+        for s, opened in self.socks:
             try:
                 if s.recv(1, socket.MSG_PEEK | socket.MSG_DONTWAIT) == b"":
                     s.close()          # the broker closed it
@@ -151,9 +161,9 @@ class _SlowConnections:
             except OSError:
                 s.close()
                 continue
-            alive.append(s)
+            alive.append((s, opened))
         self.socks = alive[:target]
-        for s in alive[target:]:
+        for s, _ in alive[target:]:
             s.close()
         now = time.monotonic()
         if len(self.socks) < target and now - self.last_fill > 1.0:
@@ -166,14 +176,15 @@ class _SlowConnections:
                 if mode == "plain":
                     s.sendall(b"\x10")  # CONNECT packet type, then nothing
                 s.setblocking(False)
-                self.socks.append(s)
+                self.socks.append((s, time.monotonic()))
 
     @property
     def held(self) -> int:
-        return len(self.socks)
+        cutoff = time.monotonic() - self.HOLD_GRACE
+        return sum(1 for _, opened in self.socks if opened <= cutoff)
 
     def close(self) -> None:
-        for s in self.socks:
+        for s, _ in self.socks:
             s.close()
         self.socks = []
 

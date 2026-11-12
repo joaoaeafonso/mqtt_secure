@@ -94,7 +94,7 @@ something to turn on, one at a time with the levels below or individually.
 | `stolen_mode` | `""` | protection for those messages; `""` = `payload.protection` (e.g. `auth_only` to try a downgrade) |
 | `stolen_age_s` | `0.0` | date them this many seconds in the past (an old message never seen) |
 | `forge_commands_rate` | `0.0` | commands forged to another actuator per second with the gateway's key material sensor-n holds (needs `stolen_key`) |
-| `slow_connections` | `0` | hold this many half-open connections (partial CONNECT, SlowITe), reopening those the broker closes |
+| `slow_connections` | `0` | hold this many half-open connections (partial CONNECT, SlowITe), reopening those the broker closes; `slow_held` counts only those open for ≥ 2 s (a broker at its limit closes the extras a moment after accepting them) |
 | `probe_rate` | `0.0` | fresh anonymous connection attempts per second (are newcomers admitted?) |
 | `wiretap` | `false` | **startup**: run the gateway's link through the attacker's relay (network eavesdropping; needed by `tamper`) |
 | `tamper` | `"none"` | the relay as a malicious broker, on every 2nd PUBLISH to the gateway: `alter` · `redirect` · `delay` · `drop` (plaintext MQTT only) |
