@@ -223,9 +223,17 @@ class Pki:
     def issued(self, name: str) -> Path:
         return self.root / "pki" / "issued" / f"{name}.crt"
 
-    def record_issued(self, name: str, pem: bytes) -> None:
-        self.issued(name).parent.mkdir(parents=True, exist_ok=True)
-        self.issued(name).write_bytes(pem)
+    def record_issued(self, name: str, pem: bytes, tag: str = "") -> None:
+        """Keeps an issued certificate for revocation. A device may hold more
+        than one (`tag`: e.g. the stand-in the lab gives an attacker)."""
+        path = self.issued(name).with_name(f"{name}.{tag}.crt") if tag else self.issued(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(pem)
+
+    def issued_all(self, name: str) -> list[Path]:
+        """Every certificate recorded for `name` (revoking it revokes them all)."""
+        d = self.issued(name).parent
+        return [p for p in [self.issued(name), *sorted(d.glob(f"{name}.*.crt"))] if p.exists()]
 
 
 def key_id(device: int, epoch: int) -> int:
@@ -288,8 +296,8 @@ def write_passwd(pki: Pki, passwords: dict[str, str], revoked: set[str]) -> None
 
 
 def write_crl(pki: Pki, ca: CertificateAuthority, revoked: set[str]) -> None:
-    certs = [x509.load_pem_x509_certificate(pki.issued(name).read_bytes())
-             for name in sorted(revoked) if pki.issued(name).exists()]
+    certs = [x509.load_pem_x509_certificate(path.read_bytes())
+             for name in sorted(revoked) for path in pki.issued_all(name)]
     pki.crl.write_bytes(ca.crl(certs))
 
 

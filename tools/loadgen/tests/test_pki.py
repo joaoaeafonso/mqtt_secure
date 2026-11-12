@@ -55,6 +55,24 @@ class Revocation(unittest.TestCase):
         users = {line.split(":")[0] for line in p.passwd.read_text().splitlines()}
         self.assertEqual(users, {"gateway", "sensor-1"})
 
+    def test_crl_covers_every_certificate_of_a_device(self):
+        # The stand-in the lab issues to an attacker for sensor-1 (cluster mode:
+        # the device's own key stays on its agent) is revoked with sensor-1,
+        # and sensor-1 does not pull in sensor-10's certificates.
+        ca = pki.CertificateAuthority.create()
+        p = pki.Pki(self.dir)
+        serials = {}
+        for name, tag in (("sensor-1", ""), ("sensor-1", "stolen"), ("sensor-10", "")):
+            cert = ca.issue(name, pki.new_key().public_key())
+            p.record_issued(name, pki.cert_pem(cert), tag=tag)
+            serials[(name, tag)] = cert.serial_number
+        self.assertEqual(len(p.issued_all("sensor-1")), 2)
+        p.crl.parent.mkdir(parents=True, exist_ok=True)
+        pki.write_crl(p, ca, {"sensor-1"})
+        crl = x509.load_pem_x509_crl(p.crl.read_bytes())
+        revoked = {r.serial_number for r in crl}
+        self.assertEqual(revoked, {serials[("sensor-1", "")], serials[("sensor-1", "stolen")]})
+
 
 class BrokerConfig(unittest.TestCase):
     def setUp(self):

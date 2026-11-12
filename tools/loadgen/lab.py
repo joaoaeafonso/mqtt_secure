@@ -514,6 +514,7 @@ class Lab:
                                                   local_ids, server_names=[self.advertise],
                                                   algorithm=c["payload"]["cipher"])
         self.passwords = pki_module.read_credentials(self.pki.credentials)
+        self._stand_ins: dict[str, dict] = {}
         self.broker = Broker(self.workdir, self.pki, c["broker"]["host"], c["broker"]["port"],
                              keylog.library_for(self.gateway_binary))
         self.broker.start(**self.broker_settings())
@@ -593,7 +594,23 @@ class Lab:
         cert, key = self.pki.client_cert(name), self.pki.client_key(name)
         if cert.exists() and key.exists():
             out.update(cert=cert.read_text(), key=key.read_text())
+        else:
+            out.update(self._stand_in_certificate(name))
         return out
+
+    def _stand_in_certificate(self, name: str) -> dict:
+        """With sensor agents the device's private key never leaves its agent
+        (CSR provisioning), so the lab cannot hand it over. It issues instead a
+        certificate for the same CN from the same CA: to the broker the same
+        identity (use_identity_as_username, same ACL), and recorded so that
+        revoking the device revokes it too. Without this, every insider attack
+        under mTLS failed at connect and counted as prevented."""
+        if name not in self._stand_ins:
+            key = pki_module.new_key()
+            pem = pki_module.cert_pem(self.ca.issue(name, key.public_key()))
+            self.pki.record_issued(name, pem, tag="stolen")
+            self._stand_ins[name] = {"cert": pem.decode(), "key": pki_module.key_pem(key).decode()}
+        return self._stand_ins[name]
 
     def cluster_address(self) -> str:
         listen = self.config["cluster"]["listen"]
