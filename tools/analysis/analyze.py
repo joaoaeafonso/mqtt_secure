@@ -371,14 +371,20 @@ def protection(c: Campaign, out: Path) -> dict[str, float]:
     return scores
 
 
+def sustained(r: dict, l_max: float | None) -> bool:
+    """A saturation point the system kept up with: loss < 1 % and, if L_max is
+    fixed, p99 ≤ L_max. Beyond it the latency is queueing, not delivery."""
+    loss, p99 = num(r.get("loss_pct")), num(r.get("lat_p99_us"))
+    return loss is not None and loss < 1.0 and not (l_max and p99 and p99 > l_max)
+
+
 def max_throughput(c: Campaign, l_max: float | None) -> dict[str, float]:
     """Largest delivered rate with loss < 1 % (and p99 ≤ L_max if fixed), per
     level, median over saturation repetitions."""
     best: dict[tuple, float] = {}
     for r in c.saturation:
-        loss, p99, rate = num(r.get("loss_pct")), num(r.get("lat_p99_us")), num(
-            r.get("delivered_msg_s"))
-        if loss is None or rate is None or loss >= 1.0 or (l_max and p99 and p99 > l_max):
+        rate = num(r.get("delivered_msg_s"))
+        if rate is None or not sustained(r, l_max):
             continue
         key = (r["level"], r.get("repetition", "1"))
         best[key] = max(best.get(key, 0.0), rate)
@@ -671,7 +677,10 @@ def calibration(c: Campaign, out: Path) -> dict:
     receiver configuration must accept all legitimate traffic."""
     cal = c.params.get("calibration", {})
     k, step = float(cal.get("safety_factor", 2.0)), float(cal.get("round_ms", 100))
-    rows = list(c.runs) + list(c.saturation)
+    # Overloaded saturation points (seconds of queueing) are not legitimate
+    # delivery: only those the system sustained count.
+    l_max = c.params.get("feasibility", {}).get("l_max_us")
+    rows = list(c.runs) + [r for r in c.saturation if sustained(r, l_max)]
 
     def worst(col: str) -> float | None:
         xs = [x for r in rows if (x := num(r.get(col))) is not None]
@@ -698,7 +707,8 @@ def calibration(c: Campaign, out: Path) -> dict:
     lines = [f"# Calibração de Δa e Δs ({c.root.name})", "",
              "Relatório §6.6: os valores iniciais (Δa = 60 s, Δs = 5 s) são calibrados a partir "
              "da latência medida e do desvio de relógio observado. Pior caso legítimo em todas "
-             "as execuções (custo e saturação), multiplicado por "
+             "as execuções de custo e nos pontos de saturação sustentados (perda < 1 %, "
+             "p99 ≤ L_max), multiplicado por "
              f"{k:g} e arredondado para cima a {step:g} ms.", "",
              f"- latência máxima: {fmt_md(result['lat_max_ms'], 3)} ms "
              f"(p99,9 máximo: {fmt_md(result['lat_p999_ms'], 3)} ms)"]
