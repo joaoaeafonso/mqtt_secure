@@ -1,0 +1,2 @@
+lat_max_ms,lat_p999_ms,clock_offset_ms,clock_residual_ms,safety_factor,round_ms,delta_s_ms_uncorrected,delta_a_ms_uncorrected,delta_s_ms_corrected,delta_a_ms_corrected
+43.174,37.132,289.058,0.2,2.0,100.0,600.0,700.0,100.0,100.0

@@ -1,0 +1,13 @@
+level,S,cost,incomplete,feasible,feasible_telemetria-nao-sensivel,feasible_telemetria-sensivel,feasible_ordens,uc_telemetria-nao-sensivel,uc_telemetria-sensivel,uc_ordens,missing_cost_metrics,pareto_telemetria-nao-sensivel,best_telemetria-nao-sensivel,dcost_dS_telemetria-nao-sensivel,pareto_telemetria-sensivel,best_telemetria-sensivel,dcost_dS_telemetria-sensivel,pareto_ordens,best_ordens,dcost_dS_ordens
+K0,0.0,1.0,,1,1,1,1,0,0,0,,0,0,,0,0,,0,0,
+K1,0.6364,1.4985,,1,1,1,1,0,0,0,,0,0,,0,0,,0,0,
+K2,0.6364,1.7498,,1,1,1,1,0,0,0,,0,0,,0,0,,0,0,
+K3,0.7273,1.7677,,1,1,1,1,0,0,0,,0,0,,0,0,,0,0,
+K4,0.8182,1.7579,,1,1,1,1,0,0,0,,0,0,,0,0,,0,0,
+K5,0.7273,1.7592,,1,1,1,1,1,1,0,,1,0,3.934,1,0,3.934,0,0,
+K6,0.8182,1.7985,,1,1,1,1,1,1,0,,0,0,,0,0,,0,0,
+K7,0.8182,1.806,,1,1,1,1,1,1,0,,0,0,,0,0,,0,0,
+K8,1.0,1.7979,,1,1,1,1,1,1,0,,1,1,0.1419,1,1,0.1419,0,0,
+K9,1.0,5.9089,,0,0,0,1,1,0,1,,0,0,,0,0,,1,1,
+K10,0.6364,1.4016,,1,1,1,1,1,1,0,,1,0,,1,0,,0,0,
+K11,1.0,1.8388,,1,1,1,1,1,1,0,,0,0,,0,0,,0,0,
