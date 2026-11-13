@@ -9,13 +9,15 @@ teste do envelope (partilhados pela implementação em C++ e pela em Python, que
 assim não podem divergir) e os vetores do RFC~8439 para o ChaCha20-Poly1305. Os
 \textbf{cenários} (Secção~\ref{sec:protecao}) verificam o sistema completo contra
 um \emph{broker} real: os 39 cenários deram o resultado previsto no
-Raspberry~Pi, antes da campanha (\texttt{results/validation/pi5-20261111/}). No
-mesmo \emph{commit} da campanha, os 93 testes em C++ e os 60 testes em Python do
-laboratório passaram no Raspberry~Pi (\PorFazer{confirmar \texttt{tests-campaign.txt} no
-\emph{commit} final}); só os sete testes que dependem do \texttt{tshark} não
-correram, por o Wireshark não estar instalado no Raspberry~Pi.
+Raspberry~Pi, na própria campanha (\texttt{results/pi5-20261113/scenarios.md}). No
+mesmo \emph{commit} da campanha (\texttt{79c4878}), os 93 testes em C++ e os 61
+testes em Python do laboratório passaram no Raspberry~Pi
+(\texttt{results/validation/pi5-20261113/}); só os sete testes que dependem do
+\texttt{tshark} não correram, por o Wireshark não estar instalado no
+Raspberry~Pi.
 A \textbf{matriz de ataques} confirma que cada configuração impede o que o desenho
-prevê.
+prevê (Tabela~\ref{tab:protecao}), com as três repetições de acordo em todas as
+células.
 
 \subsection{Validação do instrumento de medição}
 
@@ -49,23 +51,48 @@ nesta parte a partir da latência medida e do desvio de relógio observado. Cada
 execução regista a cauda da latência e o desvio entre o relógio de cada máquina de
 sensores e o do \emph{gateway}.
 
-\PorFazer{Copiar de \texttt{gerado/pi5/calibration.md}: latência máxima, desvio de
-relógio máximo e incerteza residual; valores propostos de $\Delta_a$ e $\Delta_s$
-com relógios sincronizados e sem sincronização (margem de segurança 2,
-arredondamento a 100~ms). Comentar o que isto significa para as ordens a
-atuadores, que justificam uma validade mais curta por fluxo.}
+Na campanha, a maior latência de uma mensagem legítima foi de 43,2~ms (p99,9
+máximo de 37,1~ms), contando as execuções de custo e os patamares da subida de
+carga que cada configuração sustenta. Com o NTP desligado, o desvio entre os
+relógios das duas máquinas cresceu até 289~ms ao longo das cinco horas; depois da
+correção pelos agentes, a incerteza residual nunca passou de 0,21~ms. Com margem
+de segurança~2 e arredondamento a 100~ms, os valores propostos são:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{relógios sincronizados} (NTP ou PTP nos dispositivos):
+    $\Delta_s = 100$~ms e $\Delta_a = 100$~ms;
+  \item \textbf{relógios sem sincronização}, em que $\Delta_s$ tem de cobrir o
+    desvio observado: $\Delta_s = 600$~ms e $\Delta_a = 700$~ms.
+\end{itemize}
+
+Os dois casos estão muito abaixo dos 60~s e 5~s iniciais da Parte~1: uma mensagem
+antiga só é aceite se tiver menos de um segundo, em vez de um minuto. O segundo
+caso depende de quanto tempo os relógios ficam sem acerto (aqui, cinco horas a
+cerca de 16~ppm); num dispositivo sem relógio de tempo real que reinicia, o desvio
+pode ser arbitrário, e é a sincronização que o resolve, não um $\Delta_s$ maior.
+Para as ordens a atuadores, em que uma ordem atrasada é ela própria um risco, a
+validade curta é a que interessa: com relógios sincronizados, uma ordem com mais
+de 100~ms é recusada. Por fluxo (\texttt{FreshnessRule}), a telemetria pode
+manter uma validade mais larga sem afetar as ordens.
 
 \subsection{Reinício do recetor}
 
-\PorFazer{Demonstração: reiniciar o \emph{gateway}; as mensagens com chaves da
-época anterior são rejeitadas (incluindo repetições capturadas antes do reinício);
-depois da rotação, o tráfego retoma. Indicar o tempo sem serviço.}
+O recetor guarda em disco a última época de chaves que aceitou. Depois de um
+reinício, a janela anti-repetição está vazia, mas só são aceites chaves de uma
+época posterior: as mensagens da época anterior, incluindo repetições capturadas
+antes do reinício, são rejeitadas como repetição, e o tráfego retoma quando os
+emissores passam à época seguinte. Um teste de aceitação verifica esta sequência
+(\texttt{AfterARestartOnlyALaterEpochIsAccepted}), e outro que uma falha a ler ou
+a escrever a época recusa as mensagens em vez de as aceitar. No laboratório, o
+\emph{gateway} corre sempre com esta época em disco.
+O tempo sem serviço depois de um reinício é, por isso, o tempo que a implantação
+leva a passar os emissores à época seguinte. Depende da distribuição de chaves,
+fora do âmbito deste trabalho (Secção~\ref{sec:ameacas}), e não foi medido.
 
 \subsection{Rotação e revogação}
 
 Os dois cenários passaram no Raspberry~Pi. Em \texttt{key-rotation}, todas as
 chaves do conteúdo são substituídas com o tráfego a correr, sem nenhuma rejeição e
-sem perda (0,0\,\%). Em \texttt{revocation}, o sensor~1 é revogado (chaves e
-palavra-passe): fica de fora e os outros nove continuam, com o débito entregue a
-descer de 200 para 180~mensagens/s, exatamente a parte do sensor revogado.
-\PorFazer{Confirmar com os cenários da campanha (\texttt{results/<campanha>/scenarios}).}
+com perda de 0,1\,\%. Em \texttt{revocation}, o sensor~1 é revogado (chaves e
+palavra-passe): fica de fora e os outros 49 continuam, com o débito entregue a
+descer de 1\,000 para 980~mensagens/s, exatamente a parte do sensor revogado.

@@ -10,9 +10,39 @@ exequibilidade, requisitos por caso de uso e fronteira de Pareto.
 \figuraGerada{pi5/fig-pareto}{Proteção $S(c)$ contra custo$(c)$; a tracejado, a
   fronteira de Pareto para a telemetria sensível.}{fig:pareto}
 
-\PorFazer{Para cada caso de uso (telemetria não sensível, telemetria sensível,
-ordens a atuadores): configurações admissíveis, fronteira de Pareto, $c^*$ e custo
-marginal $\Delta\operatorname{custo}/\Delta S$ ao longo da fronteira. Confirmar se
-a recomendação antecipada na Parte~1 (K8, ou K11 sem AES em \emph{hardware}, para a
-telemetria; K9 para as ordens) se mantém. Sensibilidade: a recomendação muda com
-pesos diferentes?}
+Os requisitos de cada caso de uso (\PUm{Secção~7.5}) excluem logo K0 a K4: a
+telemetria exige integridade, ligação ao tópico e anti-repetição no conteúdo, e
+as ordens exigem ainda validade, restrição chave--tópico e prova de origem.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Telemetria não sensível e telemetria sensível.} As configurações
+    admissíveis são as mesmas nos dois casos (K5 a K8, K10 e K11; a
+    confidencialidade exigida pela telemetria sensível é dada pelo modo de cifra,
+    que todas usam). K9 cumpre os requisitos da telemetria não sensível mas não é
+    exequível: sustenta 5\,000~mensagens/s, metade de $R_{\text{alvo}}$. A
+    fronteira de Pareto tem três pontos: K10 ($S = 0{,}64$, custo 1,40), K5
+    (0,73; 1,76) e K8 (1,00; 1,80). O custo marginal ao longo da fronteira é de
+    3,9 por unidade de $S$ de K10 para K5 e de apenas 0,14 de K5 para K8: os
+    últimos 27 pontos de proteção (validade, limitação de tráfego e limites do
+    \emph{broker}) quase não custam. $c^* = \text{K8}$ nos dois casos.
+  \item \textbf{Ordens a atuadores.} Só K9 dá prova de origem, e é exequível
+    para as ordens ($R_{\text{alvo}} = 1\,000$~mensagens/s, que sustenta cinco
+    vezes, com p99 de 0,7~ms à carga nominal). $c^* = \text{K9}$, sem
+    alternativa: o seu custo, 5,9 vezes o de K0, é o preço da prova de origem.
+\end{itemize}
+
+A recomendação antecipada na Parte~1 mantém-se: \textbf{K8 para a telemetria e
+K9 para as ordens}. K11 (ChaCha20) tem a mesma proteção que K8 e custa mais
+2\,\% neste processador, que tem AES em \emph{hardware}; num processador sem essas
+extensões, o envelope AES custa 1,4 vezes o do ChaCha20 a 256~octetos e 4 a 5
+vezes a partir de 4~KiB (Secção~\ref{sec:aceleracao}) e K11 passa a ser a escolha para a telemetria, como
+a Parte~1 previa.
+
+\paragraph{Sensibilidade.} A escolha não depende dos pesos fixados. Com todos os
+ataques a pesar~1, com pesos de custo iguais, ou com todo o peso no processador
+ou na latência p99, $c^*$ continua a ser K8 para a telemetria e K9 para as
+ordens. Só com todo o peso nos octetos por mensagem ou no débito máximo é que K8 e
+K11 empatam, porque têm o mesmo envelope e saturam no mesmo patamar. A ordem das
+configurações com $S = 1$ é sempre a mesma, porque K8 não é pior do que K11 em
+nenhuma métrica de custo, e K9 é a mais cara em processador, latência, octetos e
+débito.

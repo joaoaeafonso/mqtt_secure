@@ -7,15 +7,36 @@ num Raspberry~Pi estão em \texttt{docs/raspberry-pi.md}; o procedimento e o
 significado de cada ficheiro, em \texttt{docs/evaluation.md}.
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Refazer as tabelas e figuras a partir dos dados brutos:}\\
-    \texttt{tools/analysis/analyze.py results/<campanha>} e, nesta pasta,
+  \item \textbf{Refazer as tabelas e figuras a partir dos dados brutos:}
+    \path{tools/analysis/analyze.py} \path{results/<campanha>} e, nesta pasta,
     \texttt{make dados PI=<campanha>} seguido de \texttt{make}.
   \item \textbf{Repetir as medições:} \texttt{loadgen.py campaign} com a mesma
     semente e o mesmo \texttt{params.toml} (guardados em cada campanha).
 \end{itemize}
 
-\PorFazer{Tabela com as campanhas usadas: nome, plataforma, data, \emph{commit},
-semente, número de execuções.}
+A Tabela~\ref{tab:campanhas} identifica a campanha de que vêm os resultados.
+
+\begin{table}[ht]
+  \centering
+  \caption{Campanha usada neste relatório.}
+  \label{tab:campanhas}
+  \footnotesize
+  \begin{tabularx}{\textwidth}{@{}L{3.6cm}Y@{}}
+    \toprule
+    Nome & \texttt{pi5-20261113} (\texttt{results/pi5-20261113/}) \\
+    Plataforma & Raspberry~Pi~5, 8~GB (\emph{broker} e \emph{gateway}); computador
+      de secretária (dois agentes de sensores e um atacante) \\
+    Data & 12--13 de novembro de 2026, 23:37 a 04:32 (UTC) \\
+    \emph{Commit} & \texttt{79c4878}, árvore limpa \\
+    Semente & 20261201 \\
+    Execuções & 120 de custo (12 configurações $\times$ 10); subida de carga com
+      3 repetições por configuração (427 patamares); matriz de ataques
+      $3 \times 156$; 39 cenários; \emph{microbenchmarks} com 10 repetições em
+      três variantes de aceleração \\
+    Testes no mesmo \emph{commit} & \texttt{results/validation/pi5-20261113/} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
 
 \subsection*{Plataforma de referência}
 

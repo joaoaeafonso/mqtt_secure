@@ -8,9 +8,17 @@ protótipo perante os ataques previstos. Cada camada pode ser ligada e desligada
 forma independente, o que permitiu medir o custo e o benefício de cada uma em doze
 configurações (K0 a K11).
 
-\PorFazer{Três a quatro frases com os resultados principais, depois da campanha:
-custo do envelope face ao transporte; ataques impedidos por configuração; custo das
-assinaturas; configuração recomendada por caso de uso; veredicto das hipóteses.}
+O transporte (mTLS) e o envelope AES-GCM custam cada um 7 a 8~$\mu$s de
+processador por mensagem no \emph{gateway}, e as restantes verificações, juntas,
+cerca de 2~$\mu$s; as assinaturas Ed25519 custam mais 151~$\mu$s e limitam o
+débito a 5\,000~mensagens/s. O transporte e o envelope impedem, cada um, quase
+todos os ataques de um estranho, mas os de um dispositivo comprometido só são
+impedidos pela combinação de todas as camadas, que K8, K9 e K11 conseguem. A
+configuração recomendada é K8 para a telemetria (30\,000~mensagens/s, p99 de
+0,26~ms) e K9 para as ordens a atuadores, como a primeira parte previa. Das cinco
+hipóteses, três confirmam-se; refuta-se que o custo do TLS esteja no
+estabelecimento da ligação, e não se confirma que a limitação de tráfego poupe
+processador quando a criptografia é AES em \emph{hardware}.
 
 \medskip
 \noindent\textbf{Palavras-chave:} MQTT, Internet das Coisas, segurança em camadas,

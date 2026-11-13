@@ -36,19 +36,20 @@
     internas da biblioteca cliente; usa-se o tempo de processador por ligação.
   \item \textbf{Relógios.} A latência entre máquinas depende da correção do
     relógio dos sensores, com incerteza igual a metade do melhor tempo de ida e
-    volta observado, entre 0,13 e 0,21~ms nos pilotos. É da ordem das diferenças
-    de latência mediana entre configurações vizinhas (K0 133~$\mu$s, K8
-    188~$\mu$s no terceiro piloto), mas a mesma para todas: como a ordem é
+    volta observado, no máximo 0,21~ms na campanha (0,18~ms nas execuções de
+    custo). É da ordem das diferenças de latência mediana entre configurações
+    vizinhas (K0 122~$\mu$s, K8 179~$\mu$s), mas a mesma para todas: como a ordem é
     aleatória, desloca as medidas sem favorecer nenhuma configuração. A deriva é
     corrigida (Secção~\ref{sec:metodo}); uma alteração do ritmo do relógio a meio
     de uma execução não o é, e por isso o NTP esteve desligado durante a campanha.
-    \PorFazer{Confirmar com \texttt{clock\_uncertainty\_ms\_max} e
-    \texttt{clock\_offset\_ms\_max} da campanha.}
+    O desvio entre as duas máquinas cresceu de forma regular até 289~ms (cerca
+    de 16~ppm), sempre corrigido.
   \item \textbf{Temperatura e frequência.} Nos três pilotos não houve
     \emph{throttling} (\texttt{throttled} sempre \texttt{0x0}), a frequência
-    esteve sempre em 2\,400~MHz e a temperatura entre 44 e 52~°C; a ordem
-    aleatória distribui o efeito que houver pelas configurações.
-    \PorFazer{Confirmar com a campanha.}
+    esteve sempre em 2\,400~MHz e a temperatura entre 44 e 52~°C. O mesmo na
+    campanha: \texttt{0x0} e 2\,400~MHz em todas as execuções, temperatura entre
+    44,6 e 52,4~°C (o máximo na subida de carga). A ordem aleatória distribui o
+    efeito que houver pelas configurações.
   \item \textbf{Sensores simulados.} Os sensores são processos Python num
     computador, não dispositivos restritos: o custo no emissor não foi medido no
     nível~2 (o nível~1 mede envio e receção).
@@ -60,13 +61,28 @@
     não tem criptografia, surgem nos pilotos picos de 22 a 40~ms no p99,9 e no
     máximo, a cargas intermédias. Por existirem em K0, vêm do ambiente e não das
     camadas medidas; não afetam o p99 abaixo de cerca de 300~mensagens/s por
-    sensor. A partir de 400~mensagens/s por sensor (20\,000~mensagens/s), a
-    latência mediana sobe de cerca de 0,2 para 8--14~ms em todas as configurações,
-    com o \emph{gateway} entre 40 e 60\,\% de processador, longe da saturação. \PorFazer{Identificar a origem
-    na campanha (agentes ou \emph{broker}).}
+    sensor. Na campanha, os maiores valores nas execuções de custo foram de
+    0,5~ms em K0. A partir de 400~mensagens/s por sensor
+    (20\,000~mensagens/s), a latência mediana sobe de cerca de 0,2 para 7--14~ms
+    em todas as configurações, sem perda, com o \emph{gateway} entre 40\,\% (K0)
+    e 63\,\% (K8) de processador, longe da saturação, e volta a descer quando a
+    carga aumenta. O salto acontece à mesma taxa por sensor em todas as
+    configurações; foi registado, mas a sua origem não foi determinada. Afeta a
+    latência acima de
+    $R_{\text{alvo}}$ (200~mensagens/s por sensor) e fica abaixo de $L_{\max}$,
+    pelo que não muda nenhum veredicto, mas a latência na subida de carga acima
+    desse ponto é um majorante.
   \item \textbf{Serviços alheios.} O Docker esteve ativo no Raspberry~Pi durante o
-    teste de fumo e os pilotos, e foi parado para a campanha; os pilotos só
-    serviram para fixar parâmetros, não entram nos resultados.
+    teste de fumo e os pilotos, e foi parado para a campanha, tal como o ambiente
+    gráfico; os pilotos só serviram para fixar parâmetros, não entram nos
+    resultados.
+  \item \textbf{O próprio laboratório tinha defeitos.} Três foram encontrados nas
+    duas primeiras campanhas completas e corrigidos antes da terceira, a única
+    usada (Secção~\ref{sec:desvios}). O mais grave fazia contar como impedidos
+    ataques que não chegaram a ser feitos; foi detetado por o ataque de inundação
+    aparecer impedido em K7, que não tem limitação. Na campanha usada,
+    verificou-se em todas as células dos ataques internos que o atacante se ligou
+    como o dispositivo comprometido e enviou mensagens.
 \end{itemize}
 
 \subsection{Validade externa}
@@ -79,8 +95,10 @@
   \item \textbf{Sem AES em \emph{hardware}} foi emulado desligando extensões no
     OpenSSL do mesmo processador, o que não reproduz a memória nem a
     \emph{cache} de um processador mais simples.
-  \item Carga sintética: mensagens de tamanho fixo a taxa constante, QoS~0.
-    \PorFazer{Ajustar ao que foi medido.}
+  \item Carga sintética: no nível~2, mensagens de 16~octetos de conteúdo a taxa
+    constante, QoS~0, 50 sensores; o tamanho só foi variado no nível~1. Com
+    mensagens maiores, o peso do envelope e a vantagem do AES em \emph{hardware}
+    crescem (Secção~\ref{sec:aceleracao}).
 \end{itemize}
 
 \subsection{Limitações do protótipo}

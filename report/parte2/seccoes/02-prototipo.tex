@@ -13,8 +13,73 @@ mensagens entregues e rejeitadas (por motivo), a latência e o tempo de processa
 O \textbf{laboratório de carga} (Python) lança o \emph{broker}, o \emph{gateway},
 os sensores simulados e o atacante, aplica cada configuração e mede.
 
-\PorFazer{Figura da arquitetura implementada (adaptar a da Parte~1, Secção~6.1,
-marcando o que corre em cada processo e em cada máquina).}
+A Figura~\ref{fig:arquitetura} mostra onde corre cada parte na campanha.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      proc/.style={draw=cinza, fill=white, rounded corners=2pt, font=\footnotesize,
+                   align=center, minimum height=0.85cm, inner sep=2pt},
+      camada/.style={draw=iscte, fill=fundotab, rounded corners=2pt, font=\footnotesize,
+                     align=center, text width=4.1cm, minimum height=0.62cm, inner sep=2pt},
+      maquina/.style={draw=iscte, thick, rounded corners=4pt, inner sep=6pt},
+      rotulo/.style={font=\small\bfseries, text=iscte, anchor=south west},
+      seta/.style={-{Stealth[length=2mm]}, thick, iscte},
+      dupla/.style={{Stealth[length=2mm]}-{Stealth[length=2mm]}, thick, iscte},
+      controlo/.style={-{Stealth[length=1.6mm]}, densely dashed, cinza},
+      nota/.style={font=\scriptsize, text=cinza, align=center}]
+    % --- computador de secretária
+    \node[proc, text width=3.1cm] (s1) at (1.75, 0.9)
+      {Agente de sensores 1\\\scriptsize 25 sensores e atuadores};
+    \node[proc, text width=3.1cm] (s2) at (1.75, -0.4)
+      {Agente de sensores 2\\\scriptsize 25 sensores e atuadores};
+    \node[nota, below=0.08cm of s2] (env) {envelope em Python};
+    \node[proc, text width=3.1cm, draw=mau] (atk) at (1.75, -2.3)
+      {Agente atacante\\\scriptsize estranho ou dispositivo\\comprometido};
+    \node[maquina, fit=(s1)(s2)(env)(atk)] (pc) {};
+    \node[rotulo] at (pc.north west) {Computador de secretária};
+    % --- Raspberry Pi 5
+    \node[proc, text width=2.1cm, fill=iscte!10] (brk) at (6.25, 0.9)
+      {\emph{Broker}\\Mosquitto 2.0};
+    \node[nota, below=0.08cm of brk, text width=2.4cm] (brkn)
+      {TLS/mTLS, autenticação, ACL, limites};
+    \node[proc, text width=2.0cm, draw=mau, dashed] (rel) at (8.95, 0.9)
+      {Intermediário\\\scriptsize só em ataques};
+    \node[font=\scriptsize\bfseries, text=cinza] (gwt) at (12.85, 1.75)
+      {\emph{Gateway} de ensaio (C++23)};
+    \node[camada, fill=white, draw=cinza] (paho) at (12.85, 0.9) {Cliente MQTT (Paho)};
+    \node[camada, below=0.2cm of paho] (lim) {Limitação de tráfego};
+    \node[camada, below=0.2cm of lim] (sec) {\textbf{Segurança da mensagem}\\
+      \scriptsize envelope, validade, janela,\\ políticas de modo e de chave};
+    \node[camada, below=0.2cm of sec] (per) {Persistência (opcional)};
+    \node[camada, fill=white, draw=cinza, below=0.2cm of per] (med)
+      {Aplicação de ensaio\\\scriptsize entregas, rejeições,\\ latência, processador};
+    \node[maquina, draw=cinza, thin, inner sep=4pt, fit=(gwt)(paho)(med)] (gw) {};
+    \node[proc, text width=4.6cm] (ctl) at (7.6, -2.3)
+      {Controlador do laboratório\\\scriptsize Python; configura, mede e guarda};
+    \node[maquina, fit=(brk)(brkn)(rel)(gw)(ctl)] (pi) {};
+    \node[rotulo] at (pi.north west) {Raspberry~Pi~5};
+    % --- fluxos MQTT (medidos)
+    \draw[dupla] (s1.east) -- ([yshift=0.2cm]brk.west);
+    \draw[dupla] (s2.east) -- ([yshift=-0.05cm]brk.west);
+    \draw[seta, mau] (atk.east) -- ([yshift=-0.3cm]brk.west);
+    \draw[dupla] (brk) -- (rel);
+    \draw[dupla] (rel) -- (paho);
+    \foreach \a/\b in {paho/lim, lim/sec, sec/per, per/med}
+      \draw[seta] (\a) -- (\b);
+    % --- controlo do laboratório (fora do caminho medido)
+    \draw[controlo] (ctl.west) -- (ctl.west -| pc.east);
+    \draw[controlo] (ctl.north) -- (ctl.north |- brkn.south);
+    \draw[controlo] (ctl.east) -- (ctl.east -| gw.west);
+  \end{tikzpicture}
+  \caption{Arquitetura implementada, tal como corre na campanha. A cadeia de camadas
+    da Parte~1 (\PUm{Secção~6.1}) está no \emph{gateway} de ensaio. Setas
+    contínuas: MQTT (telemetria dos sensores para o \emph{gateway}, ordens no
+    sentido inverso; a vermelho, o atacante). O intermediário só existe nos ensaios
+    de ataques na rede. A tracejado: o canal de controlo do laboratório (TLS), que
+    lança e configura cada parte e fica fora do caminho medido.}
+  \label{fig:arquitetura}
+\end{figure}
 
 \subsection{O que foi implementado}
 
@@ -35,7 +100,7 @@ concretização.
       a mesma implementação em Python para os sensores, verificada pelos mesmos
       vetores de teste & \texttt{modules/security}, \texttt{msec\_envelope.py} \\
     ChaCha20-Poly1305 como alternativa (§6.4) & O algoritmo é um atributo da chave:
-      o formato do envelope não muda e um recetor serve os dois & \texttt{chacha20\_poly1305\_cipher.cpp} \\
+      o formato do envelope não muda e um recetor serve os dois & \texttt{chacha20\_poly1305\_}\allowbreak\texttt{cipher.cpp} \\
     Ordem de verificação (§6.5) & Formato, modo aceite, validade, verificação
       criptográfica, chave--tópico, janela & \texttt{security\_layer.cpp} \\
     Validade temporal (§6.6) & $\Delta_a$ e $\Delta_s$ globais e por fluxo (filtro
@@ -75,9 +140,9 @@ seguida de assinatura, que a Parte~1 apresenta como possível extensão.
 
 \subsection{Testes automatizados}
 
-\PorFazer{Atualizar as contagens no fim.} O protótipo tem 93 testes em C++
+O protótipo tem 93 testes em C++
 (unitários, de integração e de aceitação), executados com AddressSanitizer e
-UndefinedBehaviorSanitizer, e 72 testes em Python (60 do laboratório, 12 da
+UndefinedBehaviorSanitizer, e 73 testes em Python (61 do laboratório, 12 da
 análise). Os testes de aceitação têm um
 teste por regra da ordem de verificação e foram verificados por mutação: cada um
 falha quando a regra correspondente é removida. Três alvos de \emph{fuzzing}

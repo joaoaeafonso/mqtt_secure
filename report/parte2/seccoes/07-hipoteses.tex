@@ -14,19 +14,52 @@ veredicto é dos autores.
     \textbf{Hipótese} & \textbf{Evidência} & \textbf{Veredicto} \\
     \midrule
     H1. O envelope AES-256-GCM tem um custo por mensagem pequeno face à latência
-      da rede & \PorFazer{K1$\to$K3: processador e p50} & \PorFazer{} \\
+      da rede & K1$\to$K3: +7,2~$\mu$s de processador (IC $[6{,}8; 7{,}8]$) e
+      +25~$\mu$s no p50 (149~$\mu$s em K1); débito máximo de 40\,000 para
+      30\,000~mensagens/s & Confirmada, com ressalva \\
     H2. Validade, anti-repetição e chave--tópico têm custo marginal quase nulo &
-      \PorFazer{K3$\to$K4, K3$\to$K5, K6$\to$K7} & \PorFazer{} \\
+      K3$\to$K4 +0,6~$\mu$s e K3$\to$K5 +0,2~$\mu$s (IC incluem 0); K6$\to$K7
+      +1,3~$\mu$s (3\,\%); p99 sem diferença mensurável & Confirmada \\
     H3. Ed25519 custa claramente mais do que AES-GCM por mensagem &
-      \PorFazer{K8$\to$K9} & \PorFazer{} \\
+      K8$\to$K9: +151,5~$\mu$s (4,7 vezes), +464~$\mu$s no p99, débito máximo seis
+      vezes menor (5\,000 contra 30\,000~mensagens/s) & Confirmada \\
     H4. O custo do TLS concentra-se no estabelecimento da ligação &
-      \PorFazer{processador por ligação K0 e K1; K0$\to$K1 e K10$\to$K7 por
-      mensagem} & \PorFazer{} \\
+      Por ligação: 4,2 contra 0,8~ms de processador. Por mensagem: K0$\to$K1
+      +7,9~$\mu$s e K10$\to$K7 +5,5~$\mu$s; débito máximo de 60\,000 para
+      40\,000~mensagens/s & Refutada \\
     H5. Sob inundação, a limitação antes da criptografia reduz o processador do
-      \emph{gateway} & \PorFazer{ataque de inundação em K7 e K8} & \PorFazer{} \\
+      \emph{gateway} & Inundação a 300~msg/s: K7 5,2\,\%, K8 5,1\,\% de
+      processador (40,5 e 39,7~$\mu$s por mensagem); K8 descarta 1\,559
+      mensagens antes da criptografia & Não confirmada \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-\PorFazer{Um parágrafo por hipótese refutada ou só em parte confirmada. A Parte~1
-diz que as hipóteses podem ser refutadas: dizê-lo claramente quando acontecer.}
+\paragraph{H1 (confirmada, com ressalva).} Em valor absoluto, o envelope custa
+pouco: 7,2~$\mu$s de processador e 25~$\mu$s de latência mediana, mil vezes menos
+do que $L_{\max}$ e menos do que a latência de qualquer rede sem fios típica da
+IoT. Mas, nesta rede local cablada, a latência é tão baixa que o envelope
+representa 17\,\% do p50 de K1, e reduz o débito máximo em 25\,\%. A hipótese
+vale para a latência; para o débito, o envelope não é desprezável.
+
+\paragraph{H4 (refutada).} A negociação TLS com autenticação mútua custa
+3,4~ms de processador a mais por ligação, mas o TLS custa também 7,9~$\mu$s por
+mensagem, tanto como o envelope inteiro (7,2~$\mu$s), e é o que mais reduz o
+débito máximo (de 60\,000 para 40\,000~mensagens/s). Ao fim de cerca de 430
+mensagens, o custo por mensagem ultrapassa o da negociação; a 1\,000~mensagens/s,
+isso acontece em menos de meio segundo, e um sensor a 10~Hz chega lá em 43~s. Em
+ligações duradouras, que são as do MQTT, o custo do TLS está nas mensagens, não
+no estabelecimento. O custo por mensagem é menor com o envelope ativo (5,5 contra
+7,9~$\mu$s, Secção~\ref{sec:custo}), mas continua a dominar.
+
+\paragraph{H5 (não confirmada).} A limitação funciona como previsto: descarta o
+excesso antes de qualquer verificação criptográfica (1\,559 de 1\,814 mensagens
+da inundação). Mas o processador do \emph{gateway} é o mesmo em K7 e K8 (5,2 e
+5,1\,\%). Com AES em \emph{hardware}, verificar uma mensagem custa poucos
+microssegundos: o que a limitação poupa, cerca de 260 verificações por segundo,
+é da ordem de 0,2\,\% de um núcleo, abaixo do ruído. Com verificações mais caras,
+como as assinaturas, a poupança poderia ser maior, mas a matriz não tem uma
+configuração com assinaturas e sem limitação que o meça. A hipótese, tal como formulada para o
+envelope AES-GCM, não se confirma. O que a limitação mostrou foi a proteção da
+aplicação: sem ela (K7), as mensagens da inundação são todas entregues; com ela
+(K8), o excesso é descartado (Secção~\ref{sec:protecao}).
