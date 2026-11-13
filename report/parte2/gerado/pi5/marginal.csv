@@ -1,0 +1,161 @@
+layer,from,to,metric,delta,lo,hi,significant
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,gw_cpu_us_per_msg,7.865,7.5,8.255,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,lat_p50_us,27.5,20.0,34.0,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,lat_p99_us,47.0,23.0,57.5,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,delivered_msg_s,0.0,0.0,0.0,0
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,loss_pct,0.0,0.0,0.0,0
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,broker_cpu_pct,0.55,0.4,0.7,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,gw_rss_peak_kb,24.0,0.0,128.0,0
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,broker_rss_peak_kb,4776.0,4432.0,4864.0,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,bytes_total,22.05,21.95,22.1,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,bytes_envelope,0.0,0.0,0.0,0
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,bytes_tls_other,22.05,21.95,22.1,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,connect_ms_p50,5.495,5.405,5.565,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,connect_cpu_ms,3.41,3.289,3.503,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,lat_p999_us,124.5,92.0,150.5,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,lat_max_us,843.5,764.5,1004.0,1
+"transporte (mTLS 1.3, autenticação, ACL)",K0,K1,clock_offset_ms_max,40.471,-1.928,70.303,0
+envelope de autenticação (GMAC),K1,K2,gw_cpu_us_per_msg,7.29,6.945,7.53,1
+envelope de autenticação (GMAC),K1,K2,lat_p50_us,29.5,25.5,32.0,1
+envelope de autenticação (GMAC),K1,K2,lat_p99_us,40.5,31.0,50.0,1
+envelope de autenticação (GMAC),K1,K2,delivered_msg_s,0.0,0.0,0.0,0
+envelope de autenticação (GMAC),K1,K2,loss_pct,0.0,0.0,0.0,0
+envelope de autenticação (GMAC),K1,K2,broker_cpu_pct,0.05,-0.15,0.3,0
+envelope de autenticação (GMAC),K1,K2,gw_rss_peak_kb,-16.0,-56.0,24.0,0
+envelope de autenticação (GMAC),K1,K2,broker_rss_peak_kb,24.0,-168.0,384.0,0
+envelope de autenticação (GMAC),K1,K2,bytes_total,54.05,54.0,54.1,1
+envelope de autenticação (GMAC),K1,K2,bytes_envelope,53.0,53.0,53.0,1
+envelope de autenticação (GMAC),K1,K2,bytes_tls_other,0.05,0.0,0.1,0
+envelope de autenticação (GMAC),K1,K2,connect_ms_p50,-0.015,-0.1,0.09,0
+envelope de autenticação (GMAC),K1,K2,connect_cpu_ms,-0.015,-0.122,0.103,0
+envelope de autenticação (GMAC),K1,K2,lat_p999_us,52.5,14.0,87.0,1
+envelope de autenticação (GMAC),K1,K2,lat_max_us,-29.0,-326.0,35.0,0
+envelope de autenticação (GMAC),K1,K2,clock_offset_ms_max,-20.959,-47.817,30.709,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,gw_cpu_us_per_msg,-0.08,-0.45,0.54,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,lat_p50_us,-4.5,-7.0,2.5,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,lat_p99_us,1.5,-3.5,7.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,delivered_msg_s,0.0,0.0,0.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,loss_pct,0.0,0.0,0.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,broker_cpu_pct,-0.05,-0.3,0.2,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,gw_rss_peak_kb,0.0,-32.0,48.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,broker_rss_peak_kb,48.0,-96.0,224.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,bytes_total,-0.1,-0.1,0.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,bytes_envelope,0.0,0.0,0.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,bytes_tls_other,-0.1,-0.1,0.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,connect_ms_p50,0.005,-0.075,0.075,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,connect_cpu_ms,0.024,-0.079,0.091,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,lat_p999_us,3.5,-33.0,45.5,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,lat_max_us,29.5,-36.0,302.0,0
+cifra (AES-256-GCM em vez de GMAC),K2,K3,clock_offset_ms_max,-1.557,-51.03,31.535,0
+validade temporal,K3,K4,gw_cpu_us_per_msg,0.57,-0.1,1.05,0
+validade temporal,K3,K4,lat_p50_us,2.0,-4.0,7.0,0
+validade temporal,K3,K4,lat_p99_us,-5.0,-10.0,3.5,0
+validade temporal,K3,K4,delivered_msg_s,0.0,0.0,0.0,0
+validade temporal,K3,K4,loss_pct,0.0,0.0,0.0,0
+validade temporal,K3,K4,broker_cpu_pct,-0.15,-0.4,0.0,0
+validade temporal,K3,K4,gw_rss_peak_kb,-8.0,-40.0,16.0,0
+validade temporal,K3,K4,broker_rss_peak_kb,-144.0,-368.0,32.0,0
+validade temporal,K3,K4,bytes_total,0.1,-0.05,0.1,0
+validade temporal,K3,K4,bytes_envelope,0.0,0.0,0.0,0
+validade temporal,K3,K4,bytes_tls_other,0.1,-0.05,0.1,0
+validade temporal,K3,K4,connect_ms_p50,-0.1,-0.19,-0.015,1
+validade temporal,K3,K4,connect_cpu_ms,-0.12,-0.187,-0.024,1
+validade temporal,K3,K4,lat_p999_us,0.5,-37.5,47.5,0
+validade temporal,K3,K4,lat_max_us,5.0,-60.0,891.5,0
+validade temporal,K3,K4,clock_offset_ms_max,-12.602,-46.058,30.202,0
+janela anti-repetição,K3,K5,gw_cpu_us_per_msg,0.235,-0.41,0.86,0
+janela anti-repetição,K3,K5,lat_p50_us,3.0,-4.5,17.0,0
+janela anti-repetição,K3,K5,lat_p99_us,-4.0,-9.5,15.5,0
+janela anti-repetição,K3,K5,delivered_msg_s,0.0,0.0,0.0,0
+janela anti-repetição,K3,K5,loss_pct,0.0,0.0,0.0,0
+janela anti-repetição,K3,K5,broker_cpu_pct,0.0,-0.3,0.1,0
+janela anti-repetição,K3,K5,gw_rss_peak_kb,8.0,-104.0,16.0,0
+janela anti-repetição,K3,K5,broker_rss_peak_kb,-80.0,-224.0,48.0,0
+janela anti-repetição,K3,K5,bytes_total,0.1,-0.05,0.15,0
+janela anti-repetição,K3,K5,bytes_envelope,0.0,0.0,0.0,0
+janela anti-repetição,K3,K5,bytes_tls_other,0.1,-0.05,0.15,0
+janela anti-repetição,K3,K5,connect_ms_p50,-0.045,-0.19,0.08,0
+janela anti-repetição,K3,K5,connect_cpu_ms,-0.05,-0.122,0.075,0
+janela anti-repetição,K3,K5,lat_p999_us,3.0,-42.0,35.5,0
+janela anti-repetição,K3,K5,lat_max_us,13.5,-181.0,578.0,0
+janela anti-repetição,K3,K5,clock_offset_ms_max,8.535,-31.428,34.703,0
+restrição chave–tópico,K6,K7,gw_cpu_us_per_msg,1.3,0.67,1.75,1
+restrição chave–tópico,K6,K7,lat_p50_us,-5.0,-20.0,6.0,0
+restrição chave–tópico,K6,K7,lat_p99_us,-7.5,-36.5,9.5,0
+restrição chave–tópico,K6,K7,delivered_msg_s,0.0,0.0,0.0,0
+restrição chave–tópico,K6,K7,loss_pct,0.0,0.0,0.0,0
+restrição chave–tópico,K6,K7,broker_cpu_pct,-0.05,-0.3,0.05,0
+restrição chave–tópico,K6,K7,gw_rss_peak_kb,56.0,0.0,1528.0,0
+restrição chave–tópico,K6,K7,broker_rss_peak_kb,120.0,-96.0,384.0,0
+restrição chave–tópico,K6,K7,bytes_total,0.05,0.0,0.1,0
+restrição chave–tópico,K6,K7,bytes_envelope,0.0,0.0,0.0,0
+restrição chave–tópico,K6,K7,bytes_tls_other,0.05,0.0,0.1,0
+restrição chave–tópico,K6,K7,connect_ms_p50,0.045,-0.045,0.14,0
+restrição chave–tópico,K6,K7,connect_cpu_ms,0.047,-0.009,0.189,0
+restrição chave–tópico,K6,K7,lat_p999_us,-6.0,-46.5,13.0,0
+restrição chave–tópico,K6,K7,lat_max_us,25.0,-49.0,106.0,0
+restrição chave–tópico,K6,K7,clock_offset_ms_max,50.055,9.337,68.414,1
+limitação de tráfego e limites do broker,K7,K8,gw_cpu_us_per_msg,0.435,-0.13,0.805,0
+limitação de tráfego e limites do broker,K7,K8,lat_p50_us,-0.5,-6.0,3.5,0
+limitação de tráfego e limites do broker,K7,K8,lat_p99_us,1.5,-13.0,16.5,0
+limitação de tráfego e limites do broker,K7,K8,delivered_msg_s,0.0,0.0,0.0,0
+limitação de tráfego e limites do broker,K7,K8,loss_pct,0.0,0.0,0.0,0
+limitação de tráfego e limites do broker,K7,K8,broker_cpu_pct,0.0,-0.1,0.15,0
+limitação de tráfego e limites do broker,K7,K8,gw_rss_peak_kb,-16.0,-56.0,0.0,0
+limitação de tráfego e limites do broker,K7,K8,broker_rss_peak_kb,-72.0,-120.0,96.0,0
+limitação de tráfego e limites do broker,K7,K8,bytes_total,-0.05,-0.1,0.0,0
+limitação de tráfego e limites do broker,K7,K8,bytes_envelope,0.0,0.0,0.0,0
+limitação de tráfego e limites do broker,K7,K8,bytes_tls_other,-0.05,-0.1,0.0,0
+limitação de tráfego e limites do broker,K7,K8,connect_ms_p50,-0.02,-0.065,0.045,0
+limitação de tráfego e limites do broker,K7,K8,connect_cpu_ms,0.019,-0.148,0.088,0
+limitação de tráfego e limites do broker,K7,K8,lat_p999_us,25.0,-18.5,62.0,0
+limitação de tráfego e limites do broker,K7,K8,lat_max_us,-17.5,-111.0,111.5,0
+limitação de tráfego e limites do broker,K7,K8,clock_offset_ms_max,-28.344,-50.296,-3.867,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,gw_cpu_us_per_msg,151.485,150.465,152.28,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,lat_p50_us,200.0,192.5,237.5,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,lat_p99_us,463.5,449.0,499.0,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,delivered_msg_s,0.0,0.0,0.0,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,loss_pct,0.0,0.0,0.0,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,broker_cpu_pct,0.1,-0.25,0.2,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,gw_rss_peak_kb,0.0,-8072.0,40.0,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,broker_rss_peak_kb,-64.0,-488.0,16.0,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,bytes_total,36.05,35.95,36.1,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,bytes_envelope,36.0,36.0,36.0,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,bytes_tls_other,0.05,-0.05,0.1,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,connect_ms_p50,-0.055,-0.15,0.07,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,connect_cpu_ms,-0.032,-0.173,0.125,0
+assinatura Ed25519 em vez de AES-GCM,K8,K9,lat_p999_us,503.0,371.0,624.5,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,lat_max_us,306.0,129.0,3181.5,1
+assinatura Ed25519 em vez de AES-GCM,K8,K9,clock_offset_ms_max,-3.15,-37.978,22.936,0
+TLS com o envelope já ativo,K10,K7,gw_cpu_us_per_msg,5.465,5.25,5.74,1
+TLS com o envelope já ativo,K10,K7,lat_p50_us,28.5,23.5,36.5,1
+TLS com o envelope já ativo,K10,K7,lat_p99_us,36.5,26.5,52.5,1
+TLS com o envelope já ativo,K10,K7,delivered_msg_s,0.0,0.0,0.0,0
+TLS com o envelope já ativo,K10,K7,loss_pct,0.0,0.0,0.0,0
+TLS com o envelope já ativo,K10,K7,broker_cpu_pct,0.5,0.4,0.6,1
+TLS com o envelope já ativo,K10,K7,gw_rss_peak_kb,16.0,0.0,16.0,0
+TLS com o envelope já ativo,K10,K7,broker_rss_peak_kb,4880.0,4768.0,4896.0,1
+TLS com o envelope já ativo,K10,K7,bytes_total,22.1,22.0,22.1,1
+TLS com o envelope já ativo,K10,K7,bytes_envelope,0.0,0.0,0.0,0
+TLS com o envelope já ativo,K10,K7,bytes_tls_other,22.1,22.0,22.1,1
+TLS com o envelope já ativo,K10,K7,connect_ms_p50,5.47,5.415,5.52,1
+TLS com o envelope já ativo,K10,K7,connect_cpu_ms,3.337,3.285,3.471,1
+TLS com o envelope já ativo,K10,K7,lat_p999_us,90.0,72.0,108.0,1
+TLS com o envelope já ativo,K10,K7,lat_max_us,796.5,654.0,869.0,1
+TLS com o envelope já ativo,K10,K7,clock_offset_ms_max,26.008,4.963,44.457,1
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,gw_cpu_us_per_msg,1.525,1.05,2.085,1
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,lat_p50_us,-1.0,-4.0,6.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,lat_p99_us,6.5,-7.5,13.5,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,delivered_msg_s,0.0,0.0,0.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,loss_pct,0.0,0.0,0.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,broker_cpu_pct,0.0,-0.2,0.05,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,gw_rss_peak_kb,0.0,-40.0,40.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,broker_rss_peak_kb,-8.0,-120.0,40.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,bytes_total,-0.05,-0.1,0.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,bytes_envelope,0.0,0.0,0.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,bytes_tls_other,-0.05,-0.1,0.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,connect_ms_p50,-0.02,-0.085,0.06,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,connect_cpu_ms,0.007,-0.074,0.135,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,lat_p999_us,31.0,-34.0,78.5,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,lat_max_us,14.0,-96.5,117.0,0
+ChaCha20-Poly1305 em vez de AES-256-GCM,K8,K11,clock_offset_ms_max,-4.279,-29.165,40.078,0

@@ -1,0 +1,80 @@
+{
+  "started": "2026-11-12T23:37:12+0000",
+  "seed": 20261201,
+  "arguments": {
+    "command": "campaign",
+    "config": null,
+    "set": [
+      [
+        "broker",
+        "host",
+        "0.0.0.0"
+      ],
+      [
+        "broker",
+        "advertise",
+        "192.168.1.170"
+      ],
+      [
+        "cluster",
+        "sensor_agents",
+        "2"
+      ],
+      [
+        "cluster",
+        "attacker_agents",
+        "1"
+      ]
+    ],
+    "preset": null,
+    "gateway": "/home/jafonso/mqtt_secure/mqtt_secure/build/bench/apps/load_gateway/msec_load_gateway",
+    "verbose": false,
+    "state_dir": "/home/jafonso/mqtt_secure/mqtt_secure/build/loadtest/controller",
+    "new_token": false,
+    "capture": null,
+    "capture_iface": null,
+    "keylog": null,
+    "levels": null,
+    "vary": [],
+    "repetitions": 10,
+    "seed": 20261201,
+    "settle": 3.0,
+    "duration": 30.0,
+    "connect_test": 5,
+    "attacks": false,
+    "attack_repetitions": 1,
+    "attack_duration": 6,
+    "saturate": "10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600",
+    "saturation_repetitions": 3,
+    "saturation_duration": 15,
+    "params": "/home/jafonso/mqtt_secure/mqtt_secure/tools/analysis/params.toml",
+    "out": "results/pi5-20261113"
+  },
+  "params_sha256": "700500932d4cc2b762303f1d40c68f718c66871efd9f55b871a3c3f12f64c21f",
+  "git": {
+    "commit": "79c4878ea443ba4c33c5ab1b4d1adb77ab76b561",
+    "dirty": false,
+    "describe": "79c4878"
+  },
+  "gateway_binary": "/home/jafonso/mqtt_secure/mqtt_secure/build/bench/apps/load_gateway/msec_load_gateway",
+  "gateway_sha256": "86f395dd0273627174c6488a6884616842bf8e39d8589a09031441928141a0e0",
+  "platform": {
+    "cpu": "Raspberry Pi 5 Model B Rev 1.1",
+    "cpus": 4,
+    "mem_total_kb": 8255680,
+    "kernel": "6.18.60+rpt-rpi-2712",
+    "machine": "aarch64",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "hostname": "raspi-iot",
+    "governor": "performance"
+  },
+  "software": {
+    "openssl": "OpenSSL 3.5.9 29 Sep 2026 (Library: OpenSSL 3.5.9 29 Sep 2026)",
+    "mosquitto": "mosquitto version 2.0.21",
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0 (RelWithDebInfo)",
+    "python": "3.13.5"
+  },
+  "env": {},
+  "finished": "2026-11-13T02:57:16+0000",
+  "runs_completed": 120
+}

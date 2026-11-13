@@ -1,15 +1,59 @@
 \section{Conclusões}
 \label{sec:conclusoes}
 
-\PorFazer{Responder a cada pergunta numa ou duas frases, com números:
-QP1 (custo de cada camada), QP2 (o que cada camada impede), QP3 (tamanho e
-saturação), QP4 (aceleração por \emph{hardware}), QP5 (configuração recomendada por
-caso de uso).}
+As medições no Raspberry~Pi~5 respondem às cinco perguntas da Parte~1:
 
-\PorFazer{O que o trabalho acrescenta à lacuna L5 da Parte~1 (falta de medições do
-custo e do benefício de cada camada, isoladamente e em combinação, em
-\emph{hardware} restrito).}
+\begin{enumerate}[label=\textbf{QP\arabic*.}, leftmargin=*]
+  \item \textbf{Custo de cada camada.} À carga nominal, o transporte (mTLS,
+    autenticação e ACL) custa 7,9~$\mu$s de processador por mensagem e o envelope
+    AES-GCM 7,2~$\mu$s; a validade, a anti-repetição, a restrição chave--tópico e
+    a limitação de tráfego custam, juntas, menos de 3~$\mu$s. A configuração
+    recomendada para a telemetria (K8) gasta 41~$\mu$s por mensagem, contra
+    24~$\mu$s sem proteção, com p99 de 262~$\mu$s. As assinaturas Ed25519 custam
+    mais 151~$\mu$s por mensagem.
+  \item \textbf{O que cada camada impede.} O transporte e o envelope impedem, cada
+    um por si, quase todos os ataques de um estranho ($S = 0{,}64$ cada), mas
+    ataques diferentes: só o envelope protege perante o \emph{broker}, só o
+    transporte impede a usurpação de identidades. Os ataques de um dispositivo
+    comprometido no seu próprio tópico só são impedidos pela combinação da
+    política de modo, da validade temporal (a janela sozinha não chega) e da
+    limitação de tráfego. K8, K9 e K11 impedem os treze ataques da matriz.
+  \item \textbf{Tamanho e saturação.} Até alguns KiB, o custo do envelope é
+    dominado pela parte fixa (5,6~$\mu$s a 16~B, 13~$\mu$s a 4~KiB). O débito
+    máximo é limitado pelo processador do \emph{gateway}: 60\,000~mensagens/s sem
+    proteção, 30\,000 com K8 e 5\,000 com assinaturas, o que deixa K9 abaixo dos
+    10\,000~mensagens/s da telemetria.
+  \item \textbf{Aceleração por \emph{hardware}.} Com as extensões ARMv8, o AES-GCM
+    é o mais barato em todos os tamanhos; sem elas, fica sete vezes mais caro a
+    4~KiB e o ChaCha20-Poly1305, que só usa NEON, passa a custar quatro vezes
+    menos.
+  \item \textbf{Configuração recomendada.} K8 para a telemetria, sensível ou não
+    (K11 num processador sem AES em \emph{hardware}), e K9 para as ordens a
+    atuadores, a única com prova de origem. A recomendação da Parte~1 confirma-se
+    e não muda com outros pesos de custo ou de ataque.
+\end{enumerate}
 
-\PorFazer{Trabalho futuro: cifra seguida de assinatura; distribuição de chaves;
-medição no emissor em \emph{hardware} restrito; \emph{broker} ativo com TLS;
-energia.}
+Das cinco hipóteses, três confirmam-se (H1, com uma ressalva quanto ao débito; H2;
+H3). H4 é refutada: em ligações MQTT duradouras, o custo do TLS está em cada
+mensagem, tanto como o do envelope, e não na negociação. H5 não se confirma: com
+AES em \emph{hardware}, a limitação antes da criptografia não poupa processador
+mensurável ao \emph{gateway}.
+
+\paragraph{Contributo para a lacuna L5.} A Parte~1 identificou a falta de medições
+do custo e do benefício de cada camada, isoladamente e em combinação, em
+\emph{hardware} restrito. Este trabalho mede-as num Raspberry~Pi~5, com doze
+configurações que só diferem numa camada de cada vez, 120 execuções de custo, uma
+subida de carga por configuração, 468 ataques e 39 cenários com controlo negativo,
+todos guardados com o ambiente e reprodutíveis por um só comando. Os resultados
+mostram que as camadas baratas (validade, anti-repetição, ligação ao tópico,
+limitação) são as que fecham os ataques de um dispositivo comprometido, e que o
+custo de as ter todas sobre o transporte e o envelope é de cerca de 2~$\mu$s por
+mensagem.
+
+\paragraph{Trabalho futuro.} Cifra seguida de assinatura, para dar
+confidencialidade e prova de origem ao mesmo tempo; distribuição e armazenamento
+de chaves fora do laboratório; medição do custo no emissor num dispositivo
+restrito real (microcontrolador); um \emph{broker} ativo que termine TLS; uma
+configuração com assinaturas e sem limitação, para medir H5 onde a verificação é
+cara; a origem do salto de latência registado a 400~mensagens/s por
+sensor; e a energia.

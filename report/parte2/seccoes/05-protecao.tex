@@ -3,32 +3,149 @@
 
 \subsection{Ataques impedidos por configuração (QP2)}
 
-\PorFazer{Tabela $\pi_a(c)$: configurações em linhas, ataques em colunas, a partir
-de \texttt{gerado/pi5/protection.csv}, com $S(c)$ na última coluna. Indicar o
-número de repetições e os casos em que as repetições não concordaram.}
+A Tabela~\ref{tab:protecao} dá $\pi_a(c)$ para os treze ataques da matriz e as
+doze configurações, cada célula decidida por maioria de três repetições, e
+$S(c)$ com os pesos da Secção~\ref{sec:parametros}. As três repetições
+concordaram em todas as 156 células.
 
-\PorFazer{Leitura: o que K1 já impede (tudo o que exige chegar ao \emph{broker});
-o que só o envelope impede (K10 sem TLS, \emph{broker} ativo); o que só a
-combinação impede (mensagem antiga nunca recebida: validade; repetição: janela);
-o que só K8 e seguintes impedem (inundação, ocupação de ligações).}
+\gerado{pi5/protection}
+
+A leitura por camadas é a seguinte:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{O transporte (K1) impede tudo o que exige chegar ao \emph{broker}
+    sem credenciais}: escuta na rede e no \emph{broker}, injeção, adulteração e
+    republicação no caminho, repetição por um estranho e usurpação da identidade
+    do \emph{gateway}. Pela ACL, impede também que um dispositivo comprometido
+    publique no tópico de outro (A6) ou forje ordens para outro atuador (A10).
+    Não impede o que um dispositivo comprometido faz no seu próprio tópico:
+    mensagens antigas (A8), despromoção do modo (A9), inundação (A12), nem a
+    ocupação de ligações (A13). $S = 0{,}64$.
+  \item \textbf{O envelope sozinho (K10)}, sem TLS nem ACL, impede quase o mesmo
+    por outro caminho: o conteúdo é ilegível e a autenticação, o tópico nos dados
+    associados, a restrição chave--tópico, a validade e a janela tornam inúteis as
+    mensagens forjadas, alteradas, republicadas ou repetidas, mesmo quando
+    chegam ao \emph{gateway}. Por não ter ACL nem autenticação no \emph{broker},
+    não impede a usurpação do \emph{gateway} (A11) nem a falsificação de ordens
+    por um atuador, que tem a chave partilhada (A10). $S = 0{,}64$, o mesmo valor
+    que K1, com ataques diferentes.
+  \item \textbf{Só a combinação impede os ataques de um dispositivo comprometido no
+    seu próprio tópico.} A política de modo do recetor (a partir de K3) impede a
+    despromoção para autenticação sem cifra. A validade temporal (K4, K6 e
+    seguintes) impede a mensagem antiga nunca recebida, que a janela
+    anti-repetição sozinha (K5) aceita, porque os seus números de sequência são
+    novos: K5 tem por isso menos proteção do que K4 (0,73 contra 0,82).
+  \item \textbf{Só K8 e seguintes impedem a inundação e a ocupação de ligações}:
+    a limitação de tráfego descarta cerca de 1\,560 das 1\,810 mensagens da
+    inundação antes da criptografia, e o limite de ligações do \emph{broker} deixa
+    o atacante com 15 ligações em vez das 200 que tenta reter.
+\end{itemize}
+
+K8, K9 e K11 impedem todos os ataques da matriz ($S = 1$). K9 não acrescenta
+nada a K8 na matriz: a prova de origem que a assinatura dá só se vê quando o
+\emph{broker} não aplica a ACL, o que a matriz não mede
+(Secção~\ref{sec:observacoes}).
 
 \subsection{Cada ataque contra a sua defesa, com controlo negativo}
 
-\PorFazer{Tabela dos cenários (\texttt{results/<campanha>/scenarios.md}): ataque,
-defesa, previsão, resultado e evidência, com o controlo negativo ao lado. Esta
-tabela confirma ou refuta, linha a linha, a tabela de ataques da Parte~1.}
+A Tabela~\ref{tab:cenarios} resume os cenários: cada linha isola uma defesa sobre
+uma base aberta e mostra o mesmo ataque sem ela (controlo) e com ela. Os 39
+cenários deram o resultado previsto no Raspberry~Pi, na mesma campanha.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{4.2cm}@{}}
+  \caption{Cenários: cada ataque contra a defesa que o deve impedir, com controlo
+    negativo (Raspberry~Pi~5; 6~s por cenário, cerca de 120 mensagens de ataque).}
+  \label{tab:cenarios}\\
+  \toprule
+  \textbf{Ataque} & \textbf{Defesa isolada} & \textbf{Sem a defesa} &
+    \textbf{Com a defesa} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Ataque} & \textbf{Defesa isolada} & \textbf{Sem a defesa} &
+    \textbf{Com a defesa} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endfoot
+  \footnotesize Subscrever \texttt{\#} & \footnotesize ACL, zona restrita &
+    \footnotesize 100\,\% das leituras & \footnotesize 0\,\%, tráfego legítimo
+    intacto \\
+  \footnotesize Escutar a ligação do \emph{gateway} & \footnotesize TLS &
+    \footnotesize 100\,\% legível & \footnotesize nada legível na ligação, mas um
+    subscritor de \texttt{\#} lê tudo \\
+  \footnotesize Subscrever \texttt{\#} e escutar & \footnotesize envelope em modo
+    de cifra, sem TLS & \footnotesize -- & \footnotesize 100\,\% das mensagens
+    recebidas, 0\,\% legíveis \\
+  \footnotesize Usurpar \texttt{gateway} & \footnotesize autenticação por
+    palavra-passe & \footnotesize ligado como \texttt{gateway}, lê tudo &
+    \footnotesize recusado pelo \emph{broker} \\
+  \footnotesize Injetar leituras & \footnotesize GMAC; Ed25519; ChaCha20 &
+    \footnotesize 121 aceites & \footnotesize 0 aceites em cada modo \\
+  \footnotesize Republicar noutro tópico & \footnotesize tópico nos dados
+    associados & \footnotesize 117 de 121 aceites & \footnotesize 0; 121 falham a
+    autenticação \\
+  \footnotesize Chave roubada noutro tópico & \footnotesize restrição
+    chave--tópico; ACL & \footnotesize 120 de 121 aceites & \footnotesize 0 (121
+    \texttt{PermissionDenied}); 0 com ACL \\
+  \footnotesize Mensagem antiga nunca vista & \footnotesize validade
+    ($\Delta_a = 60$~s) & \footnotesize 120 aceites (só a janela) &
+    \footnotesize 0 (120 \texttt{MessageExpired}) \\
+  \footnotesize Despromover o modo & \footnotesize modo nos dados associados;
+    política do recetor & \footnotesize 120 aceites (política aceita os dois) &
+    \footnotesize 0 em ambos \\
+  \footnotesize Atuador forja ordens & \footnotesize assinatura & \footnotesize
+    116 de 121 aceites (chave AES partilhada) & \footnotesize 0; as ordens
+    verdadeiras continuam aceites \\
+  \footnotesize Repetir mensagens & \footnotesize janela anti-repetição &
+    \footnotesize 120 aceites (só cifra; e com validade de 60~s) & \footnotesize 0
+    (120 \texttt{ReplayDetected}) \\
+  \footnotesize Inundar o próprio tópico & \footnotesize limite de 30~msg/s por
+    tópico & \footnotesize -- & \footnotesize 902 descartadas antes da
+    criptografia; recuperação em 0,8~s \\
+  \footnotesize Reter 300 ligações & \footnotesize limite de ligações &
+    \footnotesize 300 retidas & \footnotesize 14 retidas, sensores ligados, novos
+    clientes recusados; recuperação em 0,7~s \\
+  \footnotesize \emph{Broker} altera ou redireciona & \footnotesize envelope &
+    \footnotesize 3\,013 alteradas, 0 rejeitadas & \footnotesize cerca de 3\,010
+    rejeitadas em cada caso \\
+  \footnotesize \emph{Broker} atrasa 2~s & \footnotesize validade
+    ($\Delta_a = 60$~s) & \footnotesize -- & \footnotesize não impedido: 0
+    rejeitadas, p99 de 2,0~s \\
+  \footnotesize \emph{Broker} suprime metade & \footnotesize envelope &
+    \footnotesize -- & \footnotesize não impedido: 50\,\% de perda, sem rejeição \\
+\end{longtable}
+
+A tabela confirma, linha a linha, a tabela de ataques da Parte~1, incluindo as
+duas linhas que ela dava como não impedidas: o atraso abaixo de $\Delta_a$ e a
+supressão por um \emph{broker} ativo. Os restantes cenários verificam que as
+defesas não estragam o tráfego legítimo: as ordens do \emph{gateway} protegidas
+fim-a-fim (120 de 121 aceites, nenhuma rejeitada), TLS~1.3 com MQTT~5, todas as
+defesas ao mesmo tempo, a rotação e a revogação (Secção~\ref{sec:validacao}).
 
 \subsection{Observações}
 \label{sec:observacoes}
 
-Os ensaios mostraram efeitos que a tabela de ataques da Parte~1 não previa.
-\PorFazer{Confirmar cada um com os dados do Raspberry~Pi e quantificar.}
+Os ensaios mostraram efeitos que a tabela de ataques da Parte~1 não previa. Os
+dois primeiros foram medidos na campanha; os três seguintes foram observados
+durante o desenvolvimento e são evitados pelo desenho dos ensaios
+(Secção~\ref{sec:desvios}).
 
 \begin{itemize}[leftmargin=*]
+  \item \textbf{Falsificação pelo recetor num \emph{broker} legítimo.} A ACL já
+    impede um atuador de publicar nos tópicos de ordens dos outros: na matriz,
+    K1 a K8 impedem este ataque tal como K9. A diferença entre a chave partilhada
+    e a assinatura só se observa sem ACL (116 de 121 ordens forjadas aceites com
+    AES, nenhuma com Ed25519) ou com um \emph{broker} ativo.
+  \item \textbf{Atraso e supressão.} Um \emph{broker} ativo que atrase mensagens
+    2~s (menos do que $\Delta_a$) ou que suprima metade delas não é detetado pelo
+    recetor: só se vê como latência ou como perda.
   \item \textbf{Ocupação de ligações.} O limite de ligações protege os recursos do
     \emph{broker} e mantém os clientes já ligados, mas o atacante ocupa as vagas
-    livres; se o \emph{broker} reiniciar durante o ataque, o atacante pode ficar
-    com todas as vagas e nenhum sensor volta a ligar-se.
+    livres e os clientes novos são recusados enquanto o ataque dura. Se o
+    \emph{broker} reiniciar durante o ataque, o atacante pode ficar com todas as
+    vagas e nenhum sensor volta a ligar-se; por isso, no cenário, o limite está em
+    vigor antes do ataque.
   \item \textbf{Chave roubada e janela da vítima.} As mensagens aceites com uma
     chave roubada avançam a janela anti-repetição dessa chave; o tráfego legítimo
     do dispositivo passa a ser rejeitado até à rotação de chaves.
@@ -36,10 +153,4 @@ Os ensaios mostraram efeitos que a tabela de ataques da Parte~1 não previa.
     identidade de um dispositivo que continua ligado, o \emph{broker} entrega-lhe
     a sessão e desliga o legítimo; os dois alternam enquanto o ataque dura, o que
     é uma negação de serviço da vítima.
-  \item \textbf{Falsificação pelo recetor num \emph{broker} legítimo.} A ACL já
-    impede um atuador de publicar nos tópicos de ordens dos outros; a diferença
-    entre a chave partilhada e a assinatura só se observa sem ACL ou com um
-    \emph{broker} ativo.
-  \item \textbf{Atraso e supressão.} Um \emph{broker} ativo que atrase mensagens
-    menos do que $\Delta_a$, ou que as suprima, não é detetado pelo recetor.
 \end{itemize}

@@ -13,36 +13,145 @@ mediana e o intervalo de confiança de cada métrica no Raspberry~Pi~5.
 \figuraGerada{pi5/fig-p99}{Latência p99 por configuração (mediana e IC
   95\,\%).}{fig:p99}
 
-\PorFazer{Leitura: que configurações se distinguem e quais ficam dentro do ruído;
-ordem de grandeza do custo do transporte e do envelope.}
+A 1\,000~mensagens/s, as configurações formam quatro grupos
+(Figuras~\ref{fig:cpu} e~\ref{fig:p99}). K0, sem proteção, gasta
+24,0~$\mu$s de processador do \emph{gateway} por mensagem, com latência p50 de
+122~$\mu$s e p99 de 173~$\mu$s. O transporte sozinho (K1) e o envelope sozinho
+(K10) ficam a meio: 31,9 e 35,2~$\mu$s, p99 de 220 e 224~$\mu$s. As
+configurações com transporte e envelope AES-GCM (K2 a K8 e K11) formam um só
+grupo, entre 39,1 e 42,6~$\mu$s e com p99 entre 257 e 269~$\mu$s; dentro dele,
+as diferenças são de 1 a 3~$\mu$s e quase todas cabem no ruído. K9, com
+assinaturas Ed25519, está isolada: 192,6~$\mu$s por mensagem, oito vezes K0, e p99
+de 726~$\mu$s. Mesmo em K9, a latência continua abaixo de 1~ms, cinquenta vezes
+menos do que $L_{\max}$; à carga nominal, o custo de todas as configurações é
+pequeno em termos absolutos, e o que as separa é o débito máximo
+(Secção~\ref{sec:saturacao}).
 
 \subsection{Custo marginal de cada camada}
 
 \gerado{pi5/marginal}
 
-\PorFazer{Comentar a Tabela~\ref{tab:marginal} camada a camada. Interações
-(\texttt{interaction.csv}): a validade e a anti-repetição custam o mesmo juntas e
-separadas? O TLS custa o mesmo com e sem envelope?}
+A Tabela~\ref{tab:marginal} dá o custo de cada camada isolada:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Transporte} (K0$\to$K1): +7,9~$\mu$s por mensagem e +47~$\mu$s
+    no p99, mais 22~octetos por mensagem na ligação do \emph{gateway} e 4,8~MB de
+    memória no \emph{broker}.
+  \item \textbf{Envelope} (K1$\to$K2): +7,3~$\mu$s e +41~$\mu$s no p99, quase
+    tanto como o TLS, e 53~octetos por mensagem. Passar de GMAC a AES-256-GCM
+    (K2$\to$K3) não custa nada mensurável ($-0{,}1$~$\mu$s, IC $[-0{,}5; 0{,}5]$):
+    com AES em \emph{hardware}, cifrar 16~octetos é desprezável face ao resto do
+    envelope (análise, procura da chave, verificações).
+  \item \textbf{Validade temporal} (K3$\to$K4) e \textbf{anti-repetição}
+    (K3$\to$K5): diferenças de 0,6 e 0,2~$\mu$s, com intervalos que incluem zero.
+  \item \textbf{Restrição chave--tópico} (K6$\to$K7): +1,3~$\mu$s
+    (IC $[0{,}7; 1{,}8]$), a única verificação barata que se distingue do ruído.
+  \item \textbf{Limitação de tráfego e limites do \emph{broker}} (K7$\to$K8):
+    +0,4~$\mu$s, dentro do ruído.
+  \item \textbf{Assinatura em vez de AES-GCM} (K8$\to$K9): +151,5~$\mu$s por
+    mensagem, +464~$\mu$s no p99 e +36~octetos (89 em vez de 53).
+  \item \textbf{ChaCha20-Poly1305 em vez de AES-256-GCM} (K8$\to$K11): +1,5~$\mu$s,
+    num processador com AES em \emph{hardware} (Secção~\ref{sec:aceleracao}).
+\end{itemize}
+
+\paragraph{Interações.} A validade e a anti-repetição custam o mesmo juntas e
+separadas: a diferença das diferenças é de $-0{,}5$~$\mu$s, IC $[-1{,}3; 0{,}4]$.
+O TLS custa menos com o envelope ativo do que sem ele (5,5 contra 7,9~$\mu$s, uma
+interação de $-2{,}4$~$\mu$s, IC $[-2{,}9; -2{,}0]$); a causa não foi
+investigada. Para a latência, nenhuma das interações se distingue do ruído.
 
 \subsection{Tamanho da mensagem e saturação (QP3)}
+\label{sec:saturacao}
 
-\PorFazer{Custo em função do tamanho: nível~1 (Tabela~\ref{tab:microbench}) e, se
-medido, nível~2 com \texttt{--vary load.payload}. Débito máximo sustentado por
-configuração (\texttt{saturation.csv}): tabela ou figura, e o que limita primeiro
-(processador do \emph{gateway}, do \emph{broker} ou a rede).}
+\paragraph{Tamanho.} No nível~1 (Tabela~\ref{tab:microbench}), sem rede, o custo de
+K0 quase não depende do tamanho (0,8~$\mu$s a 16~B, 7,1~$\mu$s a 64~KiB). Com AES
+em \emph{hardware}, o envelope AES-GCM (K3) custa 5,6~$\mu$s a 16~B, 6,0 a 256~B,
+13,0 a 4~KiB e 118~$\mu$s a 64~KiB: até alguns KiB, domina a parte fixa do
+envelope, e só acima disso o custo passa a crescer com o tamanho. A assinatura
+(K9) é dominada pela parte fixa em toda a gama (266~$\mu$s a 16~B, 301~$\mu$s a
+4~KiB, 820~$\mu$s a 64~KiB). No nível~1 cada mensagem é selada e aberta, pelo que
+estes valores incluem o emissor e o recetor; no nível~2 o \emph{gateway} só
+verifica, e a diferença K8$\to$K9 é de 151~$\mu$s. O tamanho não foi variado no
+nível~2.
+
+\paragraph{Saturação.} A Tabela~\ref{tab:saturacao} dá o débito máximo sustentado
+(perda inferior a 1\,\% e p99 até $L_{\max}$) e o processador no último patamar
+sustentado. Em todas as configurações, o que limita primeiro é o processador do
+\emph{gateway}: no patamar seguinte, o seu processo chega a 93--100\,\% de um núcleo
+(a cadeia de camadas corre numa só linha de execução), enquanto o \emph{broker}
+fica entre 15 e 80\,\%. K0 sustenta 60\,000~mensagens/s, o transporte desce para
+40\,000, as configurações com envelope AES ficam entre 25\,000 e 35\,000 e K9 fica
+em 5\,000~mensagens/s, metade de $R_{\text{alvo}}$ da telemetria. Os patamares são
+discretos (passos de 5\,000~mensagens/s entre 400 e 800 por sensor): uma
+diferença de um patamar entre K3 e K8 está dentro da resolução da subida. K6, K7
+e K10 sustentaram 30\,000~mensagens/s numa das três subidas e falharam nas
+outras duas, com p99 de 120 a 520~ms; a mediana fica no patamar anterior.
+
+\begin{table}[ht]
+  \centering
+  \caption{Débito máximo sustentado no Raspberry~Pi~5 (mediana das três subidas)
+    e processador do \emph{gateway} e do \emph{broker} no último patamar
+    sustentado.}
+  \label{tab:saturacao}
+  \footnotesize
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    \textbf{Config.} & \textbf{Débito (msg/s)} & \textbf{\emph{Gateway} (\%)} &
+      \textbf{\emph{Broker} (\%)} \\
+    \midrule
+    K0  & 60\,000 & 95 & 56 \\
+    K1  & 40\,000 & 93 & 72 \\
+    K2  & 35\,000 & 96 & 61 \\
+    K3, K4, K5 & 30\,000 & 84--87 & 55--57 \\
+    K6, K7 & 25\,000 & 74--76 & 44--48 \\
+    K8  & 30\,000 & 89 & 55 \\
+    K9  & 5\,000  & 93 & 14 \\
+    K10 & 25\,000 & 70 & 45 \\
+    K11 & 30\,000 & 92 & 57 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A partir de 400~mensagens/s por sensor (20\,000~mensagens/s), a latência sobe de
+forma brusca em todas as configurações, incluindo K0: o p99 passa de 0,2--0,6~ms
+para 20--35~ms e depois volta a descer com a carga, sem perda. Isto acontece com o
+\emph{gateway} a 40\,\% (K0) ou a 63\,\% (K8) de processador, e K9 satura antes de
+lá chegar. O efeito foi registado, mas a sua origem não foi determinada
+(Secção~\ref{sec:ameacas}). Fica abaixo de $L_{\max}$ e acima de
+$R_{\text{alvo}}$ (200~mensagens/s por sensor), pelo que não muda nenhum veredicto.
 
 \subsection{Aceleração criptográfica por \emph{hardware} (QP4)}
+\label{sec:aceleracao}
 
 \gerado{pi5/microbench}
 
-\PorFazer{AES-GCM e ChaCha20-Poly1305 com a aceleração ligada, com
-\texttt{OPENSSL\_armcap=1} (só NEON) e com \texttt{OPENSSL\_armcap=0}; K8 contra
-K11 no nível~2. Em que condições o ChaCha20 compensa.}
+O Cortex-A76 do Raspberry~Pi~5 tem as extensões criptográficas ARMv8, e o
+OpenSSL usa-as para o AES e o GHASH. Sem elas, só com NEON
+(\texttt{OPENSSL\_armcap=1}), o envelope AES-GCM (K3) passa de 5,6 para 7,5~$\mu$s
+a 16~B, de 6,0 para 12,4 a 256~B e de 13,0 para 88~$\mu$s a 4~KiB, sete vezes
+mais. O ChaCha20-Poly1305 (K11) quase não depende das extensões (6,9 a 7,6~$\mu$s
+a 16~B; 21,7 a 22,4~$\mu$s a 4~KiB), porque usa NEON; só sem NEON
+(\texttt{OPENSSL\_armcap=0}) chega a 38~$\mu$s a 4~KiB.
+
+Daqui resulta a regra de escolha da Parte~1, agora com números. Com AES em
+\emph{hardware}, o AES-GCM é o mais barato em todos os tamanhos (13,0 contra
+21,7~$\mu$s a 4~KiB), e no nível~2 K11 custa mais 1,5~$\mu$s por mensagem do que
+K8. Sem AES em \emph{hardware}, o ChaCha20 compensa a partir de algumas centenas
+de octetos: a 256~B já custa 8,7 contra 12,4~$\mu$s, e a 4~KiB custa quatro vezes
+menos. A 16~B, a diferença é inferior a 0,1~$\mu$s e quem decide é o resto da
+cadeia. A assinatura não muda com as extensões, porque o Ed25519 não as usa.
 
 \subsection{Octetos e memória}
 
-\PorFazer{Octetos por mensagem: confirmar os 53 e 89 octetos do envelope e quanto
-acrescenta o TLS por mensagem. Memória do \emph{gateway} e do \emph{broker}.}
+O envelope acrescenta 53~octetos por mensagem com AES-GCM ou ChaCha20-Poly1305 e
+89 com Ed25519, exatamente o que o formato prevê; com o conteúdo de 16~octetos
+usado na campanha, a mensagem na ligação do \emph{gateway} passa de 102 octetos
+(K0) para 178 (K2 a K8, K11) e 214 (K9). O TLS acrescenta 22~octetos por
+mensagem, a que se soma a negociação de cada ligação, que custa 4,2~ms de
+processador no \emph{gateway} com autenticação mútua, contra 0,8~ms sem TLS. A
+memória do \emph{gateway} é a mesma em todas as configurações (cerca de 39~MB, um
+majorante, Secção~\ref{sec:ameacas}); a do \emph{broker} passa de 7,5~MB sem TLS
+para cerca de 12,3~MB com TLS, e não muda com as restantes camadas.
 
 \subsection{Plataforma de referência}
 

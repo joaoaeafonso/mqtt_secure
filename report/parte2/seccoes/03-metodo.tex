@@ -23,21 +23,23 @@ alheios ao ensaio (incluindo o Docker) estavam parados durante a campanha.
     \midrule
     Processador & Raspberry~Pi~5 Model~B rev.~1.1 (4 núcleos Cortex-A76,
       2,4~GHz) & AMD Ryzen~7 3700X (8 núcleos) \\
-    Memória & \PorFazer{RAM do Pi (\texttt{manifest.json})} & 32~GB \\
+    Memória & 8~GB & 32~GB \\
     Armazenamento & SSD NVMe de 256~GB & -- \\
-    Sistema & Debian (Raspberry~Pi), \emph{kernel} 6.18.60 (aarch64) &
+    Sistema & Debian~13 (Raspberry~Pi OS), \emph{kernel} 6.18.60 (aarch64) &
       Ubuntu 24.04.5, \emph{kernel} 7.0.0 \\
     Alimentação e arrefecimento & Fonte oficial de 27~W; arrefecimento ativo
       oficial & -- \\
     Rede & Ethernet 1~Gb/s & Ethernet 1~Gb/s \\
     \emph{Software} & GCC 14.2.0, CMake 3.31.6, Mosquitto 2.0.21, Python 3.13.5,
-      OpenSSL \PorFazer{versão (\texttt{manifest.json})} & Python 3.12.3 \\
+      OpenSSL 3.5.9 & Python 3.12.3 \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
-O código medido é o do \emph{commit} \PorFazer{\texttt{manifest.json}}, o mesmo nas
-duas máquinas: o controlador recusa agentes de outra versão.
+O código medido é o do \emph{commit} \texttt{79c4878}, o mesmo nas duas máquinas: o
+controlador recusa agentes de outra versão. A campanha correu de 12 para 13 de
+novembro de 2026 (4~h~55~min, sem intervenção), com o ambiente gráfico do
+Raspberry~Pi desligado.
 
 \paragraph{Relógios.} A latência é medida entre máquinas: o sensor escreve na
 mensagem o instante de envio e o \emph{gateway} subtrai-o do instante de entrega.
@@ -99,8 +101,8 @@ A Tabela~\ref{tab:medidas} indica como cada métrica do plano foi medida.
   \end{tabularx}
 \end{table}
 
-A energia, opcional no plano, não foi medida. \PorFazer{Confirmar, ou descrever o
-medidor se vier a ser usado.}
+A energia, opcional no plano, não foi medida: não havia um medidor de potência
+entre a fonte e o Raspberry~Pi.
 
 \subsection{Ataques}
 
@@ -217,6 +219,26 @@ resumo criptográfico fica no registo do ambiente.
     dos relógios passou a corrigir a deriva e a subida de carga passou a esperar
     pelo escoamento das mensagens retidas (Secção~\ref{sec:metodo}, Procedimento).
     Não muda o que se mede, só a sua exatidão.
-  \item \PorFazer{Outros desvios que surjam na campanha (repetições a mais,
-    execuções repetidas, energia).}
+  \item \textbf{Campanhas repetidas.} A campanha completa correu três vezes no
+    mesmo Raspberry~Pi, e só a terceira é usada. A primeira não fez a subida de
+    carga (um defeito no \emph{script} de automação descartava os argumentos
+    dela) e mostrou um veredicto instável na ocupação de ligações, que vinha da
+    forma de contar as ligações retidas (contavam-se também as acabadas de abrir,
+    que o \emph{broker} ainda não tinha fechado). A segunda revelou que, com os
+    sensores noutra máquina, o atacante interno não recebia o certificado do
+    dispositivo comprometido: a chave privada de cada sensor é gerada no agente e
+    nunca sai dele, pelo que, com autenticação mútua, o atacante não chegava a
+    ligar-se e os ataques internos contavam como impedidos. O laboratório passou a
+    emitir ao atacante um certificado com o mesmo nome, da mesma autoridade (para
+    o \emph{broker}, a mesma identidade), revogado com o dispositivo. Corrigidos
+    os três defeitos, com testes, a campanha foi repetida por inteiro, para que
+    todos os resultados venham do mesmo código. As medições de custo das três
+    campanhas coincidem dentro do ruído; os veredictos da matriz de ataques das
+    duas primeiras não são válidos e não são usados.
+  \item \textbf{Calibração com a subida de carga.} A calibração de $\Delta_a$
+    usa as execuções de custo e só os patamares da subida de carga que a
+    configuração sustenta (perda inferior a 1\,\% e p99 dentro de $L_{\max}$):
+    num patamar em sobrecarga, a latência de segundos é fila de espera, não
+    entrega legítima.
+  \item \textbf{Energia.} Não foi medida (ver acima).
 \end{itemize}
