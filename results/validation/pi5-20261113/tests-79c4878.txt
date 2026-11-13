@@ -1,0 +1,196 @@
+Test project /home/jafonso/mqtt_secure/mqtt_secure/build/dev
+      Start  1: Topic.AcceptsValidNames
+ 1/93 Test  #1: Topic.AcceptsValidNames ................................................   Passed    0.02 sec
+      Start  2: Topic.RejectsInvalidNames
+ 2/93 Test  #2: Topic.RejectsInvalidNames ..............................................   Passed    0.01 sec
+      Start  3: SecureBuffer.MoveTransfersOwnership
+ 3/93 Test  #3: SecureBuffer.MoveTransfersOwnership ....................................   Passed    0.02 sec
+      Start  4: SecureZero.ZeroesMemory
+ 4/93 Test  #4: SecureZero.ZeroesMemory ................................................   Passed    0.03 sec
+      Start  5: Pipeline.OutboundTopDownInboundBottomUp
+ 5/93 Test  #5: Pipeline.OutboundTopDownInboundBottomUp ................................   Passed    0.02 sec
+      Start  6: Pipeline.FailureStopsProcessingAndNamesLayer
+ 6/93 Test  #6: Pipeline.FailureStopsProcessingAndNamesLayer ...........................   Passed    0.01 sec
+      Start  7: Pipeline.RejectsNullAndDuplicateLayers
+ 7/93 Test  #7: Pipeline.RejectsNullAndDuplicateLayers .................................   Passed    0.03 sec
+      Start  8: SwitchableLayer.PassesThroughWhileDisabled
+ 8/93 Test  #8: SwitchableLayer.PassesThroughWhileDisabled .............................   Passed    0.02 sec
+      Start  9: SwitchableLayer.RenamesSoTheSameLayerCanAppearTwice
+ 9/93 Test  #9: SwitchableLayer.RenamesSoTheSameLayerCanAppearTwice ....................   Passed    0.01 sec
+      Start 10: TopicFilter.Matching
+10/93 Test #10: TopicFilter.Matching ...................................................   Passed    0.03 sec
+      Start 11: TopicFilter.Validation
+11/93 Test #11: TopicFilter.Validation .................................................   Passed    0.02 sec
+      Start 12: Loopback.RoutesToMatchingSubscribersOnly
+12/93 Test #12: Loopback.RoutesToMatchingSubscribersOnly ...............................   Passed    0.02 sec
+      Start 13: Loopback.AclBlocksUnauthorizedPublish
+13/93 Test #13: Loopback.AclBlocksUnauthorizedPublish ..................................   Passed    0.03 sec
+      Start 14: Loopback.WildcardSubscriberOnlyReceivesReadableTopics
+14/93 Test #14: Loopback.WildcardSubscriberOnlyReceivesReadableTopics ..................   Passed    0.02 sec
+      Start 15: Loopback.PublishRequiresConnection
+15/93 Test #15: Loopback.PublishRequiresConnection .....................................   Passed    0.02 sec
+      Start 16: AccessControl.DeniesByDefaultAndMatchesPerClient
+16/93 Test #16: AccessControl.DeniesByDefaultAndMatchesPerClient .......................   Passed    0.02 sec
+      Start 17: AccessControl.RejectsInvalidRules
+17/93 Test #17: AccessControl.RejectsInvalidRules ......................................   Passed    0.02 sec
+      Start 18: InMemoryRepository.EvictsOldestWhenFull
+18/93 Test #18: InMemoryRepository.EvictsOldestWhenFull ................................   Passed    0.01 sec
+      Start 19: InMemoryRepository.FindByTopic
+19/93 Test #19: InMemoryRepository.FindByTopic .........................................   Passed    0.02 sec
+      Start 20: PersistenceLayer.StoresAccordingToConfig
+20/93 Test #20: PersistenceLayer.StoresAccordingToConfig ...............................   Passed    0.01 sec
+      Start 21: PersistenceLayer.RejectsMissingDependencies
+21/93 Test #21: PersistenceLayer.RejectsMissingDependencies ............................   Passed    0.02 sec
+      Start 22: RateLimitTest.UnlimitedByDefault
+22/93 Test #22: RateLimitTest.UnlimitedByDefault .......................................   Passed    0.02 sec
+      Start 23: RateLimitTest.AllowsBurstThenRefillsAtRate
+23/93 Test #23: RateLimitTest.AllowsBurstThenRefillsAtRate .............................   Passed    0.03 sec
+      Start 24: RateLimitTest.TopicsHaveIndependentBudgets
+24/93 Test #24: RateLimitTest.TopicsHaveIndependentBudgets .............................   Passed    0.02 sec
+      Start 25: RateLimitTest.OutboundIsNeverLimited
+25/93 Test #25: RateLimitTest.OutboundIsNeverLimited ...................................   Passed    0.01 sec
+      Start 26: RateLimitTest.RateCanChangeAtRuntime
+26/93 Test #26: RateLimitTest.RateCanChangeAtRuntime ...................................   Passed    0.02 sec
+      Start 27: RateLimitTest.MemoryStaysBoundedUnderTopicFlood
+27/93 Test #27: RateLimitTest.MemoryStaysBoundedUnderTopicFlood ........................   Passed    0.03 sec
+      Start 28: RateLimitFactory.RejectsInvalidConfig
+28/93 Test #28: RateLimitFactory.RejectsInvalidConfig ..................................   Passed    0.01 sec
+      Start 29: Envelope.RoundTrip
+29/93 Test #29: Envelope.RoundTrip .....................................................   Passed    0.03 sec
+      Start 30: Envelope.RejectsMalformedInput
+30/93 Test #30: Envelope.RejectsMalformedInput .........................................   Passed    0.03 sec
+      Start 31: Envelope.SignaturesNeedNoNonce
+31/93 Test #31: Envelope.SignaturesNeedNoNonce .........................................   Passed    0.03 sec
+      Start 32: ReplayGuard.AcceptsFreshRejectsDuplicates
+32/93 Test #32: ReplayGuard.AcceptsFreshRejectsDuplicates ..............................   Passed    0.03 sec
+      Start 33: ReplayGuard.ToleratesReorderingInsideWindow
+33/93 Test #33: ReplayGuard.ToleratesReorderingInsideWindow ............................   Passed    0.03 sec
+      Start 34: ReplayGuard.RejectsTooOld
+34/93 Test #34: ReplayGuard.RejectsTooOld ..............................................   Passed    0.03 sec
+      Start 35: ReplayGuard.ForgettingAKeyFreesItsSlot
+35/93 Test #35: ReplayGuard.ForgettingAKeyFreesItsSlot .................................   Passed    0.03 sec
+      Start 36: ReplayGuard.KeysAreIndependentAndBounded
+36/93 Test #36: ReplayGuard.KeysAreIndependentAndBounded ...............................   Passed    0.03 sec
+      Start 37: AesGcm.RoundTripAndTamperDetection
+37/93 Test #37: AesGcm.RoundTripAndTamperDetection .....................................   Passed    0.04 sec
+      Start 38: AesGcm.EmptyPlaintext
+38/93 Test #38: AesGcm.EmptyPlaintext ..................................................   Passed    0.04 sec
+      Start 39: ChaCha20Poly1305.Rfc8439Section282TestVector
+39/93 Test #39: ChaCha20Poly1305.Rfc8439Section282TestVector ...........................   Passed    0.05 sec
+      Start 40: ChaCha20Poly1305.SameSizesAsAesGcmSoTheEnvelopeDoesNotChange
+40/93 Test #40: ChaCha20Poly1305.SameSizesAsAesGcmSoTheEnvelopeDoesNotChange ...........   Passed    0.03 sec
+      Start 41: ChaCha20Poly1305.NeitherAlgorithmOpensTheOthersOutput
+41/93 Test #41: ChaCha20Poly1305.NeitherAlgorithmOpensTheOthersOutput ..................   Passed    0.04 sec
+      Start 42: CipherPerKeyTest.OneReceiverServesBothAlgorithms
+42/93 Test #42: CipherPerKeyTest.OneReceiverServesBothAlgorithms .......................   Passed    0.04 sec
+      Start 43: CipherPerKeyTest.KeyRegisteredWithTheOtherAlgorithmFails
+43/93 Test #43: CipherPerKeyTest.KeyRegisteredWithTheOtherAlgorithmFails ...............   Passed    0.04 sec
+      Start 44: CipherPerKeyTest.KeyForAnUnconfiguredAlgorithmIsRefused
+44/93 Test #44: CipherPerKeyTest.KeyForAnUnconfiguredAlgorithmIsRefused ................   Passed    0.04 sec
+      Start 45: CipherPerKeyTest.TwoCiphersForOneAlgorithmAreRejected
+45/93 Test #45: CipherPerKeyTest.TwoCiphersForOneAlgorithmAreRejected ..................   Passed    0.04 sec
+      Start 46: SecurityLayerTest.RoundTripHidesPlaintext
+46/93 Test #46: SecurityLayerTest.RoundTripHidesPlaintext ..............................   Passed    0.04 sec
+      Start 47: SecurityLayerTest.RejectsTamperedCiphertext
+47/93 Test #47: SecurityLayerTest.RejectsTamperedCiphertext ............................   Passed    0.03 sec
+      Start 48: SecurityLayerTest.RejectsTamperedHeader
+48/93 Test #48: SecurityLayerTest.RejectsTamperedHeader ................................   Passed    0.04 sec
+      Start 49: SecurityLayerTest.RejectsTopicRebinding
+49/93 Test #49: SecurityLayerTest.RejectsTopicRebinding ................................   Passed    0.03 sec
+      Start 50: SecurityLayerTest.RejectsReplay
+50/93 Test #50: SecurityLayerTest.RejectsReplay ........................................   Passed    0.04 sec
+      Start 51: SecurityLayerTest.RejectsExpiredMessages
+51/93 Test #51: SecurityLayerTest.RejectsExpiredMessages ...............................   Passed    0.04 sec
+      Start 52: SecurityLayerTest.RejectsMessagesFromTheFuture
+52/93 Test #52: SecurityLayerTest.RejectsMessagesFromTheFuture .........................   Passed    0.04 sec
+      Start 53: SecurityLayerTest.RejectsRevokedKey
+53/93 Test #53: SecurityLayerTest.RejectsRevokedKey ....................................   Passed    0.04 sec
+      Start 54: SecurityLayerTest.RejectsUnprotectedPayload
+54/93 Test #54: SecurityLayerTest.RejectsUnprotectedPayload ............................   Passed    0.03 sec
+      Start 55: SecurityLayerTest.SendingKeyCanBeRotated
+55/93 Test #55: SecurityLayerTest.SendingKeyCanBeRotated ...............................   Passed    0.05 sec
+      Start 56: SecurityLayerTest.SequenceNumbersIncrease
+56/93 Test #56: SecurityLayerTest.SequenceNumbersIncrease ..............................   Passed    0.04 sec
+      Start 57: SecurityLayerTest.AuthenticateOnlyKeepsPayloadReadableButTamperProof
+57/93 Test #57: SecurityLayerTest.AuthenticateOnlyKeepsPayloadReadableButTamperProof ...   Passed    0.04 sec
+      Start 58: SecurityLayerTest.ReceiverPolicyDecidesWhichModesAreAccepted
+58/93 Test #58: SecurityLayerTest.ReceiverPolicyDecidesWhichModesAreAccepted ...........   Passed    0.04 sec
+      Start 59: SecurityLayerTest.ModeFieldIsAuthenticated
+59/93 Test #59: SecurityLayerTest.ModeFieldIsAuthenticated .............................   Passed    0.04 sec
+      Start 60: SecurityLayerTest.ReplayProtectionCanBeDisabled
+60/93 Test #60: SecurityLayerTest.ReplayProtectionCanBeDisabled ........................   Passed    0.04 sec
+      Start 61: SecurityLayerTest.FreshnessCheckCanBeDisabled
+61/93 Test #61: SecurityLayerTest.FreshnessCheckCanBeDisabled ..........................   Passed    0.04 sec
+      Start 62: SecurityLayerTest.DisabledChecksStillAuthenticate
+62/93 Test #62: SecurityLayerTest.DisabledChecksStillAuthenticate ......................   Passed    0.04 sec
+      Start 63: SecurityLayerTest.SwitchesTakeEffectAtRuntime
+63/93 Test #63: SecurityLayerTest.SwitchesTakeEffectAtRuntime ..........................   Passed    0.04 sec
+      Start 64: EnvelopeVectors.CxxMatchesPythonByteForByte
+64/93 Test #64: EnvelopeVectors.CxxMatchesPythonByteForByte ............................   Passed    0.05 sec
+      Start 65: SecurityLayerFactory.RejectsMissingDependencies
+65/93 Test #65: SecurityLayerFactory.RejectsMissingDependencies ........................   Passed    0.03 sec
+      Start 66: Ed25519.Rfc8032TestVector1
+66/93 Test #66: Ed25519.Rfc8032TestVector1 .............................................   Passed    0.04 sec
+      Start 67: KeyTopicPolicy.DeniesByDefault
+67/93 Test #67: KeyTopicPolicy.DeniesByDefault .........................................   Passed    0.03 sec
+      Start 68: KeyTopicPolicy.OwnerPatternBindsKeyToItsOwnSubtree
+68/93 Test #68: KeyTopicPolicy.OwnerPatternBindsKeyToItsOwnSubtree .....................   Passed    0.03 sec
+      Start 69: KeyTopicPolicy.KeyIdPatternAndExplicitRules
+69/93 Test #69: KeyTopicPolicy.KeyIdPatternAndExplicitRules ............................   Passed    0.02 sec
+      Start 70: KeyTopicPolicy.RejectsInvalidRulesAndOwners
+70/93 Test #70: KeyTopicPolicy.RejectsInvalidRulesAndOwners ............................   Passed    0.04 sec
+      Start 71: SignedLayerTest.SignedPayloadIsReadableVerifiableAndTamperProof
+71/93 Test #71: SignedLayerTest.SignedPayloadIsReadableVerifiableAndTamperProof ........   Passed    0.04 sec
+      Start 72: SignedLayerTest.SendingSignaturesNeedsPrivateKeys
+72/93 Test #72: SignedLayerTest.SendingSignaturesNeedsPrivateKeys ......................   Passed    0.03 sec
+      Start 73: SignedLayerTest.KeyMayOnlyPublishOnItsOwnersTopics
+73/93 Test #73: SignedLayerTest.KeyMayOnlyPublishOnItsOwnersTopics .....................   Passed    0.05 sec
+      Start 74: SignedLayerTest.RejectedBindingDoesNotConsumeTheSequenceNumber
+74/93 Test #74: SignedLayerTest.RejectedBindingDoesNotConsumeTheSequenceNumber .........   Passed    0.04 sec
+      Start 75: Acceptance.Order1_FormatRejectsUnprotectedInput
+75/93 Test #75: Acceptance.Order1_FormatRejectsUnprotectedInput ........................   Passed    0.04 sec
+      Start 76: Acceptance.Order2_ModePolicyBeforeValidity
+76/93 Test #76: Acceptance.Order2_ModePolicyBeforeValidity .............................   Passed    0.04 sec
+      Start 77: Acceptance.Order3_ValidityBeforeCryptography
+77/93 Test #77: Acceptance.Order3_ValidityBeforeCryptography ...........................   Passed    0.03 sec
+      Start 78: Acceptance.Order4_SameFailureForUnknownKeyAndBadTag
+78/93 Test #78: Acceptance.Order4_SameFailureForUnknownKeyAndBadTag ....................   Passed    0.05 sec
+      Start 79: Acceptance.Order5_KeyTopicBeforeReplayWindow
+79/93 Test #79: Acceptance.Order5_KeyTopicBeforeReplayWindow ...........................   Passed    0.04 sec
+      Start 80: Acceptance.Order6_ForgedSequenceNumbersDoNotAdvanceTheWindow
+80/93 Test #80: Acceptance.Order6_ForgedSequenceNumbersDoNotAdvanceTheWindow ...........   Passed    0.04 sec
+      Start 81: Acceptance.WindowLimitsAndReordering
+81/93 Test #81: Acceptance.WindowLimitsAndReordering ...................................   Passed    0.05 sec
+      Start 82: Acceptance.ModePolicyRejectsValidModesItDoesNotAccept
+82/93 Test #82: Acceptance.ModePolicyRejectsValidModesItDoesNotAccept ..................   Passed    0.04 sec
+      Start 83: Acceptance.KeyTopicRestrictionUsesTheOwner
+83/93 Test #83: Acceptance.KeyTopicRestrictionUsesTheOwner .............................   Passed    0.04 sec
+      Start 84: Acceptance.ValidityLimitsAreInclusive
+84/93 Test #84: Acceptance.ValidityLimitsAreInclusive ..................................   Passed    0.04 sec
+      Start 85: Acceptance.ValidityCanBeTightenedPerFlow
+85/93 Test #85: Acceptance.ValidityCanBeTightenedPerFlow ...............................   Passed    0.04 sec
+      Start 86: Acceptance.InvalidPerFlowRulesAreRefused
+86/93 Test #86: Acceptance.InvalidPerFlowRulesAreRefused ...............................   Passed    0.04 sec
+      Start 87: Acceptance.KeyBindingWithoutAPolicyIsRefused
+87/93 Test #87: Acceptance.KeyBindingWithoutAPolicyIsRefused ...........................   Passed    0.04 sec
+      Start 88: Acceptance.EpochStoreWithoutAStrideIsRefused
+88/93 Test #88: Acceptance.EpochStoreWithoutAStrideIsRefused ...........................   Passed    0.04 sec
+      Start 89: Acceptance.AfterARestartOnlyALaterEpochIsAccepted
+89/93 Test #89: Acceptance.AfterARestartOnlyALaterEpochIsAccepted ......................   Passed    0.05 sec
+      Start 90: Acceptance.EpochStorageFailuresFailClosed
+90/93 Test #90: Acceptance.EpochStorageFailuresFailClosed ..............................   Passed    0.04 sec
+      Start 91: FileEpochStore.RoundTripMissingAndCorrupt
+91/93 Test #91: FileEpochStore.RoundTripMissingAndCorrupt ..............................   Passed    0.02 sec
+      Start 92: EndToEnd.DeliversAndStoresDecryptedMessage
+92/93 Test #92: EndToEnd.DeliversAndStoresDecryptedMessage .............................   Passed    0.04 sec
+      Start 93: EndToEnd.AttackerCannotReplayOrInject
+93/93 Test #93: EndToEnd.AttackerCannotReplayOrInject ..................................   Passed    0.05 sec
+
+100% tests passed, 0 tests failed out of 93
+
+Total Test time (real) =   3.10 sec
+......................................................sssssss
+----------------------------------------------------------------------
+Ran 61 tests in 0.064s
+
+OK (skipped=7)

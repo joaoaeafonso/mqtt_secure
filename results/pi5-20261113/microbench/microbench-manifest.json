@@ -1,0 +1,42 @@
+{
+  "git": {
+    "commit": "79c4878ea443ba4c33c5ab1b4d1adb77ab76b561",
+    "dirty": false,
+    "describe": "79c4878"
+  },
+  "gateway_binary": "/home/jafonso/mqtt_secure/mqtt_secure/build/bench/benchmarks/msec_pipeline_benchmarks",
+  "gateway_sha256": "fc05c77fe2e20eafebbf46248f0e3f640ee921261f4a1e2496837830f4c3b8e2",
+  "platform": {
+    "cpu": "Raspberry Pi 5 Model B Rev 1.1",
+    "cpus": 4,
+    "mem_total_kb": 8255680,
+    "kernel": "6.18.60+rpt-rpi-2712",
+    "machine": "aarch64",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "hostname": "raspi-iot",
+    "governor": "performance"
+  },
+  "software": {
+    "openssl": "OpenSSL 3.5.9 29 Sep 2026 (Library: OpenSSL 3.5.9 29 Sep 2026)",
+    "mosquitto": "mosquitto version 2.0.21",
+    "compiler": "c++ (Debian 14.2.0-19) 14.2.0 (RelWithDebInfo)",
+    "python": "3.13.5"
+  },
+  "env": {},
+  "variants": {
+    "aes-on": {},
+    "aes-armcap0": {
+      "OPENSSL_armcap": "0"
+    },
+    "aes-armcap1": {
+      "OPENSSL_armcap": "1"
+    }
+  },
+  "arguments": {
+    "out": "results/pi5-20261113/microbench",
+    "binary": "/home/jafonso/mqtt_secure/mqtt_secure/build/bench/benchmarks/msec_pipeline_benchmarks",
+    "repetitions": "10",
+    "min_time": "0.5s",
+    "filter": "noacl/"
+  }
+}

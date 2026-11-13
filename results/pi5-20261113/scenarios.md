@@ -1,0 +1,41 @@
+| Scenario | Attack | Defence | Expected | Result | Evidence |
+|---|---|---|---|---|---|
+| eavesdrop-open | subscribe to # | none | the attacker receives the sensors' traffic | PASS | leak_pct=100.0 |
+| eavesdrop-acl | subscribe to # | topic ACL, restricted zone | nothing reaches the attacker | PASS | leak_pct=0.0, delivered_msg_s=1000 |
+| eavesdrop-network-control | capture the gateway's link | none (plain TCP) | readings are readable on the wire | PASS | wire_publishes=6043, wire_readable_pct=100.0 |
+| eavesdrop-network-tls | capture the gateway's link | TLS | the wire shows no MQTT at all, but a subscriber to # still reads everything: TLS protects each hop, not the broker | PASS | wire_publishes=0, wire_opaque_bytes=704778, leak_readable_pct=100.0 |
+| eavesdrop-broker-encrypt | subscribe to # and capture the link | envelope, encrypt mode (no TLS) | the broker and the wire carry every message, but no reading is readable; topic, size and timing still are | PASS | leak_pct=100.0, leak_readable_pct=0.0, wire_readable_pct=0.0 |
+| impersonate-no-auth | claim username 'gateway' | ACL without authentication | a claimed name passes the ACL: the attacker reads the restricted zone | PASS | leak_pct=100.0, attacker=connected as gateway |
+| impersonate-auth | claim username 'gateway' | ACL + password authentication | the broker refuses the attacker | PASS | attacker_connected=False, attacker=refused by broker: Not authorized |
+| inject-unprotected | inject forged readings | none | the gateway accepts the forgeries | PASS | forged_ok=121 |
+| inject-auth-only | inject forged readings | payload authentication (GMAC) | every forgery is rejected | PASS | forged_ok=0, rejected_by=MalformedMessage=121 |
+| inject-sign | inject forged readings | Ed25519 signatures | every forgery is rejected; real traffic still flows | PASS | forged_ok=0, rejected_by=MalformedMessage=120, gw_cpu_us_per_msg=187.88 |
+| inject-chacha20 | inject forged readings | envelope with ChaCha20-Poly1305 keys | every forgery is rejected; real traffic, now sealed with ChaCha20 keys, still flows without rejections | PASS | forged_ok=0, rejected_by=MalformedMessage=120, gw_cpu_us_per_msg=37.11 |
+| republish-topic-control | copy captured messages to another topic | none | the copies are accepted as readings of the other topic | PASS | attack_republished=121, republished_ok=117 |
+| republish-topic | copy captured envelopes to another topic | topic in the envelope's associated data | every copy fails authentication (the device may publish there: the key → topic restriction is not what stops it) | PASS | attack_republished=121, republished_ok=0, rejected_by=AuthenticationFailed=121 |
+| stolen-key-other-topic-control | publish with sensor-1's key on sensor-2's topic | envelope without the key → topic restriction | authentic but foreign messages are accepted | PASS | attack_stolen_sent=121, forged_ok=120 |
+| stolen-key-other-topic | publish with sensor-1's key on sensor-2's topic | key → topic restriction (no ACL: the broker lets it through) | every message is refused after authentication (PermissionDenied) | PASS | attack_stolen_sent=121, forged_ok=0, rejected_by=PermissionDenied=121 |
+| stolen-key-acl | publish with sensor-1's key and password on sensor-2's topic | broker ACL (key → topic restriction off) | a legitimate broker refuses the publication before the gateway sees it | PASS | attack_stolen_sent=121, forged_ok=0 |
+| old-unseen-message-control | deliver 2-minute-old messages never seen before | replay window only (no temporal validity) | the window accepts them: their sequence numbers are new | PASS | attack_stolen_sent=121, forged_ok=120 |
+| old-unseen-message | deliver 2-minute-old messages never seen before | temporal validity (Δa = 60 s) | every one is refused as expired, before any cryptography | PASS | attack_stolen_sent=121, forged_ok=0, rejected_by=MessageExpired=120 |
+| downgrade-relabel | change encrypt → auth_only in captured envelopes | mode in the associated data (receiver accepts both modes) | authentication fails (before the replay window, which would also catch them) | PASS | attack_relabelled=121, rejected_by=AuthenticationFailed=120 ReplayDetected=1 |
+| downgrade-policy-control | send valid auth_only messages with a stolen key | receiver accepts encrypt and auth_only | the readable messages are accepted | PASS | attack_stolen_sent=121, forged_ok=120 |
+| downgrade-policy | send valid auth_only messages with a stolen key | receiver policy: encrypt only | every one is refused (ProtectionNotAccepted) | PASS | attack_stolen_sent=120, forged_ok=0, rejected_by=ProtectionNotAccepted=121 |
+| receiver-forgery-control | actuator sensor-1 forges commands to sensor-2 | AES envelope (the group key every actuator holds) | the forged commands are accepted: with a shared key, any receiver can forge | PASS | attack_commands_forged=121, cmd_forged_ok=116 |
+| receiver-forgery | actuator sensor-1 forges commands to sensor-2 | signature mode (actuators hold only the gateway's public key) | no forged command is accepted; the gateway's own commands are | PASS | attack_commands_forged=121, cmd_forged_ok=0, cmd_ok=117 |
+| flood-rate-limit | flood sensor-1's topic | gateway rate limit 30 msg/s per topic | the excess is dropped before any crypto | PASS | rate_limited=902, gw_cpu_pct=4.1, recovery_s=0.83 |
+| slow-connections-control | hold 300 half-open connections (SlowITe) | no connection limit | the broker keeps all of them open | PASS | slow_held=300, probe_ok=11, probe_failed=0, sensors_up=50 |
+| slow-connections | hold 300 half-open connections (SlowITe) | broker max_connections = sensors + 16 (in place before the attack) | the broker caps them and connected clients stay up; the spare slots are taken, so newcomers (the probe) are refused until the attack ends | PASS | slow_held=14, probe_ok=0, probe_failed=2, sensors_up=50, recovery_s=0.73 |
+| active-broker-alter-control | the broker alters every 2nd message | none | the altered readings are delivered: nothing notices | PASS | tampered=3013, rejected=0 |
+| active-broker-alter | the broker alters every 2nd message | envelope | every altered message fails authentication | PASS | tampered=3020, rejected_by=AuthenticationFailed=3009 |
+| active-broker-redirect | the broker moves every 2nd message to another topic | topic in the associated data | every redirected message fails authentication | PASS | tampered=3022, rejected_by=AuthenticationFailed=3010 |
+| active-broker-delay | the broker delays every 2nd message by 2 s | temporal validity (Δa = 60 s) | not prevented: a delay shorter than Δa goes unnoticed (it shows only as latency) | PASS | tampered=3021, rejected=0, lat_p99_us=2000303 |
+| active-broker-drop | the broker drops every 2nd message | envelope | not prevented: suppression is invisible to the receiver (only as loss) | PASS | tampered=3022, loss_pct=50.0 |
+| replay-no-checks | replay captured messages | encryption only | authentic old messages are accepted again | PASS | replays_ok=120 |
+| replay-freshness-only | replay captured messages | encryption + 60 s freshness | replays younger than 60 s still get through: freshness alone is not enough | PASS | replays_ok=120 |
+| replay-window | replay captured messages | encryption + replay window | every replay is rejected | PASS | replays_ok=0, rejected_by=ReplayDetected=120 |
+| downlink-commands | — | commands protected end to end | every actuator verifies and accepts the gateway's commands | PASS | cmd_sent=121, cmd_ok=120, cmd_rejected=0 |
+| modern-transport | — | TLS 1.3 + MQTT 5 | everything keeps working | PASS | delivered_msg_s=1000, loss_pct=0.0 |
+| hardened | eavesdrop, impersonate, inject and replay at once | every defence on (the `hardened` preset) | the attacker gets nothing and all legitimate traffic, both ways, still flows | PASS | attacker=cannot connect: no client certificate, leak_pct=0.0, forged_ok=0, replays_ok=0, delivered_msg_s=1000, loss_pct=0.0, cmd_ok=121, gw_cpu_us_per_msg=199.97 |
+| key-rotation | keys captured earlier | rotate every payload key | traffic continues without rejections across the switch | PASS | rejected=0, loss_pct=0.1 |
+| revocation | a device is compromised | revoke sensor-1 (keys, password) | sensor-1 is locked out; the others continue | PASS | sensors_up=49, delivered_msg_s=980 |
