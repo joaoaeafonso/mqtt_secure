@@ -13,7 +13,7 @@ Output, per campaign, in <out>/<campaign name>/:
                                  configuration and metric
     marginal.csv / marginal.tex  cost of each layer: m(c_l=1) − m(c_l=0), CI
     interaction.csv              difference of differences for pairs of layers
-    protection.csv               π_a(c) and S(c)
+    protection.csv/.tex          π_a(c) and S(c)
     criterion.csv / criterion.tex
                                  cost(c), S(c), feasibility, use-case filter,
                                  Pareto frontier, c* and Δcost/ΔS per use case
@@ -368,6 +368,19 @@ def protection(c: Campaign, out: Path) -> dict[str, float]:
         scores[level] = row["S"] = round(num_ / den, 4) if den else 0.0
         rows.append(row)
     write_csv(out / "protection.csv", rows)
+    reps = max(len(v) for v in votes.values())
+    split = sorted(f"{lv}/{a}" for (lv, a), v in votes.items() if 0 < sum(v) < len(v))
+    names = {a: f"A{i}" for i, a in enumerate(attacks, 1)}
+    body = [[r["level"], *("\\checkmark" if r.get(a) else "--" if a in r else "" for a in attacks),
+             fmt(r["S"], 2)] for r in rows]
+    legend = "; ".join(f"{names[a]} {tex_escape(a)}" for a in attacks)
+    agree = ("as repetições concordaram em todas as células" if not split else
+             "repetições discordantes: " + ", ".join(tex_escape(x) for x in split))
+    tex_table(out / "protection.tex",
+              f"Ataques impedidos, $\\pi_a(c)$ (\\checkmark{{}} impedido; maioria de {reps} "
+              f"repetições; {agree}), e proteção $S(c)$. {legend}.",
+              "tab:protecao", ["Config.", *names.values(), "$S(c)$"], body,
+              "l" + "c" * len(attacks) + "r", size="footnotesize")
     return scores
 
 
@@ -620,6 +633,14 @@ def hypotheses(c: Campaign, out: Path, table: dict, marg: list[dict]) -> None:
     def d(a, b, m):
         r = next((r for r in marg if r["from"] == a and r["to"] == b and r["metric"] == m
                   and c.context(r) == ctx0), None)
+        if r is None:
+            # Not a one-layer step (e.g. K1→K3, the whole envelope for H1): the
+            # same difference of medians, computed here.
+            xa, xb = c.values(a, ctx0, m), c.values(b, ctx0, m)
+            if xa and xb:
+                dd, lo, hi = c.ci([xa, xb], lambda u, w: median(w) - median(u))
+                r = {"delta": round(dd, 3), "lo": round(lo, 3), "hi": round(hi, 3),
+                     "significant": int(lo > 0 or hi < 0)}
         return (f"{fmt_md(r['delta'])} [{fmt_md(r['lo'])}, {fmt_md(r['hi'])}]"
                 f"{' (≠ 0)' if r['significant'] else ' (IC inclui 0)'}") if r else "não medido"
 
