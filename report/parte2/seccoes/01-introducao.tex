@@ -1,9 +1,17 @@
 \section{Introdução}
 \label{sec:introducao}
 
-A primeira parte do projeto reviu a literatura sobre segurança em comunicações
-MQTT, propôs uma arquitetura em camadas (\PUm{Secção~6}) e definiu o plano para a
-avaliar (\PUm{Secção~7}). O objetivo desta segunda parte é o que esse plano
+\novo{O MQTT, um dos protocolos de mensagens mais usados na Internet das Coisas, não
+protege as mensagens por si: deixa a segurança ao transporte e ao \emph{broker},
+pelo que quem controla o \emph{broker}, ou um dispositivo comprometido, pode ler,
+forjar ou repetir mensagens.} A primeira parte do projeto reviu a literatura sobre
+segurança em comunicações MQTT, propôs uma arquitetura em camadas (\PUm{Secção~6}) e definiu o plano para a
+avaliar (\PUm{Secção~7}). \novo{Nenhum dos estudos analisados nessa revisão mede, no
+mesmo ensaio, o custo de cada mecanismo e os ataques que ele impede, mesmo entre
+os desenhados ou avaliados para dispositivos
+restritos~\cite{sadio2019lightweight, spielvogel2021tls, prantl2021performance,
+dahlmanns2021entrust, segarra2020mqttz, javadi2026cmap}: é a lacuna L5
+(\PUm{Secção~8.1}).} O objetivo desta segunda parte é o que esse plano
 enuncia: medir, num Raspberry~Pi, quanto custa cada camada em desempenho e quanto
 protege, isoladamente e em combinação, para identificar a configuração com a maior
 proteção e o menor impacto no desempenho.
@@ -40,3 +48,13 @@ O documento responde às cinco perguntas experimentais da Parte~1:
 
 O plano da Parte~1 foi seguido; o que foi concretizado de forma diferente, ou
 decidido só nesta parte, está declarado na Secção~\ref{sec:desvios}.
+
+\novo{O documento está organizado assim. A Secção~\ref{sec:prototipo} descreve o
+protótipo e a Secção~\ref{sec:metodo} o método experimental, incluindo os desvios
+ao plano. As Secções~\ref{sec:custo} e~\ref{sec:protecao} apresentam os resultados
+de custo e de proteção; a Secção~\ref{sec:criterio} aplica o critério de escolha e
+a Secção~\ref{sec:hipoteses} dá o veredicto das hipóteses. A
+Secção~\ref{sec:validacao} valida o protótipo e o instrumento de medição e calibra
+a validade temporal, a Secção~\ref{sec:ameacas} discute as ameaças à validade e as
+limitações, e a Secção~\ref{sec:conclusoes} conclui. O Anexo~\ref{sec:reproducao}
+indica como reproduzir os resultados.}

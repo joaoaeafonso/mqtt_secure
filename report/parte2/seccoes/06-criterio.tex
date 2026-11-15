@@ -2,8 +2,35 @@
 \label{sec:criterio}
 
 Aplica-se o critério da \PUm{Secção~7.5} com os parâmetros da
-Secção~\ref{sec:parametros}: proteção $S(c)$, custo normalizado por K0,
-exequibilidade, requisitos por caso de uso e fronteira de Pareto.
+Secção~\ref{sec:parametros}. \novo{A proteção de uma configuração $c$ é a fração
+ponderada dos ataques que impede, e o custo agrega as métricas normalizadas por
+K0 (\PUm{Eq.~10 e~11}):}\marcaNovo{equações novas}
+\begin{equation}
+  \begin{gathered}
+  S(c) = \frac{\sum_{a \in \mathcal{A}} \omega_a\, \pi_a(c)}{\sum_{a \in \mathcal{A}} \omega_a},
+  \\[4pt]
+  \operatorname{custo}(c) = \sum_{m} v_m\, r_m(c), \qquad
+  r_m(c) = \begin{cases}
+    m(c) / m(\mathrm{K0}) & \text{se maior é pior,}\\
+    m(\mathrm{K0}) / m(c) & \text{no débito,}
+  \end{cases}
+  \end{gathered}
+  \label{eq:protecao-custo}
+\end{equation}
+\novo{com os pesos $\omega_a$ e $v_m$ da Secção~\ref{sec:parametros}. Entre as
+configurações exequíveis que cumprem os requisitos do caso de uso, as não
+dominadas formam a fronteira de Pareto $\mathcal{P}$, e a configuração recomendada
+é a mais barata das que atingem a proteção máxima (\PUm{Eq.~12}):}
+\begin{equation}
+  c^{*} = \operatorname*{arg\,min}_{c \in \mathcal{P},\ S(c) = S_{\max}} \operatorname{custo}(c),
+  \qquad S_{\max} = \max_{c \in \mathcal{P}} S(c).
+  \label{eq:melhor}
+\end{equation}
+\novo{Ao longo da fronteira, reporta-se o custo marginal $\Delta\operatorname{custo} / \Delta S$.}
+
+\novo{A Tabela~\ref{tab:criterio} dá, para cada configuração, $S(c)$, o custo, a
+exequibilidade e a pertença à fronteira de Pareto em cada caso de uso, e a
+Figura~\ref{fig:pareto} mostra a fronteira da telemetria sensível.}
 
 \gerado{pi5/criterion}
 
@@ -32,11 +59,11 @@ as ordens exigem ainda validade, restrição chave--tópico e prova de origem.
 \end{itemize}
 
 A recomendação antecipada na Parte~1 mantém-se: \textbf{K8 para a telemetria e
-K9 para as ordens}. K11 (ChaCha20) tem a mesma proteção que K8 e custa mais
-2\,\% neste processador, que tem AES em \emph{hardware}; num processador sem essas
-extensões, o envelope AES custa 1,4 vezes o do ChaCha20 a 256~octetos e 4 a 5
-vezes a partir de 4~KiB (Secção~\ref{sec:aceleracao}) e K11 passa a ser a escolha para a telemetria, como
-a Parte~1 previa.
+K9 para as ordens}. \novo{K11 (ChaCha20) tem a mesma proteção que K8 e custa mais
+2\,\% neste processador, que tem AES em \emph{hardware}. Num processador sem essas
+extensões, o envelope AES custa 1,4 vezes o do ChaCha20 a 256~octetos, 4 vezes a
+4~KiB e 5 a 64~KiB (Secção~\ref{sec:aceleracao}). Aí, K11 passa a ser a escolha
+para a telemetria, como a Parte~1 previa.}
 
 \paragraph{Sensibilidade.} A escolha não depende dos pesos fixados. Com todos os
 ataques a pesar~1, com pesos de custo iguais, ou com todo o peso no processador

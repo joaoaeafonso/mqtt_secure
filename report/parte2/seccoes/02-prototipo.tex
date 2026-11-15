@@ -8,7 +8,7 @@ como elementos de uma cadeia de processamento: cada mensagem que chega passa pel
 limitação de tráfego, pela camada de segurança (o envelope) e, opcionalmente, pela
 persistência; cada camada pode ser ligada e desligada em execução, sem reconstruir
 a cadeia. O \textbf{\emph{gateway} de ensaio} liga essa cadeia a um \emph{broker}
-Mosquitto real através de um cliente Paho e reporta, por janela de medição, as
+Mosquitto\novo{~\cite{light2017mosquitto}} real através de um cliente Paho e reporta, por janela de medição, as
 mensagens entregues e rejeitadas (por motivo), a latência e o tempo de processador.
 O \textbf{laboratório de carga} (Python) lança o \emph{broker}, o \emph{gateway},
 os sensores simulados e o atacante, aplica cada configuração e mede.
@@ -96,10 +96,11 @@ concretização.
     \textbf{Elemento (Parte~1)} & \textbf{Implementação} & \textbf{Onde} \\
     \midrule
     Envelope de 25 octetos; tópico e modo nos dados associados; modos de cifra,
-      autenticação e assinatura (§6.4) & AES-256-GCM, GMAC e Ed25519 sobre OpenSSL;
+      autenticação e assinatura (§6.4) & AES-256-GCM e GMAC\novo{~\cite{nist-sp800-38d}} e Ed25519\novo{~\cite{bernstein2012ed25519, rfc8032}}
+      sobre OpenSSL;
       a mesma implementação em Python para os sensores, verificada pelos mesmos
       vetores de teste & \texttt{modules/security}, \texttt{msec\_envelope.py} \\
-    ChaCha20-Poly1305 como alternativa (§6.4) & O algoritmo é um atributo da chave:
+    ChaCha20-Poly1305\novo{~\cite{rfc8439}} como alternativa (§6.4) & O algoritmo é um atributo da chave:
       o formato do envelope não muda e um recetor serve os dois & \texttt{chacha20\_poly1305\_}\allowbreak\texttt{cipher.cpp} \\
     Ordem de verificação (§6.5) & Formato, modo aceite, validade, verificação
       criptográfica, chave--tópico, janela & \texttt{security\_layer.cpp} \\
@@ -113,7 +114,7 @@ concretização.
       revogação de chaves, palavras-passe e certificados (CRL) & \texttt{pki.py}, \texttt{lab.py} \\
     Limitação de tráfego antes da criptografia (§6.9) & \emph{Token bucket} por
       tópico & \texttt{modules/limits} \\
-    Camada de transporte (§6.3) & TLS~1.3, autenticação mútua, palavras-passe,
+    Camada de transporte (§6.3) & TLS~1.3\novo{~\cite{rfc8446}}, autenticação mútua, palavras-passe,
       ACL por utilizador, identificador de cliente ligado ao utilizador, limites de
       pacote e de ligações & \texttt{broker.py} (Mosquitto) \\
     \bottomrule

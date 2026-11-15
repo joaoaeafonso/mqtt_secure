@@ -1,8 +1,9 @@
 \section{Hipóteses}
 \label{sec:hipoteses}
 
-A evidência de cada hipótese está em \texttt{gerado/pi5/hypotheses.md}; o
-veredicto é dos autores.
+\novo{A Tabela~\ref{tab:hipoteses} resume a evidência e o veredicto de cada hipótese.}
+A evidência completa está em \texttt{gerado/pi5/hypotheses.md}; o veredicto é dos
+autores.
 
 \begin{table}[ht]
   \centering
@@ -26,7 +27,7 @@ veredicto é dos autores.
     H4. O custo do TLS concentra-se no estabelecimento da ligação &
       Por ligação: 4,2 contra 0,8~ms de processador. Por mensagem: K0$\to$K1
       +7,9~$\mu$s e K10$\to$K7 +5,5~$\mu$s; débito máximo de 60\,000 para
-      40\,000~mensagens/s & Refutada \\
+      40\,000~mensagens/s & Refutada \novo{para ligações duradouras} \\
     H5. Sob inundação, a limitação antes da criptografia reduz o processador do
       \emph{gateway} & Inundação a 300~msg/s: K7 5,2\,\%, K8 5,1\,\% de
       processador (40,5 e 39,7~$\mu$s por mensagem); K8 descarta 1\,559
@@ -42,15 +43,25 @@ IoT. Mas, nesta rede local cablada, a latência é tão baixa que o envelope
 representa 17\,\% do p50 de K1, e reduz o débito máximo em 25\,\%. A hipótese
 vale para a latência; para o débito, o envelope não é desprezável.
 
-\paragraph{H4 (refutada).} A negociação TLS com autenticação mútua custa
-3,4~ms de processador a mais por ligação, mas o TLS custa também 7,9~$\mu$s por
-mensagem, tanto como o envelope inteiro (7,2~$\mu$s), e é o que mais reduz o
-débito máximo (de 60\,000 para 40\,000~mensagens/s). Ao fim de cerca de 430
-mensagens, o custo por mensagem ultrapassa o da negociação; a 1\,000~mensagens/s,
-isso acontece em menos de meio segundo, e um sensor a 10~Hz chega lá em 43~s. Em
-ligações duradouras, que são as do MQTT, o custo do TLS está nas mensagens, não
-no estabelecimento. O custo por mensagem é menor com o envelope ativo (5,5 contra
-7,9~$\mu$s, Secção~\ref{sec:custo}), mas continua a dominar.
+\paragraph{H4 (refutada \texorpdfstring{\protect\novo{para ligações duradouras}}{para ligações duradouras}).} A negociação TLS com
+autenticação mútua custa 3,4~ms de processador a mais por ligação, mas o TLS custa
+também 7,9~$\mu$s por mensagem, tanto como o envelope inteiro (7,2~$\mu$s), e é o
+que mais reduz o débito máximo (de 60\,000 para 40\,000~mensagens/s). \novo{A
+negociação equivale a cerca de 430 mensagens (3,4~ms / 7,9~$\mu$s): a
+1\,000~mensagens/s, o \emph{gateway} ultrapassa-a em menos de meio segundo, e um
+sensor a 10~Hz em 43~s. Em ligações duradouras, como as deste trabalho, o custo do
+TLS está nas mensagens, não no estabelecimento. A hipótese só se mantém quando
+cada ligação transporta menos de cerca de 430 mensagens, como em dispositivos que
+religam com frequência ou que ligam, publicam e desligam. Isto é coerente com
+Prantl et al.~\cite{prantl2021performance}, que, num microcontrolador, ligam o
+impacto do TLS sobretudo às condições da rede e à frequência de restabelecimento
+de ligações (\PUm{Secção~5.2.6}); a formulação de H4 na Parte~1 generalizou essa
+observação a todas as ligações. Com o envelope ativo, o custo do TLS por mensagem
+é menor (5,5 contra 7,9~$\mu$s, Secção~\ref{sec:custo}) e o ponto de equilíbrio
+sobe para cerca de 620 mensagens, sem mudar a conclusão. Ficaram por medir a
+negociação do lado do \emph{broker}, que aceita uma ligação por dispositivo, e
+num dispositivo restrito real, onde os dois custos mudam e o ponto de equilíbrio
+tem de ser recalculado.}
 
 \paragraph{H5 (não confirmada).} A limitação funciona como previsto: descarta o
 excesso antes de qualquer verificação criptográfica (1\,559 de 1\,814 mensagens

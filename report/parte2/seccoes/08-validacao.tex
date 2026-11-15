@@ -6,15 +6,15 @@
 A validação tem três níveis. Os \textbf{testes automatizados}
 (Secção~\ref{sec:prototipo}) verificam cada regra de aceitação, os vetores de
 teste do envelope (partilhados pela implementação em C++ e pela em Python, que
-assim não podem divergir) e os vetores do RFC~8439 para o ChaCha20-Poly1305. Os
+assim não podem divergir) e os vetores do RFC~8439\novo{~\cite{rfc8439}} para o ChaCha20-Poly1305. Os
 \textbf{cenários} (Secção~\ref{sec:protecao}) verificam o sistema completo contra
 um \emph{broker} real: os 39 cenários deram o resultado previsto no
 Raspberry~Pi, na própria campanha (\texttt{results/pi5-20261113/scenarios.md}). No
-mesmo \emph{commit} da campanha (\texttt{79c4878}), os 93 testes em C++ e os 61
-testes em Python do laboratório passaram no Raspberry~Pi
-(\texttt{results/validation/pi5-20261113/}); só os sete testes que dependem do
-\texttt{tshark} não correram, por o Wireshark não estar instalado no
-Raspberry~Pi.
+mesmo \emph{commit} da campanha (\texttt{79c4878}), \novo{os 93 testes em C++ passaram
+no Raspberry~Pi e, dos 61 testes em Python do laboratório, passaram 54
+(\texttt{results/validation/pi5-20261113/}); os outros 7 cobrem ferramentas
+auxiliares de inspeção, que não intervêm nas medições, e não correram por a
+ferramenta de que dependem não estar instalada no Raspberry~Pi.}
 A \textbf{matriz de ataques} confirma que cada configuração impede o que o desenho
 prevê (Tabela~\ref{tab:protecao}), com as três repetições de acordo em todas as
 células.
@@ -55,7 +55,7 @@ Na campanha, a maior latência de uma mensagem legítima foi de 43,2~ms (p99,9
 máximo de 37,1~ms), contando as execuções de custo e os patamares da subida de
 carga que cada configuração sustenta. Com o NTP desligado, o desvio entre os
 relógios das duas máquinas cresceu até 289~ms ao longo das cinco horas; depois da
-correção pelos agentes, a incerteza residual nunca passou de 0,21~ms. Com margem
+correção pelos agentes, a incerteza residual nunca passou de \novo{0,2~ms (Secção~\ref{sec:ameacas})}. Com margem
 de segurança~2 e arredondamento a 100~ms, os valores propostos são:
 
 \begin{itemize}[leftmargin=*]

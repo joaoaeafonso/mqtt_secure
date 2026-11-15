@@ -20,7 +20,7 @@ A leitura por camadas é a seguinte:
     publique no tópico de outro (A6) ou forje ordens para outro atuador (A10).
     Não impede o que um dispositivo comprometido faz no seu próprio tópico:
     mensagens antigas (A8), despromoção do modo (A9), inundação (A12), nem a
-    ocupação de ligações (A13). $S = 0{,}64$.
+    ocupação de ligações (A13)\novo{, o ataque SlowITe~\cite{vaccari2020slowite}}. $S = 0{,}64$.
   \item \textbf{O envelope sozinho (K10)}, sem TLS nem ACL, impede quase o mesmo
     por outro caminho: o conteúdo é ilegível e a autenticação, o tópico nos dados
     associados, a restrição chave--tópico, a validade e a janela tornam inúteis as
@@ -35,10 +35,11 @@ A leitura por camadas é a seguinte:
     seguintes) impede a mensagem antiga nunca recebida, que a janela
     anti-repetição sozinha (K5) aceita, porque os seus números de sequência são
     novos: K5 tem por isso menos proteção do que K4 (0,73 contra 0,82).
-  \item \textbf{Só K8 e seguintes impedem a inundação e a ocupação de ligações}:
+  \item \textbf{Só \novo{K8, K9 e K11} impedem a inundação e a ocupação de ligações}:
     a limitação de tráfego descarta cerca de 1\,560 das 1\,810 mensagens da
     inundação antes da criptografia, e o limite de ligações do \emph{broker} deixa
-    o atacante com 15 ligações em vez das 200 que tenta reter.
+    o atacante com 15 ligações em vez das 200 que tenta reter \novo{(no cenário da
+    Tabela~\ref{tab:cenarios}, um ensaio à parte com 300 tentativas, ficam 14)}.
 \end{itemize}
 
 K8, K9 e K11 impedem todos os ataques da matriz ($S = 1$). K9 não acrescenta
@@ -81,7 +82,8 @@ cenários deram o resultado previsto no Raspberry~Pi, na mesma campanha.
     palavra-passe & \footnotesize ligado como \texttt{gateway}, lê tudo &
     \footnotesize recusado pelo \emph{broker} \\
   \footnotesize Injetar leituras & \footnotesize GMAC; Ed25519; ChaCha20 &
-    \footnotesize 121 aceites & \footnotesize 0 aceites em cada modo \\
+    \footnotesize 121 aceites & \footnotesize 0 aceites em cada modo\novo{, rejeitadas
+    no formato (sem envelope válido)} \\
   \footnotesize Republicar noutro tópico & \footnotesize tópico nos dados
     associados & \footnotesize 117 de 121 aceites & \footnotesize 0; 121 falham a
     autenticação \\
@@ -116,11 +118,18 @@ cenários deram o resultado previsto no Raspberry~Pi, na mesma campanha.
     \footnotesize -- & \footnotesize não impedido: 50\,\% de perda, sem rejeição \\
 \end{longtable}
 
+\novo{Na injeção, o atacante não tem chaves e publica leituras sem envelope, que o
+recetor rejeita logo na verificação do formato (\texttt{MalformedMessage}); a
+verificação criptográfica propriamente dita é exercida pela republicação noutro
+tópico e pelo \emph{broker} que altera mensagens, rejeitadas por falharem a
+autenticação (\texttt{AuthenticationFailed}).}
+
 A tabela confirma, linha a linha, a tabela de ataques da Parte~1, incluindo as
 duas linhas que ela dava como não impedidas: o atraso abaixo de $\Delta_a$ e a
 supressão por um \emph{broker} ativo. Os restantes cenários verificam que as
 defesas não estragam o tráfego legítimo: as ordens do \emph{gateway} protegidas
-fim-a-fim (120 de 121 aceites, nenhuma rejeitada), TLS~1.3 com MQTT~5, todas as
+fim-a-fim (120 de 121 aceites, nenhuma rejeitada), TLS~1.3 com
+MQTT~5\novo{~\cite{oasis-mqtt5}}, todas as
 defesas ao mesmo tempo, a rotação e a revogação (Secção~\ref{sec:validacao}).
 
 \subsection{Observações}

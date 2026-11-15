@@ -62,16 +62,10 @@
     máximo, a cargas intermédias. Por existirem em K0, vêm do ambiente e não das
     camadas medidas; não afetam o p99 abaixo de cerca de 300~mensagens/s por
     sensor. Na campanha, os maiores valores nas execuções de custo foram de
-    0,5~ms em K0. A partir de 400~mensagens/s por sensor
-    (20\,000~mensagens/s), a latência mediana sobe de cerca de 0,2 para 7--14~ms
-    em todas as configurações, sem perda, com o \emph{gateway} entre 40\,\% (K0)
-    e 63\,\% (K8) de processador, longe da saturação, e volta a descer quando a
-    carga aumenta. O salto acontece à mesma taxa por sensor em todas as
-    configurações; foi registado, mas a sua origem não foi determinada. Afeta a
-    latência acima de
-    $R_{\text{alvo}}$ (200~mensagens/s por sensor) e fica abaixo de $L_{\max}$,
-    pelo que não muda nenhum veredicto, mas a latência na subida de carga acima
-    desse ponto é um majorante.
+    0,5~ms em K0. \novo{Na subida de carga, a latência salta a partir de 300 a
+    400~mensagens/s por sensor em todas as configurações
+    (Secção~\ref{sec:saturacao}); a origem não foi determinada, e a latência da
+    subida acima desse ponto é um majorante.}
   \item \textbf{Serviços alheios.} O Docker esteve ativo no Raspberry~Pi durante o
     teste de fumo e os pilotos, e foi parado para a campanha, tal como o ambiente
     gráfico; os pilotos só serviram para fixar parâmetros, não entram nos
@@ -95,7 +89,7 @@
   \item \textbf{Sem AES em \emph{hardware}} foi emulado desligando extensões no
     OpenSSL do mesmo processador, o que não reproduz a memória nem a
     \emph{cache} de um processador mais simples.
-  \item Carga sintética: no nível~2, mensagens de 16~octetos de conteúdo a taxa
+  \item Carga sintética: no nível~2, mensagens de \novo{64~octetos} de conteúdo a taxa
     constante, QoS~0, 50 sensores; o tamanho só foi variado no nível~1. Com
     mensagens maiores, o peso do envelope e a vantagem do AES em \emph{hardware}
     crescem (Secção~\ref{sec:aceleracao}).

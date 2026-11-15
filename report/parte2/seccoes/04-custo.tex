@@ -35,12 +35,12 @@ A Tabela~\ref{tab:marginal} dá o custo de cada camada isolada:
 
 \begin{itemize}[leftmargin=*]
   \item \textbf{Transporte} (K0$\to$K1): +7,9~$\mu$s por mensagem e +47~$\mu$s
-    no p99, mais 22~octetos por mensagem na ligação do \emph{gateway} e 4,8~MB de
+    no p99, mais 22~octetos por mensagem na ligação do \emph{gateway} e \novo{4,7~MiB} de
     memória no \emph{broker}.
   \item \textbf{Envelope} (K1$\to$K2): +7,3~$\mu$s e +41~$\mu$s no p99, quase
     tanto como o TLS, e 53~octetos por mensagem. Passar de GMAC a AES-256-GCM
     (K2$\to$K3) não custa nada mensurável ($-0{,}1$~$\mu$s, IC $[-0{,}5; 0{,}5]$):
-    com AES em \emph{hardware}, cifrar 16~octetos é desprezável face ao resto do
+    com AES em \emph{hardware}, \novo{cifrar os 64~octetos do conteúdo} é desprezável face ao resto do
     envelope (análise, procura da chave, verificações).
   \item \textbf{Validade temporal} (K3$\to$K4) e \textbf{anti-repetição}
     (K3$\to$K5): diferenças de 0,6 e 0,2~$\mu$s, com intervalos que incluem zero.
@@ -55,7 +55,7 @@ A Tabela~\ref{tab:marginal} dá o custo de cada camada isolada:
 \end{itemize}
 
 \paragraph{Interações.} A validade e a anti-repetição custam o mesmo juntas e
-separadas: a diferença das diferenças é de $-0{,}5$~$\mu$s, IC $[-1{,}3; 0{,}4]$.
+separadas: a diferença das diferenças \novo{(Eq.~\ref{eq:interacao})} é de $-0{,}5$~$\mu$s, IC $[-1{,}3; 0{,}4]$.
 O TLS custa menos com o envelope ativo do que sem ele (5,5 contra 7,9~$\mu$s, uma
 interação de $-2{,}4$~$\mu$s, IC $[-2{,}9; -2{,}0]$); a causa não foi
 investigada. Para a latência, nenhuma das interações se distingue do ruído.
@@ -75,50 +75,45 @@ verifica, e a diferença K8$\to$K9 é de 151~$\mu$s. O tamanho não foi variado 
 nível~2.
 
 \paragraph{Saturação.} A Tabela~\ref{tab:saturacao} dá o débito máximo sustentado
-(perda inferior a 1\,\% e p99 até $L_{\max}$) e o processador no último patamar
-sustentado. Em todas as configurações, o que limita primeiro é o processador do
+(perda inferior a 1\,\% e p99 até $L_{\max}$)\novo{, o de cada subida e o processador no
+patamar da mediana; a Figura~\ref{fig:saturacao} mostra a latência p99 ao longo da
+subida.} Em todas as configurações, o que limita primeiro é o processador do
 \emph{gateway}: no patamar seguinte, o seu processo chega a 93--100\,\% de um núcleo
 (a cadeia de camadas corre numa só linha de execução), enquanto o \emph{broker}
 fica entre 15 e 80\,\%. K0 sustenta 60\,000~mensagens/s, o transporte desce para
 40\,000, as configurações com envelope AES ficam entre 25\,000 e 35\,000 e K9 fica
 em 5\,000~mensagens/s, metade de $R_{\text{alvo}}$ da telemetria. Os patamares são
 discretos (passos de 5\,000~mensagens/s entre 400 e 800 por sensor): uma
-diferença de um patamar entre K3 e K8 está dentro da resolução da subida. K6, K7
-e K10 sustentaram 30\,000~mensagens/s numa das três subidas e falharam nas
-outras duas, com p99 de 120 a 520~ms; a mediana fica no patamar anterior.
+diferença de um patamar entre K3 e K8 está dentro da resolução da subida. \novo{A
+variação entre subidas é dessa ordem: só K0 e K9 sustentaram o mesmo patamar nas
+três; nas restantes, uma das subidas ficou um patamar acima ou abaixo das outras
+duas (em K10, dois: 35\,000~mensagens/s numa subida e 25\,000 nas outras). A
+tabela dá a mediana, que descarta essa subida.} \marcaNovo{Tabela~\ref{tab:saturacao} gerada a partir dos dados e Figura~\ref{fig:saturacao} novas}
 
-\begin{table}[ht]
-  \centering
-  \caption{Débito máximo sustentado no Raspberry~Pi~5 (mediana das três subidas)
-    e processador do \emph{gateway} e do \emph{broker} no último patamar
-    sustentado.}
-  \label{tab:saturacao}
-  \footnotesize
-  \begin{tabular}{@{}lrrr@{}}
-    \toprule
-    \textbf{Config.} & \textbf{Débito (msg/s)} & \textbf{\emph{Gateway} (\%)} &
-      \textbf{\emph{Broker} (\%)} \\
-    \midrule
-    K0  & 60\,000 & 95 & 56 \\
-    K1  & 40\,000 & 93 & 72 \\
-    K2  & 35\,000 & 96 & 61 \\
-    K3, K4, K5 & 30\,000 & 84--87 & 55--57 \\
-    K6, K7 & 25\,000 & 74--76 & 44--48 \\
-    K8  & 30\,000 & 89 & 55 \\
-    K9  & 5\,000  & 93 & 14 \\
-    K10 & 25\,000 & 70 & 45 \\
-    K11 & 30\,000 & 92 & 57 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\gerado{pi5/saturation}
+
+\figuraGerada{pi5/fig-saturation}{Latência p99 em função da carga oferecida (mediana
+  das três subidas de carga; 50 sensores). A tracejado, $L_{\max}$.}{fig:saturacao}
 
 A partir de 400~mensagens/s por sensor (20\,000~mensagens/s), a latência sobe de
-forma brusca em todas as configurações, incluindo K0: o p99 passa de 0,2--0,6~ms
-para 20--35~ms e depois volta a descer com a carga, sem perda. Isto acontece com o
-\emph{gateway} a 40\,\% (K0) ou a 63\,\% (K8) de processador, e K9 satura antes de
-lá chegar. O efeito foi registado, mas a sua origem não foi determinada
-(Secção~\ref{sec:ameacas}). Fica abaixo de $L_{\max}$ e acima de
-$R_{\text{alvo}}$ (200~mensagens/s por sensor), pelo que não muda nenhum veredicto.
+forma brusca \novo{(Figura~\ref{fig:saturacao})} em todas as configurações, incluindo K0: \novo{o p50 passa de cerca de
+0,2~ms para 3 a 15~ms e} o p99 de 0,2--0,6~ms para 20--35~ms, sem perda, e depois
+volta a descer com a carga. \novo{Em 7 das 33 subidas sem K9, o mesmo salto aparece já a
+300~mensagens/s por sensor (p99 de 23 a 37~ms).} Isto acontece com o
+\emph{gateway} a 40\,\% (K0) ou a 63\,\% (K8) de processador, \novo{longe da
+saturação,} e K9 satura antes de lá chegar. O efeito foi registado, mas a sua
+origem não foi determinada. Fica abaixo de $L_{\max}$ e acima de
+$R_{\text{alvo}}$ (200~mensagens/s por sensor), pelo que não muda nenhum
+veredicto\novo{; a latência da subida de carga a partir de 300~mensagens/s por sensor é
+um majorante (Secção~\ref{sec:ameacas})}.
+
+\novo{À mesma carga (1\,000~mensagens/s), o p99 da subida de carga é mais alto do que o
+das execuções de custo: 1,4 a 2,5 vezes nas outras configurações (0,2 a 0,7~ms) e
+quase 7 vezes em K9 (4 a 5~ms, com p50 de cerca de 2~ms desde o primeiro patamar,
+contra 0,7~ms de p99 nas execuções de custo). A diferença foi registada, mas a sua
+origem não foi determinada; os valores de latência do critério vêm das execuções
+de custo, e a da subida fica abaixo de $L_{\max}$, pelo que não muda nenhum
+veredicto.}
 
 \subsection{Aceleração criptográfica por \emph{hardware} (QP4)}
 \label{sec:aceleracao}
@@ -144,14 +139,15 @@ cadeia. A assinatura não muda com as extensões, porque o Ed25519 não as usa.
 \subsection{Octetos e memória}
 
 O envelope acrescenta 53~octetos por mensagem com AES-GCM ou ChaCha20-Poly1305 e
-89 com Ed25519, exatamente o que o formato prevê; com o conteúdo de 16~octetos
+89 com Ed25519, exatamente o que o formato prevê; com o conteúdo de \novo{64~octetos}
 usado na campanha, a mensagem na ligação do \emph{gateway} passa de 102 octetos
 (K0) para 178 (K2 a K8, K11) e 214 (K9). O TLS acrescenta 22~octetos por
 mensagem, a que se soma a negociação de cada ligação, que custa 4,2~ms de
 processador no \emph{gateway} com autenticação mútua, contra 0,8~ms sem TLS. A
-memória do \emph{gateway} é a mesma em todas as configurações (cerca de 39~MB, um
-majorante, Secção~\ref{sec:ameacas}); a do \emph{broker} passa de 7,5~MB sem TLS
-para cerca de 12,3~MB com TLS, e não muda com as restantes camadas.
+memória do \emph{gateway} é a mesma em todas as configurações (cerca de \novo{38,5~MiB}, um
+majorante, Secção~\ref{sec:ameacas}); a do \emph{broker} passa de \novo{7,3~MiB} sem TLS
+para cerca de \novo{12,0~MiB} com TLS, e não muda com as restantes camadas \novo{(as Tabelas
+dão os valores em KiB; 1~MiB = 1\,024~KiB)}.
 
 \subsection{Plataforma de referência}
 

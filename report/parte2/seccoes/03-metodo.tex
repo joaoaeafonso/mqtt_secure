@@ -43,26 +43,26 @@ Raspberry~Pi desligado.
 
 \paragraph{Relógios.} A latência é medida entre máquinas: o sensor escreve na
 mensagem o instante de envio e o \emph{gateway} subtrai-o do instante de entrega.
-Cada agente estima o desvio do seu relógio em relação ao do Raspberry~Pi por trocas
-de pedido e resposta no canal de controlo (duas por segundo) e os sensores corrigem
-o instante que escrevem. Dois relógios de quartzo independentes afastam-se a um
-ritmo quase constante (nos pilotos, cerca de 13~ppm, ou seja, 0,8~ms por minuto,
-mais do que as latências a medir), pelo que o desvio não é o da última amostra:
-ajusta-se uma reta ao quarto das amostras do último minuto com menor tempo de ida
-e volta e avalia-se no instante presente. Os relógios foram sincronizados por NTP
-antes da campanha e o NTP foi desligado nas duas máquinas durante ela, porque o
-NTP altera o ritmo do relógio enquanto corrige um desvio, e essa variação não é
-uma reta.
+\novo{Cada agente estima o desvio do seu relógio em relação ao do Raspberry~Pi por
+trocas de pedido e resposta no canal de controlo (duas por segundo), e os sensores
+corrigem o instante que escrevem. Dois relógios de quartzo independentes
+afastam-se a um ritmo quase constante: nos pilotos, cerca de 13~ppm, ou seja,
+0,8~ms por minuto, mais do que as latências a medir. Por isso, o desvio não é o da
+última amostra. Ajusta-se uma reta ao quarto das amostras do último minuto com
+menor tempo de ida e volta, e avalia-se essa reta no instante presente. Os relógios
+foram sincronizados por NTP antes da campanha, e o NTP foi desligado nas duas
+máquinas durante ela: enquanto corrige um desvio, o NTP altera o ritmo do relógio,
+e essa variação não é uma reta.}
 
 Tal como planeado, a avaliação tem dois níveis. No \textbf{nível~1}, os
 \emph{microbenchmarks} medem o tempo de processador da cadeia de camadas por
 mensagem, sem rede, para 16~B, 256~B, 4~KiB e 64~KiB. No \textbf{nível~2}, o
 \emph{broker} e o \emph{gateway} correm no Raspberry~Pi e os sensores e o atacante
-noutras máquinas da rede local.
+\novo{noutra máquina} da rede local.
 
 \subsection{Configurações}
 
-Foram medidas as doze configurações da \PUm{Tabela das configurações} (K0 a K11),
+Foram medidas as doze configurações da \novo{\PUm{Tabela~14}} (K0 a K11),
 sem alterações. O nível~1 tem um perfil para K0, K2 a K7, K9 e K11; K1, K8 e K10
 só diferem das vizinhas no transporte e nos limites, que só existem no nível~2.
 
@@ -106,7 +106,8 @@ entre a fonte e o Raspberry~Pi.
 
 \subsection{Ataques}
 
-O atacante do laboratório executa os ataques da \PUm{Tabela dos ataques}. Dois
+O atacante do laboratório executa os ataques da \novo{\PUm{Tabela~16}. Na matriz, os
+treze ataques são numerados de A1 a A13 (legenda da Tabela~\ref{tab:protecao}).} Dois
 tipos de ensaio usam-nos de forma diferente:
 
 \begin{itemize}[leftmargin=*]
@@ -149,10 +150,19 @@ validar o próprio instrumento: o primeiro revelou latências negativas (a deriv
 dos relógios, corrigida com a estimação descrita acima) e o segundo a
 contaminação entre patamares (corrigida com a espera). Os dados dos pilotos não são
 resultados e não entram nas tabelas. Os intervalos
-de confiança são de 95\,\%, por \emph{bootstrap} de percentis sobre as execuções.
+de confiança são de 95\,\%, por \emph{bootstrap} de percentis\novo{~\cite{efron1993bootstrap}} sobre as execuções.
 O custo marginal de uma camada é a diferença de medianas entre as duas
 configurações que só diferem nela, e a diferença das diferenças mede a interação
-entre a validade temporal e a anti-repetição e entre o TLS e o envelope. A matriz
+\novo{entre duas camadas. Para uma métrica $m$,}\marcaNovo{equação nova}
+\begin{equation}
+  \begin{aligned}
+  I_{\text{val,rep}} &= \bigl[m(\mathrm{K6}) - m(\mathrm{K5})\bigr] - \bigl[m(\mathrm{K4}) - m(\mathrm{K3})\bigr],\\
+  I_{\text{TLS,env}} &= \bigl[m(\mathrm{K7}) - m(\mathrm{K10})\bigr] - \bigl[m(\mathrm{K1}) - m(\mathrm{K0})\bigr]:
+  \end{aligned}
+  \label{eq:interacao}
+\end{equation}
+\novo{o custo da validade temporal com e sem a anti-repetição, e o do TLS com e sem o
+envelope; $I = 0$ significa que as duas camadas não interagem.} A matriz
 de ataques correu separada das medições de custo, porque o intermediário na
 ligação do \emph{gateway} acrescenta latência.
 
@@ -220,17 +230,18 @@ resumo criptográfico fica no registo do ambiente.
     pelo escoamento das mensagens retidas (Secção~\ref{sec:metodo}, Procedimento).
     Não muda o que se mede, só a sua exatidão.
   \item \textbf{Campanhas repetidas.} A campanha completa correu três vezes no
-    mesmo Raspberry~Pi, e só a terceira é usada. A primeira não fez a subida de
-    carga (um defeito no \emph{script} de automação descartava os argumentos
-    dela) e mostrou um veredicto instável na ocupação de ligações, que vinha da
-    forma de contar as ligações retidas (contavam-se também as acabadas de abrir,
-    que o \emph{broker} ainda não tinha fechado). A segunda revelou que, com os
-    sensores noutra máquina, o atacante interno não recebia o certificado do
-    dispositivo comprometido: a chave privada de cada sensor é gerada no agente e
-    nunca sai dele, pelo que, com autenticação mútua, o atacante não chegava a
-    ligar-se e os ataques internos contavam como impedidos. O laboratório passou a
-    emitir ao atacante um certificado com o mesmo nome, da mesma autoridade (para
-    o \emph{broker}, a mesma identidade), revogado com o dispositivo. Corrigidos
+    mesmo Raspberry~Pi, e só a terceira é usada. \novo{A primeira não fez a
+    subida de carga, porque um defeito no \emph{script} de automação descartava os
+    argumentos dela. Mostrou também um veredicto instável na ocupação de ligações,
+    que vinha da forma de contar as ligações retidas: contavam-se também as
+    acabadas de abrir, que o \emph{broker} ainda não tinha fechado. A segunda
+    revelou que, com os sensores noutra máquina, o atacante interno não recebia o
+    certificado do dispositivo comprometido. A chave privada de cada sensor é
+    gerada no agente e nunca sai dele; com autenticação mútua, o atacante não
+    chegava a ligar-se, e os ataques internos contavam como impedidos. O
+    laboratório passou a emitir ao atacante um certificado com o mesmo nome e da
+    mesma autoridade (para o \emph{broker}, a mesma identidade), revogado com o
+    dispositivo.} Corrigidos
     os três defeitos, com testes, a campanha foi repetida por inteiro, para que
     todos os resultados venham do mesmo código. As medições de custo das três
     campanhas coincidem dentro do ruído; os veredictos da matriz de ataques das

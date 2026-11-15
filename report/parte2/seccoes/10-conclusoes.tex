@@ -34,8 +34,9 @@ As medições no Raspberry~Pi~5 respondem às cinco perguntas da Parte~1:
 \end{enumerate}
 
 Das cinco hipóteses, três confirmam-se (H1, com uma ressalva quanto ao débito; H2;
-H3). H4 é refutada: em ligações MQTT duradouras, o custo do TLS está em cada
-mensagem, tanto como o do envelope, e não na negociação. H5 não se confirma: com
+H3). \novo{H4 é refutada para ligações duradouras: nelas, o custo do TLS está em cada
+mensagem, tanto como o do envelope, e não na negociação; a hipótese só se mantém
+quando cada ligação transporta menos de cerca de 430 mensagens.} H5 não se confirma: com
 AES em \emph{hardware}, a limitação antes da criptografia não poupa processador
 mensurável ao \emph{gateway}.
 
@@ -53,7 +54,8 @@ mensagem.
 \paragraph{Trabalho futuro.} Cifra seguida de assinatura, para dar
 confidencialidade e prova de origem ao mesmo tempo; distribuição e armazenamento
 de chaves fora do laboratório; medição do custo no emissor num dispositivo
-restrito real (microcontrolador); um \emph{broker} ativo que termine TLS; uma
+restrito real (microcontrolador); \novo{o custo da negociação TLS no \emph{broker} e
+com retoma de sessão;} um \emph{broker} ativo que termine TLS; uma
 configuração com assinaturas e sem limitação, para medir H5 onde a verificação é
 cara; a origem do salto de latência registado a 400~mensagens/s por
 sensor; e a energia.
