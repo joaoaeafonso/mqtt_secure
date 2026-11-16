@@ -463,8 +463,11 @@ def saturation(c: Campaign, out: Path) -> None:
                      " / ".join(fmt(num(r["delivered_msg_s"])) for r in reps),
                      cpu("gw_cpu_pct"), cpu("broker_cpu_pct")])
     lmax_txt = f" e p99 até {fmt(l_max / 1000, 0)}~ms" if l_max else ""
+    cpu_name = c.manifest.get("platform", {}).get("cpu", "")
+    where = (" no Raspberry~Pi~5" if "Raspberry Pi 5" in cpu_name
+             else f" no {tex_escape(cpu_name)}" if cpu_name else "")
     tex_table(out / "saturation.tex",
-              "Débito máximo sustentado no Raspberry~Pi~5 (perda inferior a 1\\,\\%"
+              f"Débito máximo sustentado{where} (perda inferior a 1\\,\\%"
               f"{lmax_txt}): mediana e máximo de cada uma das subidas de carga, e "
               "processador do \\emph{gateway} e do \\emph{broker} (\\% de um núcleo) no "
               "patamar da mediana, nas subidas que o sustentaram (fonte: "
