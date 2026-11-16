@@ -85,7 +85,10 @@
   \item Um só modelo de \emph{hardware} restrito (Raspberry~Pi~5), um só
     \emph{broker} (Mosquitto) e uma rede local. Um microcontrolador sem sistema
     operativo, ou uma rede com perdas, podem ordenar as configurações de outra
-    forma.
+    forma. \novo{A campanha de referência num processador x86
+    (Secção~\ref{sec:referencia}) dá a mesma ordenação e a mesma recomendação, mas
+    também não é um dispositivo restrito, e a sua latência, medida sem rede, não é
+    comparável.}
   \item \textbf{Sem AES em \emph{hardware}} foi emulado desligando extensões no
     OpenSSL do mesmo processador, o que não reproduz a memória nem a
     \emph{cache} de um processador mais simples.

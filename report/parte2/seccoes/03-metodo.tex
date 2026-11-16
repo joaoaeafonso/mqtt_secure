@@ -31,7 +31,8 @@ alheios ao ensaio (incluindo o Docker) estavam parados durante a campanha.
       oficial & -- \\
     Rede & Ethernet 1~Gb/s & Ethernet 1~Gb/s \\
     \emph{Software} & GCC 14.2.0, CMake 3.31.6, Mosquitto 2.0.21, Python 3.13.5,
-      OpenSSL 3.5.9 & Python 3.12.3 \\
+      OpenSSL 3.5.9 & Python 3.12.3\novo{; na campanha de referência, também GCC
+      13.3.0, Mosquitto 2.0.18 e OpenSSL 3.0.13} \\
     \bottomrule
   \end{tabularx}
 \end{table}
@@ -40,6 +41,13 @@ O código medido é o do \emph{commit} \texttt{79c4878}, o mesmo nas duas máqui
 controlador recusa agentes de outra versão. A campanha correu de 12 para 13 de
 novembro de 2026 (4~h~55~min, sem intervenção), com o ambiente gráfico do
 Raspberry~Pi desligado.
+
+\novo{Na campanha de referência (Secção~\ref{sec:referencia}), o computador de
+secretária executa tudo: o controlador, o \emph{broker} e o \emph{gateway} nos
+núcleos físicos 0 a 3 (CPU 0--3 e 8--11, os pares SMT), e os agentes nos
+núcleos 4 a 7 (CPU 4--7 e 12--15), afetados com \texttt{taskset}. O regulador
+estava em \texttt{performance}, o aumento automático de frequência desligado e o
+NTP, o Docker e o Mosquitto do sistema parados.}
 
 \paragraph{Relógios.} A latência é medida entre máquinas: o sensor escreve na
 mensagem o instante de envio e o \emph{gateway} subtrai-o do instante de entrega.
@@ -229,6 +237,13 @@ resumo criptográfico fica no registo do ambiente.
     dos relógios passou a corrigir a deriva e a subida de carga passou a esperar
     pelo escoamento das mensagens retidas (Secção~\ref{sec:metodo}, Procedimento).
     Não muda o que se mede, só a sua exatidão.
+  \item \novo{\textbf{Plataforma de referência.} A campanha no computador de
+    secretária corre numa só máquina, com a latência medida pela interface
+    local, e a sua subida de carga tem mais um patamar (2\,000~mensagens/s por
+    sensor). A etapa de custo e subida de carga falhou na execução 70 de 120 (o
+    \emph{gateway} não respondeu ao pedido de resumo; origem não determinada) e
+    foi repetida sozinha, no mesmo \emph{commit} e com os mesmos argumentos
+    (Tabela~\ref{tab:campanhas}).}
   \item \textbf{Campanhas repetidas.} A campanha completa correu três vezes no
     mesmo Raspberry~Pi, e só a terceira é usada. \novo{A primeira não fez a
     subida de carga, porque um defeito no \emph{script} de automação descartava os

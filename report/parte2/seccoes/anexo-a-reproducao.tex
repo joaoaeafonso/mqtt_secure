@@ -14,11 +14,13 @@ significado de cada ficheiro, em \texttt{docs/evaluation.md}.
     semente e o mesmo \texttt{params.toml} (guardados em cada campanha).
 \end{itemize}
 
-A Tabela~\ref{tab:campanhas} identifica a campanha de que vêm os resultados.
+A Tabela~\ref{tab:campanhas} identifica as campanhas de que vêm os resultados\novo{: a
+do Raspberry~Pi, usada em todo o relatório, e a de referência, usada só na
+Secção~\ref{sec:referencia}}.
 
 \begin{table}[ht]
   \centering
-  \caption{Campanha usada neste relatório.}
+  \caption{Campanhas usadas neste relatório.}
   \label{tab:campanhas}
   \footnotesize
   \begin{tabularx}{\textwidth}{@{}L{3.6cm}Y@{}}
@@ -34,11 +36,30 @@ A Tabela~\ref{tab:campanhas} identifica a campanha de que vêm os resultados.
       $3 \times 156$; 39 cenários; \emph{microbenchmarks} com 10 repetições em
       três variantes de aceleração \\
     Testes no mesmo \emph{commit} & \texttt{results/validation/pi5-20261113/} \\
+    \midrule
+    \novo{Nome} & \novo{\texttt{desktop-20261115} (\texttt{results/desktop-20261115/})} \\
+    \novo{Plataforma} & \novo{Computador de secretária (AMD Ryzen~7 3700X): tudo na
+      mesma máquina, com núcleos separados (Secção~\ref{sec:metodo})} \\
+    \novo{Data} & \novo{Ataques, \emph{microbenchmarks} e cenários: 15--16 de novembro de
+      2026, 23:40 a 01:10 (UTC); custo e subida de carga, repetidos: 16 de
+      novembro, 06:23 a 10:20 (UTC)} \\
+    \novo{\emph{Commit}} & \novo{\texttt{2f5f62c}, árvore limpa; o código de medição é
+      igual ao de \texttt{79c4878} (só mudou \texttt{tools/analysis/analyze.py})} \\
+    \novo{Semente} & \novo{20261201} \\
+    \novo{Execuções} & \novo{As mesmas da campanha do Raspberry~Pi, com mais um patamar
+      na subida de carga (544 patamares); \emph{microbenchmarks} com e sem AES-NI.
+      A primeira tentativa da etapa de custo parou na execução 70 e fica em
+      \texttt{7a-falhada/}, fora da análise} \\
     \bottomrule
   \end{tabularx}
 \end{table}
 
 \subsection*{Plataforma de referência}
 
+\novo{Tabelas completas da campanha \texttt{desktop-20261115}
+(Secção~\ref{sec:referencia}). A latência foi medida pela interface local e não é
+comparável com a do Raspberry~Pi.}
+
 \geradoRef{desktop/summary}
+\geradoRef{desktop/saturation}
 \geradoRef{desktop/criterion}
