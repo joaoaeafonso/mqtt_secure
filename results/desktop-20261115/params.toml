@@ -1,0 +1,62 @@
+# Analysis parameters (report §7.5, criterion for the best configuration).
+#
+# `loadgen.py campaign` copies this file into the campaign directory BEFORE the
+# first measurement and records its SHA-256 in manifest.json, so the weights
+# and limits provably were not chosen after seeing the results. The analysis
+# uses the frozen copy, never this file, unless told otherwise (--params).
+#
+# STATUS: fixed (2026-11-11), before the campaign. Weights agreed by the
+# group; R_alvo (per use case) and L_max from the application scenario below,
+# agreed by the group after three pilot runs on the Raspberry Pi 5.
+status = "fixed"
+
+[attack_weights]             # ω_a in S(c); every attack weighs 1 unless listed
+default = 1.0
+# The report's attack table has 11 rows; two of them are measured as two
+# attacks each (capture point: network / broker; injection / tampering).
+# Half weight each, so every row of the table weighs 1.
+eavesdrop-network = 0.5
+eavesdrop-broker = 0.5
+inject = 0.5
+tamper-on-path = 0.5
+
+[cost_weights]               # v_m in cost(c); must sum to 1
+gw_cpu_us_per_msg = 0.4      # processor per message (gateway)
+lat_p99_us = 0.4             # p99 latency, sensor → application
+throughput = 0.05            # maximum sustained throughput (needs --saturate; higher is better)
+bytes_total = 0.05           # octets per message on the gateway's socket
+gw_rss_peak_kb = 0.05        # peak resident memory of the gateway
+connect_cpu_ms = 0.05        # connection establishment: CPU per connection (needs
+                             # --connect-test). Not connect_ms_p50: the elapsed time moves
+                             # in ~100 ms steps (waits inside the Paho C library), which
+                             # hide the few ms of a TLS handshake.
+
+[feasibility]
+# A configuration is a candidate for a use case only if, on the Pi, it sustains
+# that use case's R_alvo with p99 ≤ L_max.
+#
+# Application scenario (industrial monitoring): one edge gateway per plant
+# area, aggregating 1,000 condition/vibration sensors that report at 10 Hz
+# (10,000 msg/s uplink) and sending commands to 100 actuators at up to
+# 10 commands/s each (1,000 msg/s downlink, in bursts). Commands are a separate,
+# far lower flow than telemetry, hence their own R_alvo.
+# The pilots only checked that neither value sits at a level's limit (where the
+# verdict would flip between repetitions): K9 sustains ≈ 5,000 msg/s, the AEAD
+# levels ≥ 25,000.
+# L_max = 50 ms: a soft real-time bound for monitoring and supervisory control;
+# it also keeps the maximum throughput loss-limited (p99 reaches 20–27 ms at
+# 300–400 msg/s per sensor, so 10 ms would make it depend on that noisy knee).
+r_target_msg_s = 10000       # R_alvo for telemetry (both use cases), messages/s at the gateway
+l_max_us = 50000             # L_max, p99 latency in µs
+
+[feasibility.r_target_by_use_case]
+ordens = 1000                # R_alvo for commands to actuators, messages/s
+
+[calibration]                # report §6.6: Δa and Δs from measured latency and clock skew
+safety_factor = 2.0          # margin over the worst observed value
+round_ms = 100               # proposals are rounded up to a multiple of this
+
+[bootstrap]
+resamples = 10000
+confidence = 0.95
+seed = 20261105              # the analysis is deterministic for given raw data
