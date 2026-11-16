@@ -38,6 +38,7 @@ import csv
 import json
 import math
 import random
+import re
 import statistics
 import sys
 import tomllib
@@ -156,7 +157,32 @@ def fmt(x, digits: int = 1, tex: bool = True) -> str:
         return x
     if abs(x) >= 1000:
         return f"{x:,.0f}".replace(",", "\\," if tex else " ")
-    return f"{x:.{digits}f}"
+    # The report is in Portuguese: decimal comma in the LaTeX tables.
+    return f"{x:.{digits}f}".replace(".", ",") if tex else f"{x:.{digits}f}"
+
+
+def fmt_ci(m, lo, hi) -> str:
+    """'median [lo; hi]' for a LaTeX table (';' because ',' is the decimal mark)."""
+    return f"{fmt(m)} [{fmt(lo)}; {fmt(hi)}]"
+
+
+def size_label(octets) -> str:
+    """16 B, 256 B, 4 KiB, 64 KiB."""
+    n = int(octets)
+    return f"{n // 1024} KiB" if n >= 1024 and n % 1024 == 0 else f"{n} B"
+
+
+# The attack identifiers of the lab, as the report names them.
+ATTACK_PT = {
+    "eavesdrop-network": "escuta na rede", "eavesdrop-broker": "escuta no broker",
+    "inject": "injeção", "tamper-on-path": "adulteração no caminho",
+    "republish-topic": "republicação noutro tópico",
+    "stolen-key-other-topic": "chave roubada noutro tópico", "replay": "repetição",
+    "old-unseen-message": "mensagem antiga nunca vista", "downgrade": "despromoção do modo",
+    "receiver-forgery": "falsificação de ordens pelo recetor",
+    "impersonate": "usurpação do gateway", "flood": "inundação",
+    "slow-connections": "ocupação de ligações",
+}
 
 
 def fmt_md(x, digits: int = 1) -> str:
@@ -281,11 +307,12 @@ def summary(c: Campaign, out: Path) -> dict:
                 cells = [level]
                 for m, _ in shown:
                     v = table.get((level, ctx, m))
-                    cells.append(f"{fmt(v[0])} [{fmt(v[1])}, {fmt(v[2])}]" if v else "--")
+                    cells.append(fmt_ci(*v) if v else "--")
                 body.append(cells)
             lines += tex_table_lines(
                 f"Custo por configuração ({what}): mediana e IC 95\\,\\% por "
-                f"\\emph{{bootstrap}} sobre as execuções ({tex_escape(c.ctx_label(ctx))}).",
+                f"\\emph{{bootstrap}} sobre as execuções"
+                + (f" ({tex_escape(c.ctx_label(ctx))})." if c.factors else "."),
                 f"tab:resumo{part}{suffix}", ["Config."] + [lbl for _, lbl in shown], body,
                 size="footnotesize")
         (out / f"summary{suffix}.tex").write_text("\n".join(lines), encoding="utf-8")
@@ -317,7 +344,7 @@ def marginal(c: Campaign, out: Path) -> list[dict]:
             for metric in ("gw_cpu_us_per_msg", "lat_p99_us"):
                 r = next((r for r in pick if r["from"] == a and r["to"] == b
                           and r["metric"] == metric), None)
-                cells.append(f"{fmt(r['delta'])} [{fmt(r['lo'])}, {fmt(r['hi'])}]" if r else "--")
+                cells.append(fmt_ci(r['delta'], r['lo'], r['hi']) if r else "--")
             body.append(cells)
         tex_table(out / "marginal.tex",
                   "Custo marginal de cada camada (diferença de medianas, IC 95\\,\\%).",
@@ -373,7 +400,7 @@ def protection(c: Campaign, out: Path) -> dict[str, float]:
     names = {a: f"A{i}" for i, a in enumerate(attacks, 1)}
     body = [[r["level"], *("\\checkmark" if r.get(a) else "--" if a in r else "" for a in attacks),
              fmt(r["S"], 2)] for r in rows]
-    legend = "; ".join(f"{names[a]} {tex_escape(a)}" for a in attacks)
+    legend = "; ".join(f"{names[a]} {tex_escape(ATTACK_PT.get(a, a))}" for a in attacks)
     agree = ("as repetições concordaram em todas as células" if not split else
              "repetições discordantes: " + ", ".join(tex_escape(x) for x in split))
     tex_table(out / "protection.tex",
@@ -405,6 +432,76 @@ def max_throughput(c: Campaign, l_max: float | None) -> dict[str, float]:
     for (level, _), rate in best.items():
         per_level[level].append(rate)
     return {lv: median(xs) for lv, xs in per_level.items()}
+
+
+def saturation(c: Campaign, out: Path) -> None:
+    """saturation.tex: maximum sustained rate per level (median over the load
+    sweeps, as in the criterion), each sweep's own maximum, and the gateway and
+    broker CPU at the median step over the sweeps that sustained it;
+    fig-saturation.tex: latency p99 against the offered load."""
+    if not c.saturation:
+        return
+    l_max = c.params.get("feasibility", {}).get("l_max_us")
+    best = max_throughput(c, l_max)
+    by_rep: dict[str, dict[str, dict]] = defaultdict(dict)  # level -> repetition -> last sustained row
+    for r in c.saturation:
+        if not sustained(r, l_max):
+            continue
+        rep_ = r.get("repetition", "1")
+        cur = by_rep[r["level"]].get(rep_)
+        if cur is None or num(r["rate_per_sensor"]) > num(cur["rate_per_sensor"]):
+            by_rep[r["level"]][rep_] = r
+    body = []
+    for level in [lv for lv in c.levels if lv in by_rep]:
+        reps = [by_rep[level][k] for k in sorted(by_rep[level], key=natural)]
+        step = median([num(r["rate_per_sensor"]) for r in reps])
+        at = [r for r in c.saturation if r["level"] == level and sustained(r, l_max)
+              and num(r["rate_per_sensor"]) == step]
+        def cpu(col: str) -> str:
+            xs = [x for r in at if (x := num(r.get(col))) is not None]
+            return fmt(median(xs), 0) if xs else "--"
+        body.append([level, fmt(best.get(level)),
+                     " / ".join(fmt(num(r["delivered_msg_s"])) for r in reps),
+                     cpu("gw_cpu_pct"), cpu("broker_cpu_pct")])
+    lmax_txt = f" e p99 até {fmt(l_max / 1000, 0)}~ms" if l_max else ""
+    cpu_name = c.manifest.get("platform", {}).get("cpu", "")
+    where = (" no Raspberry~Pi~5" if "Raspberry Pi 5" in cpu_name
+             else f" no {tex_escape(re.sub(r' \d+-Core Processor$', '', cpu_name))}"
+             if cpu_name else "")
+    tex_table(out / "saturation.tex",
+              f"Débito máximo sustentado{where} (perda inferior a 1\\,\\%"
+              f"{lmax_txt}): mediana e máximo de cada uma das subidas de carga, e "
+              "processador do \\emph{gateway} e do \\emph{broker} (\\% de um núcleo) no "
+              "patamar da mediana, nas subidas que o sustentaram (fonte: "
+              "\\texttt{saturation.csv}).",
+              "tab:saturacao", ["Config.", "Débito (msg/s)", "Cada subida (msg/s)",
+                                "\\emph{Gateway} (\\%)", "\\emph{Broker} (\\%)"], body,
+              "lrrrr", size="footnotesize")
+
+    # p99 against the offered load, median over the sweeps at each step.
+    shown = [lv for lv in ("K0", "K1", "K3", "K8", "K9", "K10", "K11") if lv in by_rep]
+    sensors = num(c.saturation[0].get("sensors_up")) or 50.0
+    plots = []
+    for level in shown:
+        steps: dict[float, list[float]] = defaultdict(list)
+        for r in c.saturation:
+            if r["level"] == level and (p99 := num(r.get("lat_p99_us"))) is not None:
+                steps[num(r["rate_per_sensor"]) * sensors].append(p99 / 1000)
+        coords = " ".join(f"({x:.0f},{median(ys):.3f})" for x, ys in sorted(steps.items()))
+        plots += [f"    \\addplot+[mark size=1.5pt] coordinates {{{coords}}};",
+                  f"    \\addlegendentry{{{level}}}"]
+    lmax_line = ([f"    \\addplot[dashed, gray, domain=400:100000] {{{l_max / 1000:.0f}}};",
+                  f"    \\addlegendentry{{$L_{{\\max}}$}}"] if l_max else [])
+    (out / "fig-saturation.tex").write_text("\n".join([
+        "% Generated by tools/analysis/analyze.py; do not edit by hand.",
+        "\\begin{tikzpicture}",
+        "  \\begin{loglogaxis}[width=\\linewidth, height=6.5cm,",
+        "      xlabel={carga oferecida (mensagens/s)}, ylabel={latência p99 (ms)},",
+        "      xmin=400, xmax=100000, ymin=0.1, ymax=10000,",
+        "      legend pos=north west, legend columns=4, legend style={font=\\scriptsize},",
+        "      cycle list name=exotic]",
+        *plots, *lmax_line,
+        "  \\end{loglogaxis}", "\\end{tikzpicture}", ""]), encoding="utf-8")
 
 
 def properties(level: dict) -> set[str]:
@@ -581,7 +678,7 @@ def microbench(c: Campaign, out: Path) -> None:
               "Nível 1: tempo de processador por mensagem (µs, mediana das repetições), por "
               "configuração, tamanho e aceleração AES (\\texttt{OPENSSL\\_armcap=0} desliga "
               "todas as extensões ARM; \\texttt{OPENSSL\\_armcap=1} mantém o NEON).",
-              "tab:microbench", ["Config.", "AES-HW"] + [f"{s} B" for s in sizes], body)
+              "tab:microbench", ["Config.", "AES-HW"] + [size_label(s) for s in sizes], body)
 
 
 def figures(c: Campaign, out: Path, table: dict, rows: list[dict]) -> None:
@@ -609,16 +706,51 @@ def figures(c: Campaign, out: Path, table: dict, rows: list[dict]) -> None:
     if pts:
         frontier = sorted((r for r in pts if r.get("pareto_telemetria-sensivel")),
                           key=lambda r: r["cost"])
+        # Most configurations cost 1.4-1.9 and one (K9) about 6: on a common
+        # axis the cluster becomes unreadable. Points beyond twice the median
+        # cost are drawn at the right edge, labelled with their real cost.
+        costs = [float(r["cost"]) for r in pts]
+        cut = 2 * median(costs)
+        inside = [x for x in costs if x <= cut]
+        xmax = round(max(inside) + 0.35, 2)
+
+        def x_of(r: dict) -> float:
+            return min(float(r["cost"]), xmax)
+
+        # Labels: points with the same S(c) sit side by side, so they alternate
+        # left / above / right instead of all sitting on top of their marks.
+        anchors: dict[str, str] = {}
+        by_s: dict[str, list[dict]] = defaultdict(list)
+        for r in pts:
+            if float(r["cost"]) <= cut:
+                by_s[r["S"]].append(r)
+        for group in by_s.values():
+            group.sort(key=lambda r: float(r["cost"]))
+            cycle = (["east", "west"] if len(group) == 2
+                     else ["east", "south", "west"] if len(group) == 3 else ["south"])
+            for i, r in enumerate(group):
+                anchors[r["level"]] = cycle[i % len(cycle)]
+        labels = []
+        for r in pts:
+            if float(r["cost"]) > cut:
+                labels.append(f"    \\node[anchor=north east, font=\\scriptsize] at "
+                              f"(axis cs:{xmax},{r['S']}) {{{r['level']} "
+                              f"({fmt(float(r['cost']), 2)}\\,$\\rightarrow$)}};")
+            else:
+                labels.append(f"    \\node[anchor={anchors[r['level']]}, font=\\scriptsize, "
+                              f"inner sep=2pt] at (axis cs:{r['cost']},{r['S']}) "
+                              f"{{{r['level']}}};")
         (out / "fig-pareto.tex").write_text("\n".join([
             "% Generated by tools/analysis/analyze.py; do not edit by hand.",
             "\\begin{tikzpicture}",
-            "  \\begin{axis}[width=\\linewidth, height=6cm, xlabel={custo$(c)$},",
-            "      ylabel={$S(c)$}, ymin=0, ymax=1.05, nodes near coords,",
-            "      point meta=explicit symbolic]",
+            "  \\begin{axis}[width=\\linewidth, height=6.5cm, xlabel={custo$(c)$},",
+            f"      ylabel={{$S(c)$}}, ymin=-0.05, ymax=1.1, xmin=0.9, xmax={xmax},",
+            "      clip=false]",
             "    \\addplot+[only marks] coordinates {",
-            *[f"      ({r['cost']},{r['S']}) [{r['level']}]" for r in pts], "    };",
+            *[f"      ({x_of(r)},{r['S']})" for r in pts], "    };",
             "    \\addplot+[no marks, dashed] coordinates {",
-            *[f"      ({r['cost']},{r['S']})" for r in frontier], "    };",
+            *[f"      ({x_of(r)},{r['S']})" for r in frontier], "    };",
+            *labels,
             "  \\end{axis}", "\\end{tikzpicture}", ""]), encoding="utf-8")
 
 
@@ -784,6 +916,7 @@ def analyze(root: Path, out_root: Path, params: Path | None) -> Path:
     scores = protection(c, out)
     rows = criterion(c, out, table, scores)
     microbench(c, out)
+    saturation(c, out)
     figures(c, out, table, rows)
     hypotheses(c, out, table, marg)
     calibration(c, out)

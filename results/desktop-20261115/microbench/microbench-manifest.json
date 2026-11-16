@@ -1,0 +1,39 @@
+{
+  "git": {
+    "commit": "2f5f62cd4c4a8b428e050a7fb2c96889b692337c",
+    "dirty": false,
+    "describe": "2f5f62c"
+  },
+  "gateway_binary": "/home/joaoaeafonso/CLionProjects/mqtt-secure/build/bench/benchmarks/msec_pipeline_benchmarks",
+  "gateway_sha256": "06d2e57ae2dcca6200556403b95488471dcef860b18f6d0d4dc1f34905fcc2b8",
+  "platform": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cpus": 16,
+    "mem_total_kb": 32767212,
+    "kernel": "7.0.0-42-generic",
+    "machine": "x86_64",
+    "os": "Ubuntu 24.04.5 LTS",
+    "hostname": "dev-machine",
+    "governor": "performance"
+  },
+  "software": {
+    "openssl": "OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)",
+    "mosquitto": "mosquitto version 2.0.18",
+    "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 (RelWithDebInfo)",
+    "python": "3.12.3"
+  },
+  "env": {},
+  "variants": {
+    "aes-on": {},
+    "aes-armcap0": {
+      "OPENSSL_ia32cap": "~0x200000200000000"
+    }
+  },
+  "arguments": {
+    "out": "results/desktop-20261115/microbench",
+    "binary": "/home/joaoaeafonso/CLionProjects/mqtt-secure/build/bench/benchmarks/msec_pipeline_benchmarks",
+    "repetitions": "10",
+    "min_time": "0.5s",
+    "filter": "noacl/"
+  }
+}

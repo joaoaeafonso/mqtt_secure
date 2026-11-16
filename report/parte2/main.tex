@@ -20,18 +20,36 @@
 \newcommand{\Subtitulo}{Implementação, Avaliação num Raspberry Pi e Validação}
 \newcommand{\Entrega}{Projeto --- Parte 2: implementação e avaliação}
 \newcommand{\TituloCurto}{Segurança em camadas para MQTT}
+% Data da entrega (capa; o template pede-a). Substituir pela data de entrega.
+\newcommand{\Data}{30 de novembro de 2026}
 \newcommand{\Repositorio}{https://github.com/joaoaeafonso/mqtt_secure}
 
 \input{../preambulo}
 \fancyhead[R]{\small\color{cinza}SRSI --- Projeto, Parte 2}
 \hypersetup{pdftitle={\Titulo: \Subtitulo}, pdfsubject={SRSI -- Projeto, Parte 2}}
 \setlength{\emergencystretch}{2em}
+% Eixos dos gráficos com vírgula decimal e espaço nos milhares, como no texto.
+\pgfplotsset{/pgf/number format/.cd, use comma, 1000 sep={\,}}
+
+% ------------------------------------------------------- revisão -------
+% Texto alterado na revisão a amarelo. Para a versão final: \revisaofalse.
+\newif\ifrevisao
+\revisaotrue
+\usepackage{soulutf8}
+\sethlcolor{yellow}
+\soulregister\cite7 \soulregister\ref7 \soulregister\emph7
+\soulregister\texttt7 \soulregister\textbf7
+% \novo{texto}: frase alterada.  \marcaNovo{nota}: assinala um bloco novo
+% que não se pode sublinhar (equação, tabela, figura), só durante a revisão.
+\newcommand{\novo}[1]{\ifrevisao\hl{#1}\else#1\fi}
+\newcommand{\marcaNovo}[1]{\ifrevisao\hl{[#1]}\fi}
 
 % ------------------------------------------------------------ macros -------
 % Texto por escrever: visível no PDF, fácil de encontrar com grep.
 \newcommand{\PorFazer}[1]{\textcolor{mau}{\textbf{[Por fazer:} #1\textbf{]}}}
 % Referência à Parte 1 (documento separado: não há \ref entre os dois).
 \newcommand{\PUm}[1]{Parte~1, #1}
+\soulregister\PUm7
 % Tabela ou figura gerada por tools/analysis/analyze.py (make dados).
 % \gerado{pi5/summary} lê gerado/pi5/summary.tex, ou mostra uma caixa se faltar.
 \newcommand{\gerado}[1]{%
@@ -77,6 +95,7 @@
     \textbf{Autores:}\\[0.2cm]
     \Autores\\[0.8cm]
     \textbf{Docente:} \Docente\\[0.8cm]
+    \textbf{Data:} \expandafter\novo\expandafter{\Data}\\[0.8cm]
     \textbf{Repositório:} \url{\Repositorio}
   \end{flushleft}
   \vfill
@@ -86,6 +105,8 @@
 \input{seccoes/00-resumo}
 \clearpage
 \tableofcontents
+\clearpage
+\input{seccoes/glossario}
 \clearpage
 
 \pagenumbering{arabic}

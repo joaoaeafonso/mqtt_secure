@@ -2,13 +2,41 @@
 \label{sec:criterio}
 
 Aplica-se o critério da \PUm{Secção~7.5} com os parâmetros da
-Secção~\ref{sec:parametros}: proteção $S(c)$, custo normalizado por K0,
-exequibilidade, requisitos por caso de uso e fronteira de Pareto.
+Secção~\ref{sec:parametros}. \novo{A proteção de uma configuração $c$ é a fração
+ponderada dos ataques que impede, e o custo agrega as métricas normalizadas por
+K0 (\PUm{Eq.~10 e~11}):}\marcaNovo{equações novas}
+\begin{equation}
+  \begin{gathered}
+  S(c) = \frac{\sum_{a \in \mathcal{A}} \omega_a\, \pi_a(c)}{\sum_{a \in \mathcal{A}} \omega_a},
+  \\[4pt]
+  \operatorname{custo}(c) = \sum_{m} v_m\, r_m(c), \qquad
+  r_m(c) = \begin{cases}
+    m(c) / m(\mathrm{K0}) & \text{se maior é pior,}\\
+    m(\mathrm{K0}) / m(c) & \text{no débito,}
+  \end{cases}
+  \end{gathered}
+  \label{eq:protecao-custo}
+\end{equation}
+\novo{com os pesos $\omega_a$ e $v_m$ da Secção~\ref{sec:parametros}. Entre as
+configurações exequíveis que cumprem os requisitos do caso de uso, as não
+dominadas formam a fronteira de Pareto $\mathcal{P}$, e a configuração recomendada
+é a mais barata das que atingem a proteção máxima (\PUm{Eq.~12}):}
+\begin{equation}
+  c^{*} = \operatorname*{arg\,min}_{c \in \mathcal{P},\ S(c) = S_{\max}} \operatorname{custo}(c),
+  \qquad S_{\max} = \max_{c \in \mathcal{P}} S(c).
+  \label{eq:melhor}
+\end{equation}
+\novo{Ao longo da fronteira, reporta-se o custo marginal $\Delta\operatorname{custo} / \Delta S$.}
+
+\novo{A Tabela~\ref{tab:criterio} dá, para cada configuração, $S(c)$, o custo, a
+exequibilidade e a pertença à fronteira de Pareto em cada caso de uso, e a
+Figura~\ref{fig:pareto} mostra a fronteira da telemetria sensível.}
 
 \gerado{pi5/criterion}
 
 \figuraGerada{pi5/fig-pareto}{Proteção $S(c)$ contra custo$(c)$; a tracejado, a
-  fronteira de Pareto para a telemetria sensível.}{fig:pareto}
+  fronteira de Pareto para a telemetria sensível. \novo{K9, com custo 5,91, está
+  representada no limite direito do eixo.}}{fig:pareto}
 
 Os requisitos de cada caso de uso (\PUm{Secção~7.5}) excluem logo K0 a K4: a
 telemetria exige integridade, ligação ao tópico e anti-repetição no conteúdo, e
@@ -23,8 +51,8 @@ as ordens exigem ainda validade, restrição chave--tópico e prova de origem.
     fronteira de Pareto tem três pontos: K10 ($S = 0{,}64$, custo 1,40), K5
     (0,73; 1,76) e K8 (1,00; 1,80). O custo marginal ao longo da fronteira é de
     3,9 por unidade de $S$ de K10 para K5 e de apenas 0,14 de K5 para K8: os
-    últimos 27 pontos de proteção (validade, limitação de tráfego e limites do
-    \emph{broker}) quase não custam. $c^* = \text{K8}$ nos dois casos.
+    últimos 27 pontos de proteção (validade, \novo{restrição chave--tópico,}
+    limitação de tráfego e limites do \emph{broker}) quase não custam. $c^* = \text{K8}$ nos dois casos.
   \item \textbf{Ordens a atuadores.} Só K9 dá prova de origem, e é exequível
     para as ordens ($R_{\text{alvo}} = 1\,000$~mensagens/s, que sustenta cinco
     vezes, com p99 de 0,7~ms à carga nominal). $c^* = \text{K9}$, sem
@@ -32,11 +60,11 @@ as ordens exigem ainda validade, restrição chave--tópico e prova de origem.
 \end{itemize}
 
 A recomendação antecipada na Parte~1 mantém-se: \textbf{K8 para a telemetria e
-K9 para as ordens}. K11 (ChaCha20) tem a mesma proteção que K8 e custa mais
-2\,\% neste processador, que tem AES em \emph{hardware}; num processador sem essas
-extensões, o envelope AES custa 1,4 vezes o do ChaCha20 a 256~octetos e 4 a 5
-vezes a partir de 4~KiB (Secção~\ref{sec:aceleracao}) e K11 passa a ser a escolha para a telemetria, como
-a Parte~1 previa.
+K9 para as ordens}. \novo{K11 (ChaCha20) tem a mesma proteção que K8 e custa mais
+2\,\% neste processador, que tem AES em \emph{hardware}. Num processador sem essas
+extensões, o envelope AES custa 1,4 vezes o do ChaCha20 a 256~octetos, 4 vezes a
+4~KiB e 5 a 64~KiB (Secção~\ref{sec:aceleracao}). Aí, K11 passa a ser a escolha
+para a telemetria, como a Parte~1 previa.}
 
 \paragraph{Sensibilidade.} A escolha não depende dos pesos fixados. Com todos os
 ataques a pesar~1, com pesos de custo iguais, ou com todo o peso no processador

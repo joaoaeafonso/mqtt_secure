@@ -1,0 +1,80 @@
+{
+  "started": "2026-11-15T22:59:33+0000",
+  "seed": 20261201,
+  "arguments": {
+    "command": "campaign",
+    "config": null,
+    "set": [
+      [
+        "broker",
+        "host",
+        "0.0.0.0"
+      ],
+      [
+        "broker",
+        "advertise",
+        "127.0.0.1"
+      ],
+      [
+        "cluster",
+        "sensor_agents",
+        "2"
+      ],
+      [
+        "cluster",
+        "attacker_agents",
+        "1"
+      ]
+    ],
+    "preset": null,
+    "gateway": "/home/joaoaeafonso/CLionProjects/mqtt-secure/build/bench/apps/load_gateway/msec_load_gateway",
+    "verbose": false,
+    "state_dir": "/home/joaoaeafonso/CLionProjects/mqtt-secure/build/loadtest/controller",
+    "new_token": false,
+    "capture": null,
+    "capture_iface": null,
+    "keylog": null,
+    "levels": null,
+    "vary": [],
+    "repetitions": 10,
+    "seed": 20261201,
+    "settle": 3.0,
+    "duration": 30.0,
+    "connect_test": 5,
+    "attacks": false,
+    "attack_repetitions": 1,
+    "attack_duration": 6,
+    "saturate": "10,20,50,100,125,150,200,300,400,500,600,700,800,1000,1200,1600,2000",
+    "saturation_repetitions": 3,
+    "saturation_duration": 15,
+    "params": "/home/joaoaeafonso/CLionProjects/mqtt-secure/tools/analysis/params.toml",
+    "out": "results/desktop-20261115"
+  },
+  "params_sha256": "700500932d4cc2b762303f1d40c68f718c66871efd9f55b871a3c3f12f64c21f",
+  "git": {
+    "commit": "2f5f62cd4c4a8b428e050a7fb2c96889b692337c",
+    "dirty": false,
+    "describe": "2f5f62c"
+  },
+  "gateway_binary": "/home/joaoaeafonso/CLionProjects/mqtt-secure/build/bench/apps/load_gateway/msec_load_gateway",
+  "gateway_sha256": "34c44a29b721ff4c20105c8a5fd0e61abb1ac82f5d80fc7f2ea7f34a7d48ce2b",
+  "platform": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cpus": 16,
+    "mem_total_kb": 32767212,
+    "kernel": "7.0.0-42-generic",
+    "machine": "x86_64",
+    "os": "Ubuntu 24.04.5 LTS",
+    "hostname": "dev-machine",
+    "governor": "performance"
+  },
+  "software": {
+    "openssl": "OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)",
+    "mosquitto": "mosquitto version 2.0.18",
+    "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 (RelWithDebInfo)",
+    "python": "3.12.3"
+  },
+  "env": {},
+  "finished": "2026-11-15T23:40:51+0000",
+  "runs_completed": 70
+}

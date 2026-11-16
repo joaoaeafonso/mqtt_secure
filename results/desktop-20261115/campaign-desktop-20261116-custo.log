@@ -1,0 +1,2179 @@
+=== 2026-11-16 06:23:34 início 7a → results/desktop-20261116-custo
+agents join with:
+  loadgen.py agent --controller 127.0.0.1:8089 --token bUOWrPtf5dlL1eOqcsFYbth0XmOhOM6H --fingerprint efd4a39a2276ddf6cc045cf624fe860370e07c704e0be9a75acdda2724a95ac9 --role sensors|attacker
+· waiting for sensors agents: 0/2 connected
+· agent #2 joined: sensors on dev-machine (127.0.0.1)
+· agent #1 joined: sensors on dev-machine (127.0.0.1)
+credentials for 50 sensors in /tmp/msec-lab-z5wxit4y
+· agent #3 joined: attacker on dev-machine (127.0.0.1)
+provisioning 25 sensors on dev-machine (127.0.0.1)
+provisioning 25 sensors on dev-machine (127.0.0.1)
+· lab started
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· campaign run 1/120: {'level': 'K3', 'repetition': 6}
+[1/120] level=K3  repetition=6
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: encrypt → sign
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 2/120: {'level': 'K9', 'repetition': 6}
+[2/120] level=K9  repetition=6
+· campaign run 3/120: {'level': 'K9', 'repetition': 9}
+[3/120] level=K9  repetition=9
+· payload.protection: sign → encrypt
+· campaign run 4/120: {'level': 'K8', 'repetition': 7}
+[4/120] level=K8  repetition=7
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 5/120: {'level': 'K6', 'repetition': 1}
+[5/120] level=K6  repetition=1
+· payload.replay: on → off
+· campaign run 6/120: {'level': 'K4', 'repetition': 6}
+[6/120] level=K4  repetition=6
+· payload.replay: off → on
+· campaign run 7/120: {'level': 'K6', 'repetition': 7}
+[7/120] level=K6  repetition=7
+· payload.freshness: on → off
+· campaign run 8/120: {'level': 'K5', 'repetition': 8}
+[8/120] level=K5  repetition=8
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· payload.replay: on → off
+· campaign run 9/120: {'level': 'K0', 'repetition': 10}
+[9/120] level=K0  repetition=10
+· campaign run 10/120: {'level': 'K0', 'repetition': 2}
+[10/120] level=K0  repetition=2
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· payload.replay: off → on
+· campaign run 11/120: {'level': 'K5', 'repetition': 6}
+[11/120] level=K5  repetition=6
+· payload.freshness: off → on
+· campaign run 12/120: {'level': 'K6', 'repetition': 10}
+[12/120] level=K6  repetition=10
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 0 → 1
+· campaign run 13/120: {'level': 'K11', 'repetition': 2}
+[13/120] level=K11  repetition=2
+· keys of epoch 0 revoked (51 keys)
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 1 → 2
+· campaign run 14/120: {'level': 'K0', 'repetition': 1}
+[14/120] level=K0  repetition=1
+· keys of epoch 1 revoked (51 keys)
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· campaign run 15/120: {'level': 'K6', 'repetition': 2}
+[15/120] level=K6  repetition=2
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 2 → 3
+· campaign run 16/120: {'level': 'K11', 'repetition': 5}
+[16/120] level=K11  repetition=5
+· keys of epoch 2 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 3 → 4
+· campaign run 17/120: {'level': 'K7', 'repetition': 3}
+[17/120] level=K7  repetition=3
+· keys of epoch 3 revoked (51 keys)
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 18/120: {'level': 'K4', 'repetition': 1}
+[18/120] level=K4  repetition=1
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 19/120: {'level': 'K8', 'repetition': 4}
+[19/120] level=K8  repetition=4
+· payload.protection: encrypt → sign
+· campaign run 20/120: {'level': 'K9', 'repetition': 4}
+[20/120] level=K9  repetition=4
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → auth_only
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 21/120: {'level': 'K2', 'repetition': 8}
+[21/120] level=K2  repetition=8
+· payload.protection: auth_only → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· campaign run 22/120: {'level': 'K6', 'repetition': 4}
+[22/120] level=K6  repetition=4
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.key_binding: off → on
+· campaign run 23/120: {'level': 'K10', 'repetition': 1}
+[23/120] level=K10  repetition=1
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: encrypt → auth_only
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 24/120: {'level': 'K2', 'repetition': 9}
+[24/120] level=K2  repetition=9
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: auth_only → encrypt
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 4 → 5
+· campaign run 25/120: {'level': 'K11', 'repetition': 8}
+[25/120] level=K11  repetition=8
+· keys of epoch 4 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 5 → 6
+· campaign run 26/120: {'level': 'K1', 'repetition': 7}
+[26/120] level=K1  repetition=7
+· keys of epoch 5 revoked (51 keys)
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· campaign run 27/120: {'level': 'K4', 'repetition': 10}
+[27/120] level=K4  repetition=10
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.replay: off → on
+· payload.key_binding: off → on
+· campaign run 28/120: {'level': 'K10', 'repetition': 7}
+[28/120] level=K10  repetition=7
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 29/120: {'level': 'K4', 'repetition': 5}
+[29/120] level=K4  repetition=5
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 30/120: {'level': 'K8', 'repetition': 1}
+[30/120] level=K8  repetition=1
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 31/120: {'level': 'K4', 'repetition': 8}
+[31/120] level=K4  repetition=8
+· payload.freshness: on → off
+· campaign run 32/120: {'level': 'K3', 'repetition': 1}
+[32/120] level=K3  repetition=1
+· payload.freshness: off → on
+· payload.replay: off → on
+· campaign run 33/120: {'level': 'K6', 'repetition': 8}
+[33/120] level=K6  repetition=8
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· payload.replay: on → off
+· campaign run 34/120: {'level': 'K0', 'repetition': 7}
+[34/120] level=K0  repetition=7
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → sign
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 35/120: {'level': 'K9', 'repetition': 10}
+[35/120] level=K9  repetition=10
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → encrypt
+· payload.rate_limit: 41 → 0
+· campaign run 36/120: {'level': 'K10', 'repetition': 2}
+[36/120] level=K10  repetition=2
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.rate_limit: 0 → 41
+· campaign run 37/120: {'level': 'K8', 'repetition': 10}
+[37/120] level=K8  repetition=10
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.rate_limit: 41 → 0
+· campaign run 38/120: {'level': 'K7', 'repetition': 4}
+[38/120] level=K7  repetition=4
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 39/120: {'level': 'K3', 'repetition': 7}
+[39/120] level=K3  repetition=7
+· campaign run 40/120: {'level': 'K3', 'repetition': 4}
+[40/120] level=K3  repetition=4
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· campaign run 41/120: {'level': 'K0', 'repetition': 6}
+[41/120] level=K0  repetition=6
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → sign
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 42/120: {'level': 'K9', 'repetition': 7}
+[42/120] level=K9  repetition=7
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → none
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 43/120: {'level': 'K0', 'repetition': 8}
+[43/120] level=K0  repetition=8
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → auth_only
+· campaign run 44/120: {'level': 'K2', 'repetition': 1}
+[44/120] level=K2  repetition=1
+· payload.protection: auth_only → encrypt
+· payload.replay: off → on
+· campaign run 45/120: {'level': 'K5', 'repetition': 4}
+[45/120] level=K5  repetition=4
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· payload.replay: on → off
+· campaign run 46/120: {'level': 'K0', 'repetition': 3}
+[46/120] level=K0  repetition=3
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → encrypt
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 6 → 7
+· campaign run 47/120: {'level': 'K11', 'repetition': 1}
+[47/120] level=K11  repetition=1
+· keys of epoch 6 revoked (51 keys)
+· campaign run 48/120: {'level': 'K11', 'repetition': 10}
+[48/120] level=K11  repetition=10
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.key_epoch: 7 → 8
+· campaign run 49/120: {'level': 'K8', 'repetition': 8}
+[49/120] level=K8  repetition=8
+· keys of epoch 7 revoked (51 keys)
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_epoch: 8 → 9
+· campaign run 50/120: {'level': 'K11', 'repetition': 3}
+[50/120] level=K11  repetition=3
+· keys of epoch 8 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 9 → 10
+· campaign run 51/120: {'level': 'K3', 'repetition': 8}
+[51/120] level=K3  repetition=8
+· keys of epoch 9 revoked (51 keys)
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· campaign run 52/120: {'level': 'K10', 'repetition': 4}
+[52/120] level=K10  repetition=4
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.freshness: on → off
+· payload.key_binding: on → off
+· campaign run 53/120: {'level': 'K5', 'repetition': 3}
+[53/120] level=K5  repetition=3
+· payload.protection: encrypt → none
+· payload.replay: on → off
+· campaign run 54/120: {'level': 'K1', 'repetition': 5}
+[54/120] level=K1  repetition=5
+· payload.protection: none → auth_only
+· campaign run 55/120: {'level': 'K2', 'repetition': 7}
+[55/120] level=K2  repetition=7
+· campaign run 56/120: {'level': 'K2', 'repetition': 6}
+[56/120] level=K2  repetition=6
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: auth_only → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· campaign run 57/120: {'level': 'K10', 'repetition': 3}
+[57/120] level=K10  repetition=3
+· campaign run 58/120: {'level': 'K10', 'repetition': 10}
+[58/120] level=K10  repetition=10
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: encrypt → sign
+· payload.rate_limit: 0 → 41
+· campaign run 59/120: {'level': 'K9', 'repetition': 5}
+[59/120] level=K9  repetition=5
+· payload.protection: sign → encrypt
+· campaign run 60/120: {'level': 'K8', 'repetition': 2}
+[60/120] level=K8  repetition=2
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 61/120: {'level': 'K1', 'repetition': 2}
+[61/120] level=K1  repetition=2
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → sign
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 62/120: {'level': 'K9', 'repetition': 2}
+[62/120] level=K9  repetition=2
+· payload.protection: sign → encrypt
+· campaign run 63/120: {'level': 'K8', 'repetition': 6}
+[63/120] level=K8  repetition=6
+· payload.protection: encrypt → sign
+· campaign run 64/120: {'level': 'K9', 'repetition': 8}
+[64/120] level=K9  repetition=8
+· campaign run 65/120: {'level': 'K9', 'repetition': 1}
+[65/120] level=K9  repetition=1
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → encrypt
+· payload.rate_limit: 41 → 0
+· campaign run 66/120: {'level': 'K10', 'repetition': 9}
+[66/120] level=K10  repetition=9
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 67/120: {'level': 'K4', 'repetition': 9}
+[67/120] level=K4  repetition=9
+· payload.replay: off → on
+· campaign run 68/120: {'level': 'K6', 'repetition': 5}
+[68/120] level=K6  repetition=5
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 10 → 11
+· campaign run 69/120: {'level': 'K11', 'repetition': 7}
+[69/120] level=K11  repetition=7
+· keys of epoch 10 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 11 → 12
+· campaign run 70/120: {'level': 'K1', 'repetition': 6}
+[70/120] level=K1  repetition=6
+· keys of epoch 11 revoked (51 keys)
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· campaign run 71/120: {'level': 'K6', 'repetition': 3}
+[71/120] level=K6  repetition=3
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 72/120: {'level': 'K8', 'repetition': 9}
+[72/120] level=K8  repetition=9
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.rate_limit: 41 → 0
+· campaign run 73/120: {'level': 'K10', 'repetition': 5}
+[73/120] level=K10  repetition=5
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 74/120: {'level': 'K4', 'repetition': 4}
+[74/120] level=K4  repetition=4
+· payload.freshness: on → off
+· payload.replay: off → on
+· campaign run 75/120: {'level': 'K5', 'repetition': 2}
+[75/120] level=K5  repetition=2
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.freshness: off → on
+· payload.key_binding: off → on
+· campaign run 76/120: {'level': 'K10', 'repetition': 8}
+[76/120] level=K10  repetition=8
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.freshness: on → off
+· payload.key_binding: on → off
+· campaign run 77/120: {'level': 'K5', 'repetition': 5}
+[77/120] level=K5  repetition=5
+· payload.protection: encrypt → auth_only
+· payload.replay: on → off
+· campaign run 78/120: {'level': 'K2', 'repetition': 4}
+[78/120] level=K2  repetition=4
+· payload.protection: auth_only → encrypt
+· campaign run 79/120: {'level': 'K3', 'repetition': 10}
+[79/120] level=K3  repetition=10
+· campaign run 80/120: {'level': 'K3', 'repetition': 5}
+[80/120] level=K3  repetition=5
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· campaign run 81/120: {'level': 'K0', 'repetition': 4}
+[81/120] level=K0  repetition=4
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· payload.replay: off → on
+· campaign run 82/120: {'level': 'K5', 'repetition': 7}
+[82/120] level=K5  repetition=7
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: encrypt → sign
+· payload.freshness: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 83/120: {'level': 'K9', 'repetition': 3}
+[83/120] level=K9  repetition=3
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → encrypt
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· campaign run 84/120: {'level': 'K4', 'repetition': 7}
+[84/120] level=K4  repetition=7
+· payload.replay: off → on
+· campaign run 85/120: {'level': 'K6', 'repetition': 6}
+[85/120] level=K6  repetition=6
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· payload.replay: on → off
+· campaign run 86/120: {'level': 'K1', 'repetition': 4}
+[86/120] level=K1  repetition=4
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· campaign run 87/120: {'level': 'K7', 'repetition': 6}
+[87/120] level=K7  repetition=6
+· campaign run 88/120: {'level': 'K7', 'repetition': 5}
+[88/120] level=K7  repetition=5
+· campaign run 89/120: {'level': 'K7', 'repetition': 9}
+[89/120] level=K7  repetition=9
+· payload.freshness: on → off
+· payload.key_binding: on → off
+· campaign run 90/120: {'level': 'K5', 'repetition': 10}
+[90/120] level=K5  repetition=10
+· campaign run 91/120: {'level': 'K5', 'repetition': 1}
+[91/120] level=K5  repetition=1
+· payload.replay: on → off
+· campaign run 92/120: {'level': 'K3', 'repetition': 3}
+[92/120] level=K3  repetition=3
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· campaign run 93/120: {'level': 'K7', 'repetition': 1}
+[93/120] level=K7  repetition=1
+· campaign run 94/120: {'level': 'K7', 'repetition': 7}
+[94/120] level=K7  repetition=7
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 95/120: {'level': 'K4', 'repetition': 3}
+[95/120] level=K4  repetition=3
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 96/120: {'level': 'K8', 'repetition': 3}
+[96/120] level=K8  repetition=3
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.rate_limit: 41 → 0
+· campaign run 97/120: {'level': 'K7', 'repetition': 2}
+[97/120] level=K7  repetition=2
+· campaign run 98/120: {'level': 'K7', 'repetition': 8}
+[98/120] level=K7  repetition=8
+· payload.key_binding: on → off
+· campaign run 99/120: {'level': 'K6', 'repetition': 9}
+[99/120] level=K6  repetition=9
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 12 → 13
+· campaign run 100/120: {'level': 'K11', 'repetition': 4}
+[100/120] level=K11  repetition=4
+· keys of epoch 12 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 13 → 14
+· campaign run 101/120: {'level': 'K3', 'repetition': 9}
+[101/120] level=K3  repetition=9
+· keys of epoch 13 revoked (51 keys)
+· payload.protection: encrypt → none
+· campaign run 102/120: {'level': 'K1', 'repetition': 3}
+[102/120] level=K1  repetition=3
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· campaign run 103/120: {'level': 'K8', 'repetition': 5}
+[103/120] level=K8  repetition=5
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.rate_limit: 41 → 0
+· campaign run 104/120: {'level': 'K7', 'repetition': 10}
+[104/120] level=K7  repetition=10
+· payload.protection: encrypt → auth_only
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 105/120: {'level': 'K2', 'repetition': 3}
+[105/120] level=K2  repetition=3
+· payload.protection: auth_only → encrypt
+· payload.replay: off → on
+· campaign run 106/120: {'level': 'K5', 'repetition': 9}
+[106/120] level=K5  repetition=9
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.freshness: off → on
+· payload.key_binding: off → on
+· campaign run 107/120: {'level': 'K10', 'repetition': 6}
+[107/120] level=K10  repetition=6
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· campaign run 108/120: {'level': 'K0', 'repetition': 5}
+[108/120] level=K0  repetition=5
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· campaign run 109/120: {'level': 'K4', 'repetition': 2}
+[109/120] level=K4  repetition=2
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· campaign run 110/120: {'level': 'K1', 'repetition': 8}
+[110/120] level=K1  repetition=8
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: none → encrypt
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 14 → 15
+· campaign run 111/120: {'level': 'K11', 'repetition': 9}
+[111/120] level=K11  repetition=9
+· keys of epoch 14 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 15 → 16
+· campaign run 112/120: {'level': 'K1', 'repetition': 1}
+[112/120] level=K1  repetition=1
+· keys of epoch 15 revoked (51 keys)
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· campaign run 113/120: {'level': 'K0', 'repetition': 9}
+[113/120] level=K0  repetition=9
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → auth_only
+· campaign run 114/120: {'level': 'K2', 'repetition': 2}
+[114/120] level=K2  repetition=2
+· campaign run 115/120: {'level': 'K2', 'repetition': 5}
+[115/120] level=K2  repetition=5
+· campaign run 116/120: {'level': 'K2', 'repetition': 10}
+[116/120] level=K2  repetition=10
+· payload.protection: auth_only → none
+· campaign run 117/120: {'level': 'K1', 'repetition': 10}
+[117/120] level=K1  repetition=10
+· payload.protection: none → encrypt
+· campaign run 118/120: {'level': 'K3', 'repetition': 2}
+[118/120] level=K3  repetition=2
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 41
+· payload.key_epoch: 16 → 17
+· campaign run 119/120: {'level': 'K11', 'repetition': 6}
+[119/120] level=K11  repetition=6
+· keys of epoch 16 revoked (51 keys)
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 41 → 0
+· payload.key_epoch: 17 → 18
+· campaign run 120/120: {'level': 'K1', 'repetition': 9}
+[120/120] level=K1  repetition=9
+· keys of epoch 17 revoked (51 keys)
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → auth_only
+· load.rate: 20.0 → 10.0
+saturation K2 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K2 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K2 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K2 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K2 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K2 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K2 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K2 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K2 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K2 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K2 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K2 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K2 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K2 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K2 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K2 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K2 rep 2: backlog drained in 9.3 s
+saturation K2 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K2 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K2 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K2 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K2 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K2 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K2 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K2 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K2 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K2 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K2 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K2 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K2 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K2 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K2 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K2 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K2 rep 3: backlog drained in 9.4 s
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: auth_only → none
+saturation K0 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K0 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K0 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K0 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K0 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K0 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K0 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K0 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K0 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K0 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K0 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K0 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K0 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K0 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K0 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K0 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 2000.0
+saturation K0 rep 1: 2000.0 msg/s per sensor
+· load.rate: 2000.0 → 10.0
+saturation K0 rep 1: backlog drained in 4.1 s
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+saturation K1 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K1 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K1 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K1 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K1 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K1 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K1 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K1 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K1 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K1 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K1 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K1 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K1 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K1 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K1 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K1 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K1 rep 2: backlog drained in 5.2 s
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+saturation K10 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K10 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K10 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K10 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K10 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K10 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K10 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K10 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K10 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K10 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K10 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K10 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K10 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K10 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K10 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K10 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K10 rep 1: backlog drained in 7.2 s
+saturation K10 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K10 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K10 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K10 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K10 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K10 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K10 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K10 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K10 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K10 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K10 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K10 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K10 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K10 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K10 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K10 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K10 rep 2: backlog drained in 7.2 s
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+saturation K3 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K3 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K3 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K3 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K3 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K3 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K3 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K3 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K3 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K3 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K3 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K3 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K3 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K3 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K3 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K3 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K3 rep 2: backlog drained in 9.4 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: encrypt → sign
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 21
+saturation K9 rep 1: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K9 rep 1: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K9 rep 1: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K9 rep 1: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K9 rep 1: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K9 rep 1: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 21
+· load.rate: 150.0 → 10.0
+saturation K9 rep 1: backlog drained in 3.1 s
+· payload.protection: sign → encrypt
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_epoch: 18 → 19
+saturation K11 rep 3: 10.0 msg/s per sensor
+· keys of epoch 18 revoked (51 keys)
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K11 rep 3: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K11 rep 3: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K11 rep 3: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K11 rep 3: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K11 rep 3: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K11 rep 3: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K11 rep 3: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K11 rep 3: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K11 rep 3: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K11 rep 3: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K11 rep 3: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K11 rep 3: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K11 rep 3: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K11 rep 3: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 21
+· load.rate: 1200.0 → 10.0
+saturation K11 rep 3: backlog drained in 3.1 s
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.rate_limit: 21 → 0
+· payload.key_epoch: 19 → 20
+saturation K10 rep 3: 10.0 msg/s per sensor
+· keys of epoch 19 revoked (51 keys)
+· load.rate: 10.0 → 20.0
+saturation K10 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K10 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K10 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K10 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K10 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K10 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K10 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K10 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K10 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K10 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K10 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K10 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K10 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K10 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K10 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K10 rep 3: backlog drained in 7.3 s
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.key_binding: on → off
+saturation K6 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K6 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K6 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K6 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K6 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K6 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K6 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K6 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K6 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K6 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K6 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K6 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K6 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K6 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K6 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K6 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K6 rep 2: backlog drained in 9.3 s
+· payload.replay: on → off
+saturation K4 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K4 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K4 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K4 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K4 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K4 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K4 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K4 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K4 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K4 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K4 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K4 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K4 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K4 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K4 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K4 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K4 rep 1: backlog drained in 8.3 s
+· payload.replay: off → on
+saturation K6 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K6 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K6 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K6 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K6 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K6 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K6 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K6 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K6 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K6 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K6 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K6 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K6 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K6 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K6 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K6 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K6 rep 3: backlog drained in 9.3 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 21
+· payload.key_epoch: 20 → 21
+saturation K11 rep 1: 10.0 msg/s per sensor
+· keys of epoch 20 revoked (51 keys)
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K11 rep 1: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K11 rep 1: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K11 rep 1: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K11 rep 1: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K11 rep 1: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K11 rep 1: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K11 rep 1: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K11 rep 1: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K11 rep 1: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K11 rep 1: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K11 rep 1: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K11 rep 1: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K11 rep 1: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K11 rep 1: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 21
+· load.rate: 1200.0 → 10.0
+saturation K11 rep 1: backlog drained in 3.1 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: encrypt → none
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 21 → 0
+· payload.key_epoch: 21 → 22
+saturation K1 rep 1: 10.0 msg/s per sensor
+· keys of epoch 21 revoked (51 keys)
+· load.rate: 10.0 → 20.0
+saturation K1 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K1 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K1 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K1 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K1 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K1 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K1 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K1 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K1 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K1 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K1 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K1 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K1 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K1 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K1 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K1 rep 1: backlog drained in 5.1 s
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+saturation K4 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K4 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K4 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K4 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K4 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K4 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K4 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K4 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K4 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K4 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K4 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K4 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K4 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K4 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K4 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K4 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K4 rep 2: backlog drained in 5.2 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 21
+saturation K8 rep 3: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K8 rep 3: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K8 rep 3: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K8 rep 3: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K8 rep 3: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K8 rep 3: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K8 rep 3: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K8 rep 3: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K8 rep 3: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K8 rep 3: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K8 rep 3: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K8 rep 3: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K8 rep 3: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K8 rep 3: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K8 rep 3: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 21
+· load.rate: 1200.0 → 10.0
+saturation K8 rep 3: backlog drained in 3.1 s
+· payload.protection: encrypt → sign
+saturation K9 rep 2: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K9 rep 2: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K9 rep 2: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K9 rep 2: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K9 rep 2: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K9 rep 2: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 21
+· load.rate: 150.0 → 10.0
+saturation K9 rep 2: backlog drained in 3.1 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → encrypt
+· payload.freshness: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 21 → 0
+saturation K5 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K5 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K5 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K5 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K5 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K5 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K5 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K5 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K5 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K5 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K5 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K5 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K5 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K5 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K5 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K5 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K5 rep 2: backlog drained in 9.2 s
+· payload.freshness: off → on
+· payload.key_binding: off → on
+saturation K7 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K7 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K7 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K7 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K7 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K7 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K7 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K7 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K7 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K7 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K7 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K7 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K7 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K7 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K7 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K7 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K7 rep 1: backlog drained in 9.3 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.rate_limit: 0 → 21
+saturation K8 rep 2: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K8 rep 2: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K8 rep 2: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K8 rep 2: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K8 rep 2: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K8 rep 2: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K8 rep 2: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K8 rep 2: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K8 rep 2: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K8 rep 2: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K8 rep 2: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K8 rep 2: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K8 rep 2: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K8 rep 2: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K8 rep 2: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 3201
+· load.rate: 1200.0 → 1600.0
+saturation K8 rep 2: 1600.0 msg/s per sensor
+· payload.rate_limit: 3201 → 21
+· load.rate: 1600.0 → 10.0
+saturation K8 rep 2: backlog drained in 8.2 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.rate_limit: 21 → 0
+saturation K7 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K7 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K7 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K7 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K7 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K7 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K7 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K7 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K7 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K7 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K7 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K7 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K7 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K7 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K7 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K7 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K7 rep 3: backlog drained in 9.3 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.protection: encrypt → sign
+· payload.rate_limit: 0 → 21
+saturation K9 rep 3: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K9 rep 3: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K9 rep 3: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K9 rep 3: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K9 rep 3: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K9 rep 3: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 21
+· load.rate: 150.0 → 10.0
+saturation K9 rep 3: backlog drained in 3.1 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.protection: sign → encrypt
+· payload.rate_limit: 21 → 0
+saturation K7 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K7 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K7 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K7 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K7 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K7 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K7 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K7 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K7 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K7 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K7 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K7 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K7 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K7 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K7 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K7 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K7 rep 2: backlog drained in 9.4 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.rate_limit: 0 → 21
+saturation K8 rep 1: 10.0 msg/s per sensor
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K8 rep 1: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K8 rep 1: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K8 rep 1: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K8 rep 1: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K8 rep 1: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K8 rep 1: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K8 rep 1: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K8 rep 1: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K8 rep 1: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K8 rep 1: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K8 rep 1: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K8 rep 1: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K8 rep 1: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K8 rep 1: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 21
+· load.rate: 1200.0 → 10.0
+saturation K8 rep 1: backlog drained in 3.1 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.replay: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 21 → 0
+saturation K4 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K4 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K4 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K4 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K4 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K4 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K4 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K4 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K4 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K4 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K4 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K4 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K4 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K4 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K4 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K4 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K4 rep 3: backlog drained in 9.4 s
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+saturation K0 rep 2: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K0 rep 2: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K0 rep 2: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K0 rep 2: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K0 rep 2: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K0 rep 2: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K0 rep 2: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K0 rep 2: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K0 rep 2: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K0 rep 2: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K0 rep 2: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K0 rep 2: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K0 rep 2: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K0 rep 2: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K0 rep 2: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K0 rep 2: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 2000.0
+saturation K0 rep 2: 2000.0 msg/s per sensor
+· load.rate: 2000.0 → 10.0
+saturation K0 rep 2: backlog drained in 5.1 s
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+saturation K3 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K3 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K3 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K3 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K3 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K3 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K3 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K3 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K3 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K3 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K3 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K3 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K3 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K3 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K3 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K3 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K3 rep 1: backlog drained in 9.3 s
+· transport.max_packet: 0 → 576
+· transport.max_connections: 0 → 66
+· payload.cipher: aes-256-gcm → chacha20-poly1305
+· payload.freshness: off → on
+· payload.replay: off → on
+· payload.key_binding: off → on
+· payload.rate_limit: 0 → 21
+· payload.key_epoch: 22 → 23
+saturation K11 rep 2: 10.0 msg/s per sensor
+· keys of epoch 22 revoked (51 keys)
+· payload.rate_limit: 21 → 41
+· load.rate: 10.0 → 20.0
+saturation K11 rep 2: 20.0 msg/s per sensor
+· payload.rate_limit: 41 → 101
+· load.rate: 20.0 → 50.0
+saturation K11 rep 2: 50.0 msg/s per sensor
+· payload.rate_limit: 101 → 201
+· load.rate: 50.0 → 100.0
+saturation K11 rep 2: 100.0 msg/s per sensor
+· payload.rate_limit: 201 → 251
+· load.rate: 100.0 → 125.0
+saturation K11 rep 2: 125.0 msg/s per sensor
+· payload.rate_limit: 251 → 301
+· load.rate: 125.0 → 150.0
+saturation K11 rep 2: 150.0 msg/s per sensor
+· payload.rate_limit: 301 → 401
+· load.rate: 150.0 → 200.0
+saturation K11 rep 2: 200.0 msg/s per sensor
+· payload.rate_limit: 401 → 601
+· load.rate: 200.0 → 300.0
+saturation K11 rep 2: 300.0 msg/s per sensor
+· payload.rate_limit: 601 → 801
+· load.rate: 300.0 → 400.0
+saturation K11 rep 2: 400.0 msg/s per sensor
+· payload.rate_limit: 801 → 1001
+· load.rate: 400.0 → 500.0
+saturation K11 rep 2: 500.0 msg/s per sensor
+· payload.rate_limit: 1001 → 1201
+· load.rate: 500.0 → 600.0
+saturation K11 rep 2: 600.0 msg/s per sensor
+· payload.rate_limit: 1201 → 1401
+· load.rate: 600.0 → 700.0
+saturation K11 rep 2: 700.0 msg/s per sensor
+· payload.rate_limit: 1401 → 1601
+· load.rate: 700.0 → 800.0
+saturation K11 rep 2: 800.0 msg/s per sensor
+· payload.rate_limit: 1601 → 2001
+· load.rate: 800.0 → 1000.0
+saturation K11 rep 2: 1000.0 msg/s per sensor
+· payload.rate_limit: 2001 → 2401
+· load.rate: 1000.0 → 1200.0
+saturation K11 rep 2: 1200.0 msg/s per sensor
+· payload.rate_limit: 2401 → 21
+· load.rate: 1200.0 → 10.0
+saturation K11 rep 2: backlog drained in 3.1 s
+· transport.max_packet: 576 → 0
+· transport.max_connections: 66 → 0
+· payload.cipher: chacha20-poly1305 → aes-256-gcm
+· payload.freshness: on → off
+· payload.key_binding: on → off
+· payload.rate_limit: 21 → 0
+· payload.key_epoch: 23 → 24
+saturation K5 rep 3: 10.0 msg/s per sensor
+· keys of epoch 23 revoked (51 keys)
+· load.rate: 10.0 → 20.0
+saturation K5 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K5 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K5 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K5 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K5 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K5 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K5 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K5 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K5 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K5 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K5 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K5 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K5 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K5 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K5 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K5 rep 3: backlog drained in 9.2 s
+· transport.mode: mtls → plain
+· transport.auth: on → off
+· transport.acl: on → off
+· transport.clientid_binding: on → off
+· payload.protection: encrypt → none
+· payload.replay: on → off
+saturation K0 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K0 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K0 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K0 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K0 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K0 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K0 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K0 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K0 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K0 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K0 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K0 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K0 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K0 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K0 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K0 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 2000.0
+saturation K0 rep 3: 2000.0 msg/s per sensor
+· load.rate: 2000.0 → 10.0
+saturation K0 rep 3: backlog drained in 4.1 s
+· transport.mode: plain → mtls
+· transport.auth: off → on
+· transport.acl: off → on
+· transport.clientid_binding: off → on
+· payload.protection: none → encrypt
+· payload.freshness: off → on
+· payload.replay: off → on
+saturation K6 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K6 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K6 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K6 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K6 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K6 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K6 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K6 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K6 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K6 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K6 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K6 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K6 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K6 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K6 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K6 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K6 rep 1: backlog drained in 9.2 s
+· payload.protection: encrypt → none
+· payload.freshness: on → off
+· payload.replay: on → off
+saturation K1 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K1 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K1 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K1 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K1 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K1 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K1 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K1 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K1 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K1 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K1 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K1 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K1 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K1 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K1 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K1 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K1 rep 3: backlog drained in 4.1 s
+· payload.protection: none → auth_only
+saturation K2 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K2 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K2 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K2 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K2 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K2 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K2 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K2 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K2 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K2 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K2 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K2 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K2 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K2 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K2 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K2 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K2 rep 1: backlog drained in 9.2 s
+· payload.protection: auth_only → encrypt
+· payload.replay: off → on
+saturation K5 rep 1: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K5 rep 1: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K5 rep 1: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K5 rep 1: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K5 rep 1: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K5 rep 1: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K5 rep 1: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K5 rep 1: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K5 rep 1: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K5 rep 1: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K5 rep 1: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K5 rep 1: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K5 rep 1: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K5 rep 1: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K5 rep 1: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K5 rep 1: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K5 rep 1: backlog drained in 9.3 s
+· payload.replay: on → off
+saturation K3 rep 3: 10.0 msg/s per sensor
+· load.rate: 10.0 → 20.0
+saturation K3 rep 3: 20.0 msg/s per sensor
+· load.rate: 20.0 → 50.0
+saturation K3 rep 3: 50.0 msg/s per sensor
+· load.rate: 50.0 → 100.0
+saturation K3 rep 3: 100.0 msg/s per sensor
+· load.rate: 100.0 → 125.0
+saturation K3 rep 3: 125.0 msg/s per sensor
+· load.rate: 125.0 → 150.0
+saturation K3 rep 3: 150.0 msg/s per sensor
+· load.rate: 150.0 → 200.0
+saturation K3 rep 3: 200.0 msg/s per sensor
+· load.rate: 200.0 → 300.0
+saturation K3 rep 3: 300.0 msg/s per sensor
+· load.rate: 300.0 → 400.0
+saturation K3 rep 3: 400.0 msg/s per sensor
+· load.rate: 400.0 → 500.0
+saturation K3 rep 3: 500.0 msg/s per sensor
+· load.rate: 500.0 → 600.0
+saturation K3 rep 3: 600.0 msg/s per sensor
+· load.rate: 600.0 → 700.0
+saturation K3 rep 3: 700.0 msg/s per sensor
+· load.rate: 700.0 → 800.0
+saturation K3 rep 3: 800.0 msg/s per sensor
+· load.rate: 800.0 → 1000.0
+saturation K3 rep 3: 1000.0 msg/s per sensor
+· load.rate: 1000.0 → 1200.0
+saturation K3 rep 3: 1200.0 msg/s per sensor
+· load.rate: 1200.0 → 1600.0
+saturation K3 rep 3: 1600.0 msg/s per sensor
+· load.rate: 1600.0 → 10.0
+saturation K3 rep 3: backlog drained in 9.2 s
+
+campaign written to results/desktop-20261116-custo (120/120 runs)
+=== 2026-11-16 10:20:29 fim 7a: exit 0

@@ -7,7 +7,7 @@ As medições no Raspberry~Pi~5 respondem às cinco perguntas da Parte~1:
   \item \textbf{Custo de cada camada.} À carga nominal, o transporte (mTLS,
     autenticação e ACL) custa 7,9~$\mu$s de processador por mensagem e o envelope
     AES-GCM 7,2~$\mu$s; a validade, a anti-repetição, a restrição chave--tópico e
-    a limitação de tráfego custam, juntas, menos de 3~$\mu$s. A configuração
+    a limitação de tráfego custam, juntas, \novo{cerca de 2~$\mu$s}. A configuração
     recomendada para a telemetria (K8) gasta 41~$\mu$s por mensagem, contra
     24~$\mu$s sem proteção, com p99 de 262~$\mu$s. As assinaturas Ed25519 custam
     mais 151~$\mu$s por mensagem.
@@ -33,17 +33,22 @@ As medições no Raspberry~Pi~5 respondem às cinco perguntas da Parte~1:
     e não muda com outros pesos de custo ou de ataque.
 \end{enumerate}
 
+\novo{A campanha de referência num computador de secretária
+(Secção~\ref{sec:referencia}) dá a mesma ordenação em processador, a mesma
+proteção e a mesma recomendação; muda só a escala (1,25 a 2,4 vezes mais débito).}
+
 Das cinco hipóteses, três confirmam-se (H1, com uma ressalva quanto ao débito; H2;
-H3). H4 é refutada: em ligações MQTT duradouras, o custo do TLS está em cada
-mensagem, tanto como o do envelope, e não na negociação. H5 não se confirma: com
+H3). \novo{H4 é refutada para ligações duradouras: nelas, o custo do TLS está em cada
+mensagem, tanto como o do envelope, e não na negociação; a hipótese só se mantém
+quando cada ligação transporta menos de cerca de 430 mensagens.} H5 não se confirma: com
 AES em \emph{hardware}, a limitação antes da criptografia não poupa processador
 mensurável ao \emph{gateway}.
 
 \paragraph{Contributo para a lacuna L5.} A Parte~1 identificou a falta de medições
 do custo e do benefício de cada camada, isoladamente e em combinação, em
 \emph{hardware} restrito. Este trabalho mede-as num Raspberry~Pi~5, com doze
-configurações que só diferem numa camada de cada vez, 120 execuções de custo, uma
-subida de carga por configuração, 468 ataques e 39 cenários com controlo negativo,
+configurações que só diferem numa camada de cada vez, 120 execuções de custo, \novo{três
+subidas de carga por configuração}, 468 ataques e 39 cenários com controlo negativo,
 todos guardados com o ambiente e reprodutíveis por um só comando. Os resultados
 mostram que as camadas baratas (validade, anti-repetição, ligação ao tópico,
 limitação) são as que fecham os ataques de um dispositivo comprometido, e que o
@@ -53,7 +58,8 @@ mensagem.
 \paragraph{Trabalho futuro.} Cifra seguida de assinatura, para dar
 confidencialidade e prova de origem ao mesmo tempo; distribuição e armazenamento
 de chaves fora do laboratório; medição do custo no emissor num dispositivo
-restrito real (microcontrolador); um \emph{broker} ativo que termine TLS; uma
+restrito real (microcontrolador); \novo{o custo da negociação TLS no \emph{broker} e
+com retoma de sessão;} um \emph{broker} ativo que termine TLS; uma
 configuração com assinaturas e sem limitação, para medir H5 onde a verificação é
-cara; a origem do salto de latência registado a 400~mensagens/s por
-sensor; e a energia.
+cara; a origem do salto de latência registado a \novo{300--400~mensagens/s por
+sensor (500 no computador de secretária)}; e a energia.
