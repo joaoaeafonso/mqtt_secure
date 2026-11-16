@@ -37,9 +37,10 @@
   \item \textbf{Relógios.} A latência entre máquinas depende da correção do
     relógio dos sensores, com incerteza igual a metade do melhor tempo de ida e
     volta observado, no máximo 0,21~ms na campanha (0,18~ms nas execuções de
-    custo). É da ordem das diferenças de latência mediana entre configurações
-    vizinhas (K0 122~$\mu$s, K8 179~$\mu$s), mas a mesma para todas: como a ordem é
-    aleatória, desloca as medidas sem favorecer nenhuma configuração. A deriva é
+    custo). \novo{É maior do que algumas diferenças de latência mediana entre
+    configurações (de K0, 122~$\mu$s, a K8, 179~$\mu$s, são 57~$\mu$s), mas a
+    correção é a mesma para todas: como a ordem é aleatória, o erro desloca as
+    medidas sem favorecer nenhuma configuração.} A deriva é
     corrigida (Secção~\ref{sec:metodo}); uma alteração do ritmo do relógio a meio
     de uma execução não o é, e por isso o NTP esteve desligado durante a campanha.
     O desvio entre as duas máquinas cresceu de forma regular até 289~ms (cerca
@@ -59,9 +60,9 @@
     memória do Python) entra na latência medida.
   \item \textbf{Picos de latência.} Em todas as configurações, incluindo K0, que
     não tem criptografia, surgem nos pilotos picos de 22 a 40~ms no p99,9 e no
-    máximo, a cargas intermédias. Por existirem em K0, vêm do ambiente e não das
-    camadas medidas; não afetam o p99 abaixo de cerca de 300~mensagens/s por
-    sensor. Na campanha, os maiores valores nas execuções de custo foram de
+    máximo, a cargas intermédias. \novo{Como também existem em K0, não se devem às
+    camadas de segurança; a sua origem não foi determinada.} Não afetam o p99
+    abaixo de cerca de 300~mensagens/s por sensor. Na campanha, os maiores valores nas execuções de custo foram de
     0,5~ms em K0. \novo{Na subida de carga, a latência salta a partir de 300 a
     400~mensagens/s por sensor em todas as configurações
     (Secção~\ref{sec:saturacao}); a origem não foi determinada, e a latência da

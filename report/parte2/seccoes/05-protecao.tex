@@ -136,7 +136,7 @@ defesas ao mesmo tempo, a rotação e a revogação (Secção~\ref{sec:validacao
 \label{sec:observacoes}
 
 Os ensaios mostraram efeitos que a tabela de ataques da Parte~1 não previa. Os
-dois primeiros foram medidos na campanha; os três seguintes foram observados
+dois primeiros foram medidos na campanha; os \novo{dois} seguintes foram observados
 durante o desenvolvimento e são evitados pelo desenho dos ensaios
 (Secção~\ref{sec:desvios}).
 
@@ -155,9 +155,6 @@ durante o desenvolvimento e são evitados pelo desenho dos ensaios
     \emph{broker} reiniciar durante o ataque, o atacante pode ficar com todas as
     vagas e nenhum sensor volta a ligar-se; por isso, no cenário, o limite está em
     vigor antes do ataque.
-  \item \textbf{Chave roubada e janela da vítima.} As mensagens aceites com uma
-    chave roubada avançam a janela anti-repetição dessa chave; o tráfego legítimo
-    do dispositivo passa a ser rejeitado até à rotação de chaves.
   \item \textbf{Credencial clonada e sessão MQTT.} Se o atacante se liga com a
     identidade de um dispositivo que continua ligado, o \emph{broker} entrega-lhe
     a sessão e desliga o legítimo; os dois alternam enquanto o ataque dura, o que

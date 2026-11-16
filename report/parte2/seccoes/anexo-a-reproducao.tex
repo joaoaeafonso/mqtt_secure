@@ -9,7 +9,7 @@ significado de cada ficheiro, em \texttt{docs/evaluation.md}.
 \begin{itemize}[leftmargin=*]
   \item \textbf{Refazer as tabelas e figuras a partir dos dados brutos:}
     \path{tools/analysis/analyze.py} \path{results/<campanha>} e, nesta pasta,
-    \texttt{make dados PI=<campanha>} seguido de \texttt{make}.
+    \texttt{make dados PI=<campanha>} \novo{\texttt{[DESKTOP=<campanha>]}} seguido de \texttt{make}.
   \item \textbf{Repetir as medições:} \texttt{loadgen.py campaign} com a mesma
     semente e o mesmo \texttt{params.toml} (guardados em cada campanha).
 \end{itemize}

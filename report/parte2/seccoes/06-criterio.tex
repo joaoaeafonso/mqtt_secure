@@ -35,7 +35,8 @@ Figura~\ref{fig:pareto} mostra a fronteira da telemetria sensível.}
 \gerado{pi5/criterion}
 
 \figuraGerada{pi5/fig-pareto}{Proteção $S(c)$ contra custo$(c)$; a tracejado, a
-  fronteira de Pareto para a telemetria sensível.}{fig:pareto}
+  fronteira de Pareto para a telemetria sensível. \novo{K9, com custo 5,91, está
+  representada no limite direito do eixo.}}{fig:pareto}
 
 Os requisitos de cada caso de uso (\PUm{Secção~7.5}) excluem logo K0 a K4: a
 telemetria exige integridade, ligação ao tópico e anti-repetição no conteúdo, e
@@ -50,8 +51,8 @@ as ordens exigem ainda validade, restrição chave--tópico e prova de origem.
     fronteira de Pareto tem três pontos: K10 ($S = 0{,}64$, custo 1,40), K5
     (0,73; 1,76) e K8 (1,00; 1,80). O custo marginal ao longo da fronteira é de
     3,9 por unidade de $S$ de K10 para K5 e de apenas 0,14 de K5 para K8: os
-    últimos 27 pontos de proteção (validade, limitação de tráfego e limites do
-    \emph{broker}) quase não custam. $c^* = \text{K8}$ nos dois casos.
+    últimos 27 pontos de proteção (validade, \novo{restrição chave--tópico,}
+    limitação de tráfego e limites do \emph{broker}) quase não custam. $c^* = \text{K8}$ nos dois casos.
   \item \textbf{Ordens a atuadores.} Só K9 dá prova de origem, e é exequível
     para as ordens ($R_{\text{alvo}} = 1\,000$~mensagens/s, que sustenta cinco
     vezes, com p99 de 0,7~ms à carga nominal). $c^* = \text{K9}$, sem

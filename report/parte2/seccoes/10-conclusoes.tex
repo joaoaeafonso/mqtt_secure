@@ -7,7 +7,7 @@ As medições no Raspberry~Pi~5 respondem às cinco perguntas da Parte~1:
   \item \textbf{Custo de cada camada.} À carga nominal, o transporte (mTLS,
     autenticação e ACL) custa 7,9~$\mu$s de processador por mensagem e o envelope
     AES-GCM 7,2~$\mu$s; a validade, a anti-repetição, a restrição chave--tópico e
-    a limitação de tráfego custam, juntas, menos de 3~$\mu$s. A configuração
+    a limitação de tráfego custam, juntas, \novo{cerca de 2~$\mu$s}. A configuração
     recomendada para a telemetria (K8) gasta 41~$\mu$s por mensagem, contra
     24~$\mu$s sem proteção, com p99 de 262~$\mu$s. As assinaturas Ed25519 custam
     mais 151~$\mu$s por mensagem.
@@ -47,8 +47,8 @@ mensurável ao \emph{gateway}.
 \paragraph{Contributo para a lacuna L5.} A Parte~1 identificou a falta de medições
 do custo e do benefício de cada camada, isoladamente e em combinação, em
 \emph{hardware} restrito. Este trabalho mede-as num Raspberry~Pi~5, com doze
-configurações que só diferem numa camada de cada vez, 120 execuções de custo, uma
-subida de carga por configuração, 468 ataques e 39 cenários com controlo negativo,
+configurações que só diferem numa camada de cada vez, 120 execuções de custo, \novo{três
+subidas de carga por configuração}, 468 ataques e 39 cenários com controlo negativo,
 todos guardados com o ambiente e reprodutíveis por um só comando. Os resultados
 mostram que as camadas baratas (validade, anti-repetição, ligação ao tópico,
 limitação) são as que fecham os ataques de um dispositivo comprometido, e que o
@@ -61,5 +61,5 @@ de chaves fora do laboratório; medição do custo no emissor num dispositivo
 restrito real (microcontrolador); \novo{o custo da negociação TLS no \emph{broker} e
 com retoma de sessão;} um \emph{broker} ativo que termine TLS; uma
 configuração com assinaturas e sem limitação, para medir H5 onde a verificação é
-cara; a origem do salto de latência registado a 400~mensagens/s por
-sensor; e a energia.
+cara; a origem do salto de latência registado a \novo{300--400~mensagens/s por
+sensor (500 no computador de secretária)}; e a energia.

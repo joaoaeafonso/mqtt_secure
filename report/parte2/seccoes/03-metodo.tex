@@ -1,6 +1,12 @@
 \section{Método experimental}
 \label{sec:metodo}
 
+Tal como planeado, a avaliação tem dois níveis. No \textbf{nível~1}, os
+\emph{microbenchmarks} medem o tempo de processador da cadeia de camadas por
+mensagem, sem rede, para 16~B, 256~B, 4~KiB e 64~KiB. No \textbf{nível~2}, o
+\emph{broker} e o \emph{gateway} correm no Raspberry~Pi e os sensores e o atacante
+\novo{noutra máquina} da rede local.
+
 \subsection{Plataforma}
 
 A Tabela~\ref{tab:plataforma} descreve as duas máquinas. O Raspberry~Pi~5 executa
@@ -61,12 +67,6 @@ menor tempo de ida e volta, e avalia-se essa reta no instante presente. Os reló
 foram sincronizados por NTP antes da campanha, e o NTP foi desligado nas duas
 máquinas durante ela: enquanto corrige um desvio, o NTP altera o ritmo do relógio,
 e essa variação não é uma reta.}
-
-Tal como planeado, a avaliação tem dois níveis. No \textbf{nível~1}, os
-\emph{microbenchmarks} medem o tempo de processador da cadeia de camadas por
-mensagem, sem rede, para 16~B, 256~B, 4~KiB e 64~KiB. No \textbf{nível~2}, o
-\emph{broker} e o \emph{gateway} correm no Raspberry~Pi e os sensores e o atacante
-\novo{noutra máquina} da rede local.
 
 \subsection{Configurações}
 
@@ -134,7 +134,8 @@ chaves, a palavra-passe e o certificado de um sensor, e o sensor verdadeiro fica
 desligado enquanto o atacante o controla. Os ataques na rede usam um intermediário
 na ligação entre o \emph{broker} e o \emph{gateway}, que conta o que consegue ler
 e, em MQTT sem TLS, altera, redireciona, atrasa ou suprime mensagens, fazendo de
-\emph{broker} malicioso.
+\emph{broker} malicioso. A matriz de ataques correu separada das medições de
+custo, porque o intermediário na ligação do \emph{gateway} acrescenta latência.
 
 \subsection{Procedimento}
 
@@ -170,9 +171,7 @@ configurações que só diferem nela, e a diferença das diferenças mede a inte
   \label{eq:interacao}
 \end{equation}
 \novo{o custo da validade temporal com e sem a anti-repetição, e o do TLS com e sem o
-envelope; $I = 0$ significa que as duas camadas não interagem.} A matriz
-de ataques correu separada das medições de custo, porque o intermediário na
-ligação do \emph{gateway} acrescenta latência.
+envelope; $I = 0$ significa que as duas camadas não interagem.}
 
 Cada campanha guarda os dados brutos de todas as execuções, a ordem dos ensaios, a
 semente, a configuração completa e um registo do ambiente (código, plataforma,
